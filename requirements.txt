@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+requests
+supabase
+redis
+google-generativeai
+langchain
+sentence-transformers
+langchain-text-splitters

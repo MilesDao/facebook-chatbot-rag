@@ -1,0 +1,55 @@
+[DOCUMENT TYPE]: Informational Notice
+[DOCUMENT TITLE]: Thông tin vui
+[ISSUING AUTHORITY]: Không xác định
+[DECISION NUMBER]: Không áp dụng
+[ISSUED DATE]: Không xác định
+[LANGUAGE]: Vietnamese
+
+THÔNG TIN VUI
+Về việc giới thiệu dự án USTH Chatbot và đội ngũ triển khai
+Nhằm cung cấp thông tin chính thức về dự án USTH Chatbot – hệ thống trợ lý ảo hỗ trợ sinh viên trong việc tra cứu thông tin, học tập và tiếp cận các quy định, dịch vụ của Trường Đại học Khoa học và Công nghệ Hà Nội (USTH), nhóm phát triển trân trọng thông báo đến giảng viên và sinh viên nội dung sau:
+
+PART I. Nhóm phát triển USTH Chatbot
+USTH Chatbot là sản phẩm được xây dựng và phát triển bởi nhóm sinh viên Trường Đại học Khoa học và Công nghệ Hà Nội (USTH), với mục tiêu tạo ra một công cụ hỗ trợ thông minh, thân thiện và dễ sử dụng, giúp sinh viên tiếp cận nhanh chóng các thông tin học vụ, quy chế, chương trình đào tạo cũng như các nội dung liên quan đến đời sống học tập tại nhà trường.
+Dự án không chỉ mang ý nghĩa học thuật, mà còn là một sản phẩm thực nghiệm nhằm vận dụng các kiến thức về Trí tuệ Nhân tạo, Xử lý ngôn ngữ tự nhiên và Hệ thống truy xuất tri thức (RAG) vào giải quyết một bài toán thực tế trong môi trường đại học.
+Nhóm phát triển USTH Chatbot bao gồm các thành viên sau:
+
+
+Nguyễn Ngọc Hiếu
+
+
+Đào Trí Trung
+
+
+Nguyễn Khải Minh
+
+
+Nguyễn Thị Ngọc Ánh
+
+
+Vũ Thị Kim Oanh
+
+
+Phạm Gia Anh
+
+
+Nguyễn Xuân Chuyên
+
+
+Các thành viên trong nhóm phối hợp thực hiện các công việc từ nghiên cứu bài toán, thu thập và xử lý dữ liệu, thiết kế kiến trúc hệ thống, xây dựng mô hình, phát triển phần mềm cho đến đánh giá chất lượng và tối ưu trải nghiệm người dùng.
+Tinh thần làm việc chủ động, sáng tạo và hợp tác là nền tảng giúp nhóm từng bước hoàn thiện USTH Chatbot như một sản phẩm học tập mang tính ứng dụng cao.
+
+PART II. Giảng viên và trợ giảng liên quan
+Article 1. Giảng viên phụ trách
+Thầy Khang
+Chức danh: Giảng viên
+Môn giảng dạy: Nhập môn Trí tuệ Nhân tạo
+Thầy Khang là giảng viên phụ trách học phần Nhập môn Trí tuệ Nhân tạo và đồng thời là người hướng dẫn chuyên môn chính cho dự án USTH Chatbot.
+Trong suốt quá trình triển khai, thầy đã định hướng cho nhóm về cách tiếp cận bài toán, lựa chọn mô hình, xây dựng kiến trúc hệ thống và đảm bảo tính phù hợp giữa mục tiêu học thuật với tính ứng dụng thực tế của sản phẩm.
+Sự hướng dẫn sát sao và những góp ý chuyên môn của thầy là yếu tố quan trọng giúp nhóm hoàn thiện dự án theo đúng chuẩn mực của một hệ thống AI phục vụ người dùng trong môi trường giáo dục.
+
+Article 2. Trợ giảng
+Anh An
+Vai trò: Trợ giảng
+Anh An là trợ giảng hỗ trợ trực tiếp cho nhóm trong quá trình thực hiện dự án. Với phong cách làm việc nhiệt tình, thân thiện và cởi mở, anh đã đồng hành cùng nhóm trong việc giải đáp các thắc mắc về kỹ thuật, triển khai mô hình, xử lý lỗi và hoàn thiện các phần thực hành.
+Sự hỗ trợ kịp thời và tinh thần khuyến khích của anh An đã góp phần tạo động lực cho nhóm sinh viên, giúp quá trình phát triển USTH Chatbot diễn ra thuận lợi, hiệu quả và đúng tiến độ.

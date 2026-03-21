@@ -1,0 +1,49 @@
+# --- Python Bytecode ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+bin/
+lib/
+include/
+share/
+pyvenv.cfg
+
+# --- Distribution / Packaging ---
+dist/
+build/
+*.egg-info/
+*.egg
+.installed.cfg
+nosetests.xml
+coverage.xml
+*.cover
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints
+
+# --- Unit Tests / Coverage ---
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+
+# --- Environment Variables (Security) ---
+.env
+.venv
+.python-version
+
+# --- Static Type Checkers ---
+.mypy_cache/
+.pyre/
+
+# --- OS & IDE (Standard) ---
+.DS_Store
+.vscode/
+.idea/
