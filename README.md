@@ -49,23 +49,132 @@ uvicorn execution.webhook_server:app --reload --host 0.0.0.0 --port 8000
 *The server will start on `http://localhost:8000`.*
 
 ### Step 4: Expose Localhost to the Internet
-Facebook Messenger requires an HTTPS endpoint. Use an SSH tunnel like `ngrok` or `localtunnel` to safely expose your port to the web:
+Facebook Messenger requires an HTTPS endpoint. We use **Cloudflare Tunnel** (`cloudflared`) to safely expose your local port to the web.
 
+1. **Install cloudflared:** Download and install the Cloudflare Tunnel daemon for your system from the [official documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+2. **Start the tunnel:** Run the following command in a new terminal window:
 ```bash
-# Using ngrok as an example
-ngrok http 8000
+cloudflared tunnel --url http://localhost:8000
 ```
-Copy the Forwarding HTTPS URL provided by ngrok (e.g., `https://abcdef.ngrok.app`).
+3. Copy the **Forwarding HTTPS URL** generated in the console output (it will look something like `https://random-words.trycloudflare.com`).
 
 ### Step 5: Configure Messenger Webhook
 1.  Navigate back to your App on Facebook Developers.
 2.  Under **Messenger > Settings**, find "Webhooks" and click "Edit Callback URL".
-3.  Paste your ngrok URL with the webhook endpoint appended: `https://abcdef.ngrok.app/webhook`.
-4.  Optionally enter a Verify Token if you plan to implement verification in your backend (highly recommended).
+3.  Paste your Cloudflare Tunnel URL with the webhook endpoint appended: `https://random-words.trycloudflare.com/webhook`.
+4.  For the **Verify Token**, enter the token defined in your `.env` file (e.g., `tuyensinh2026`).
 5.  Click **Verify and Save**.
 
 ### Step 6: Vector Database (Supabase) Setup (Next Steps)
 To make the RAG pipeline functional, you will need to set up the pgvector extension on Supabase, create a table for your knowledge documents, and generate embeddings. This step-by-step logic will reside primarily in your data preparation scripts and `execution/rag_pipeline.py`.
+
+---
+
+## Redis Memory – Implementation Plan
+
+### 🎯 Goal
+Enable the chatbot to retain short-term conversation context so it can respond naturally across multiple turns.
+
+**Example Behavior:**
+- User: I want to ask about shipping
+- Bot: Shipping takes 3 days
+- User: What about returns?
+→ The bot understands this is a follow-up question, not a new topic.
+
+### 1. Setup Redis
+**Recommended Approach: Local Deployment**
+- **Option A – Docker (fastest)**
+  Run Redis using Docker: Start a Redis container on port 6379
+- **Option B – Native Install**
+  macOS/Linux: install via package manager and start Redis server
+- **Verification**
+  Use Redis CLI to check connection. Expected response: PONG
+
+### 2. Install Redis Client (Python)
+Install the Redis Python library to allow your backend to communicate with Redis.
+
+### 3. Connection Layer
+Create a dedicated module: `execution/memory.py`
+
+**Responsibilities:**
+- Initialize Redis client
+- Load connection from environment variables (`REDIS_URL`)
+- Provide reusable memory functions
+
+### 4. Memory Data Design
+- **Key Concept**: Each user has one conversation session
+- **Key Format**: `chat:<user_id>`
+- **Value**: Conversation history (either plain text or structured JSON)
+
+### 5. Core Memory Operations
+- **5.1 Retrieve History**
+  Fetch conversation data using user ID. Return empty if no history exists.
+- **5.2 Save History**
+  Store updated conversation back into Redis. Apply TTL (expiration time).
+- **5.3 Append New Messages**
+  Combine previous history with new user message and bot response. Save updated result.
+
+### 6. Integration with LLM (Gemini)
+**Flow:**
+Retrieve RAG context → Load conversation history from Redis → Build prompt using: history, retrieved context, current user message → Generate response via Gemini → Append new interaction to memory.
+
+**Key Behavior:**
+The model should use previous conversation only when relevant. Avoid blindly repeating history.
+
+### 7. Memory Testing
+**Manual Testing Steps:**
+1. Check initial history (should be empty).
+2. Send first message → verify it gets stored.
+3. Send follow-up message → verify context is used.
+
+**Expected Outcome:**
+Second response reflects previous conversation. Tone becomes more natural and coherent.
+
+### 8. Memory Size Control (Critical)
+**Problem:** Unlimited history → Slower responses, higher token cost, possible prompt overflow.
+**Solution:** Limit stored memory.
+- **Option A – Character-based**: Keep only last ~1000 characters.
+- **Option B – Turn-based (recommended)**: Keep last 5–10 conversation turns.
+
+### 9. Structured Memory (Recommended Upgrade)
+Instead of plain text, store memory as JSON.
+```json
+[
+  { "user": "...", "bot": "..." },
+  { "user": "...", "bot": "..." }
+]
+```
+**Benefits:** Cleaner formatting, easier to manipulate, better control over memory length.
+**Prompt Conversion:** Convert JSON into readable conversation format before sending to LLM.
+
+### 10. Expiration Strategy (TTL)
+**Standard**: 24 hours (86400 seconds)
+**Purpose**: Prevent memory from growing indefinitely, reset stale conversations, reduce infrastructure load.
+
+### 11. Final Memory Flow
+Incoming Message → Retrieve Redis History → Retrieve RAG Context → Build Prompt (History + Context + Query) → Generate Response (Gemini) → Store Updated Conversation in Redis → Return Response
+
+### 12. Best Practices
+- Always set TTL on keys
+- Use consistent key naming (`chat:<user_id>`)
+- Limit memory size (turn-based preferred)
+- Keep memory module isolated (no business logic inside)
+- Avoid storing unnecessary data in conversation history
+
+### 13. Optional Enhancements (Future Upgrades)
+- Store user preferences (e.g., language, tone)
+- Add conversation summarization for long chats
+- Detect user intent from history
+- Separate memory types: `chat:<user_id>` → conversation, `profile:<user_id>` → user metadata
+- Integrate with memory frameworks (e.g., LangChain memory wrappers)
+
+### 🎯 Final Outcome
+After implementation, your chatbot will:
+- Maintain conversational continuity
+- Handle follow-up questions naturally
+- Provide more human-like interactions
+
+This transforms your system from a stateless Q&A bot into a context-aware conversational AI, which is a major step toward production-level quality.
 
 ---
 

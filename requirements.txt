@@ -3,7 +3,7 @@ uvicorn
 requests
 supabase
 redis
-google-generativeai
+google-genai
 langchain
 sentence-transformers
 langchain-text-splitters

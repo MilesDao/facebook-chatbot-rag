@@ -6,15 +6,15 @@ Responsibilities:
 """
 
 import os
-import google.generativeai as genai
+from google import genai
+from dotenv import load_dotenv
 
-# Configure Gemini
+# Load environment variables
+load_dotenv()
+
+# Configure Gemini Client
 api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-
-# Initialize the specific model version requested
-model = genai.GenerativeModel("gemini-2.5-flash")
+client = genai.Client(api_key=api_key) if api_key else genai.Client()
 
 def generate_response(user_message: str, context: str, history: list) -> str:
     """
@@ -48,7 +48,10 @@ def generate_response(user_message: str, context: str, history: list) -> str:
     full_prompt += f"\nUser: {user_message}\nAssistant:"
     
     try:
-        response = model.generate_content(full_prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=full_prompt,
+        )
         return response.text
     except Exception as e:
         print(f"Error calling Gemini: {e}")
