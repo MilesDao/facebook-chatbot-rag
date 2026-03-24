@@ -5,7 +5,6 @@ redis
 google-genai
 langchain
 python-dotenv
-sentence-transformers
 huggingface_hub
 uvicorn
 langchain-community

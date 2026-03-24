@@ -7,31 +7,42 @@ Responsibilities:
 """
 
 import os
-from sentence_transformers import SentenceTransformer
+import requests
 from supabase import create_client, Client
 
 # Initialize Supabase
 url: str = os.getenv("SUPABASE_URL", "")
 key: str = os.getenv("SUPABASE_KEY", "")
+HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 if url and key:
     supabase: Client = create_client(url, key)
 else:
     supabase = None
 
-# Initialize the embedding model requested: intfloat/multilingual-e5-base
-# This model will download and cache locally the first time it is run.
-print("Initializing Embedding Model (intfloat/multilingual-e5-base)...")
-embedder = SentenceTransformer("intfloat/multilingual-e5-base")
-
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings.
-    E5 models strictly expect the 'query: ' prefix for robust asymmetric search.
+    Generate 768-dimension embeddings using Hugging Face Inference API.
+    Avoids loading heavy models locally on resource-constrained environments like Render.
     """
-    prefixed_text = f"query: {text}"
-    embeddings = embedder.encode(prefixed_text)
-    return embeddings.tolist()
+    if not HF_API_KEY:
+        print("Error: HUGGINGFACE_API_KEY is not set for embeddings")
+        return [0.0] * 768
+
+    # E5 models strictly expect the 'query: ' prefix for robust asymmetric search.
+    model_id = "intfloat/multilingual-e5-base"
+    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    
+    payload = {"inputs": f"query: {text}", "options": {"wait_for_model": True}}
+    
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"Error generating embedding via HF API: {e}")
+        return [0.0] * 768
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
     """
