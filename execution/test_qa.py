@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv()
 
 from execution.rag_pipeline import retrieve_context
-from execution.gemini_integration import generate_response
+from execution.huggingface_integration import generate_response
 
 def test_qa(query: str):
     print(f"\n" + "="*50)
@@ -25,7 +25,7 @@ def test_qa(query: str):
     print(f"\nRetrieved Context Block(s):\n{context}")
     print("-" * 50)
     
-    print("2. Generating response with Gemini...")
+    print("2. Generating response with Hugging Face...")
     answer = generate_response(query, context, [])
     print(f"\nAI Answer:\n{answer}")
     print("="*50 + "\n")

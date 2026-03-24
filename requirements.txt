@@ -1,9 +1,11 @@
 fastapi
-uvicorn
 requests
 supabase
 redis
 google-genai
 langchain
-sentence-transformers
-langchain-text-splitters
+sentence-python-dotenv
+huggingface_hub
+fastapi
+uvicorn
+ain-text-splitters
