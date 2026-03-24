@@ -1,5 +1,5 @@
 # Use slim python image to keep size small for Render
-FROM python:3.9-slim
+FROM python:3.10-slim
 
 WORKDIR /app
 

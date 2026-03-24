@@ -1,11 +1,11 @@
-fastapi
 requests
 supabase
 redis
 google-genai
 langchain
-sentence-python-dotenv
+python-dotenv
+sentence-transformers
 huggingface_hub
-fastapi
 uvicorn
-ain-text-splitters
+langchain-community
+langchain-text-splitters
