@@ -70,6 +70,30 @@ To make the RAG pipeline functional, you will need to set up the pgvector extens
 
 ---
 
+## Deployment on Render (24/7 Hosting)
+
+This project is optimized for deployment on **Render**'s Free Tier using a custom FastAPI wrapper architecture. This allows the bot to run 24/7 without exceeding memory limits by offloading inference to Hugging Face.
+
+### Architecture Overview
+`User → Messenger → Webhook (Render) → FastAPI Proxy → Hugging Face → Response`
+
+### Setup Instructions
+1.  **Push to GitHub:** Ensure your code is pushed to a GitHub repository.
+2.  **Create Render Web Service:** 
+    - Log in to [Render](https://render.com).
+    - Create a **New +** → **Web Service**.
+    - Connect your GitHub repository.
+3.  **Configure Environment:**
+    - **Runtime:** Docker
+    - **Plan:** Free
+4.  **Add Environment Variables:**
+    - `HUGGINGFACE_API_KEY`: Your Hugging Face token.
+    - `HUGGINGFACE_MODEL_ID`: `Qwen/Qwen2.5-1.5B-Instruct` (Recommended).
+    - `APP_SECRET`, `SUPABASE_URL`, `SUPABASE_KEY`, `REDIS_URL`, etc.
+5.  **Final Step:** Update your Facebook App's Webhook URL to point to your new Render URL: `https://your-app.onrender.com/webhook`.
+
+---
+
 ## Redis Memory – Implementation Plan
 
 ### 🎯 Goal
