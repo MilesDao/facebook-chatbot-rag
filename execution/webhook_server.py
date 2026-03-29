@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .message_handler import handle_message
+from .huggingface_integration import generate_response
 
 # Hugging Face config (from llm_api)
 HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
@@ -128,56 +129,15 @@ def process_message(sender_id: str, user_text: str):
 @app.post("/generate")
 async def generate(request: GenerateRequest):
     """
-    Generate response using legacy requests approach.
-    Now merged into the main webhook server.
+    Generate response using the unified huggingface_integration logic.
     """
-    if not HF_API_KEY:
-        raise HTTPException(status_code=500, detail="HF_API_KEY is not set")
-
-    api_url = f"https://api-inference.huggingface.co/models/{HF_MODEL_ID}"
-    headers = {
-        "Authorization": f"Bearer {HF_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    # Construct prompt (using ChatML format which Qwen uses)
-    prompt = "<|im_start|>system\nBạn là một trợ lý AI thông minh và hữu ích cho chatbot Facebook. Sử dụng ngữ cảnh được cung cấp để trả lời các câu hỏi của người dùng một cách chính xác.<|im_end|>\n"
-    
-    if request.context:
-        prompt += f"<|im_start|>system\nNgữ cảnh nền:\n{request.context}<|im_end|>\n"
-        
-    for msg in request.history[-5:]:
-        # Map history roles to ChatML roles
-        m_role = msg.get("role", "user")
-        role = "assistant" if m_role in ["model", "assistant", "ms"] else "user"
-        prompt += f"<|im_start|>{role}\n{msg.get('content', '')}<|im_end|>\n"
-        
-    prompt += f"<|im_start|>user\n{request.user_message}<|im_end|>\n<|im_start|>assistant\n"
-
-    payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 512, "temperature": 0.7}
-    }
-
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 503:
-            return {"response": "Máy chủ AI đang khởi động. Vui lòng thử lại sau vài giây."}
-            
-        response.raise_for_status()
-        result = response.json()
-        
-        if isinstance(result, list) and len(result) > 0:
-            gen_text = result[0].get("generated_text", "")
-            # Extract only the assistant's response
-            if "<|im_start|>assistant\n" in gen_text:
-                gen_text = gen_text.split("<|im_start|>assistant\n")[-1].split("<|im_end|>")[0].strip()
-            elif gen_text.startswith(prompt):
-                gen_text = gen_text[len(prompt):].strip()
-            return {"response": gen_text}
-            
-        return {"response": str(result)}
+        reply = generate_response(
+            user_message=request.user_message,
+            context=request.context,
+            history=request.history
+        )
+        return {"response": reply}
             
     except Exception as e:
         import traceback

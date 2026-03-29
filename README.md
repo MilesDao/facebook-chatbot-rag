@@ -49,7 +49,7 @@ uvicorn execution.webhook_server:app --reload --host 0.0.0.0 --port 8000
 *The server will start on `http://localhost:8000`.*
 
 ### Step 4: Expose Localhost to the Internet
-Facebook Messenger requires an HTTPS endpoint. We use **Cloudflare Tunnel** (`cloudflared`) to safely expose your local port to the web.
+Facebook Messenger requires an HTTPS endpoint. We use **Cloudflare Tunnel** (`cloudflared`) to safely expose your local port (8000) to the web.
 
 1. **Install cloudflared:** Download and install the Cloudflare Tunnel daemon for your system from the [official documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
 2. **Start the tunnel:** Run the following command in a new terminal window:
@@ -58,24 +58,14 @@ cloudflared tunnel --url http://localhost:8000
 ```
 3. Copy the **Forwarding HTTPS URL** generated in the console output (it will look something like `https://random-words.trycloudflare.com`).
 
-### Step 5: Configure Messenger Webhook
-1.  Navigate back to your App on Facebook Developers.
-2.  Under **Messenger > Settings**, find "Webhooks" and click "Edit Callback URL".
-3.  Paste your Cloudflare Tunnel URL with the webhook endpoint appended: `https://random-words.trycloudflare.com/webhook`.
-4.  For the **Verify Token**, enter the token defined in your `.env` file (e.g., `tuyensinh2026`).
-5.  Click **Verify and Save**.
-
-### Step 6: Vector Database (Supabase) Setup (Next Steps)
-To make the RAG pipeline functional, you will need to set up the pgvector extension on Supabase, create a table for your knowledge documents, and generate embeddings. This step-by-step logic will reside primarily in your data preparation scripts and `execution/rag_pipeline.py`.
-
 ---
 
 ## Deployment on Render (24/7 Hosting)
 
-This project is optimized for deployment on **Render**'s Free Tier using a custom FastAPI wrapper architecture. This allows the bot to run 24/7 without exceeding memory limits by offloading inference to Hugging Face.
+This project is optimized for deployment on **Render**'s Free Tier using a custom FastAPI wrapper architecture. This allows the bot to run 24/7 by offloading inference directly to the Hugging Face Inference API.
 
 ### Architecture Overview
-`User → Messenger → Webhook (Render) → FastAPI Proxy → Hugging Face → Response`
+`User → Messenger → Webhook (Render) → Hugging Face → Response`
 
 ### Setup Instructions
 1.  **Push to GitHub:** Ensure your code is pushed to a GitHub repository.

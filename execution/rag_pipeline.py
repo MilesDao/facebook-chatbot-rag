@@ -16,7 +16,11 @@ key: str = os.getenv("SUPABASE_KEY", "")
 HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 if url and key:
-    supabase: Client = create_client(url, key)
+    try:
+        supabase: Client = create_client(url, key)
+    except Exception as e:
+        print(f"Warning: Supabase client could not be initialized: {e}")
+        supabase = None
 else:
     supabase = None
 
@@ -31,10 +35,10 @@ def get_embedding(text: str) -> list[float]:
 
     # E5 models strictly expect the 'query: ' prefix for robust asymmetric search.
     model_id = "intfloat/multilingual-e5-base"
-    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
+    headers = {"Authorization": f"Bearer {HF_API_KEY}", "X-Wait-For-Model": "true"}
     
-    payload = {"inputs": f"query: {text}", "options": {"wait_for_model": True}}
+    payload = {"inputs": f"query: {text}"}
     
     try:
         response = requests.post(api_url, headers=headers, json=payload, timeout=30)

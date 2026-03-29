@@ -1,17 +1,21 @@
-import requests
 import os
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
-token = os.getenv("HUGGINGFACE_API_KEY")
 
-print(f"Checking token: {token[:10]}...")
-headers = {"Authorization": f"Bearer {token}"}
-response = requests.get("https://huggingface.co/api/whoami-v2", headers=headers)
+HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
-if response.status_code == 200:
-    print("Token is valid!")
-    print(response.json())
-else:
-    print(f"Token error: {response.status_code}")
-    print(response.text)
+def check_token():
+    url = "https://huggingface.co/api/whoami-v2"
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    try:
+        response = requests.get(url, headers=headers)
+        print(f"Status: {response.status_code}")
+        import json
+        print(json.dumps(response.json(), indent=2))
+    except Exception as e:
+        print(f"Exception: {e}")
+
+if __name__ == "__main__":
+    check_token()
