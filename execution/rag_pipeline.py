@@ -7,8 +7,17 @@ Responsibilities:
 """
 
 import os
+from dotenv import load_dotenv
 from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
+
+# Load environment variables
+load_dotenv()
+
+# Set HF_TOKEN to avoid unauthenticated warnings
+hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
+if hf_token:
+    os.environ["HF_TOKEN"] = hf_token
 
 # Initialize Supabase
 url: str = os.getenv("SUPABASE_URL", "")

@@ -47,3 +47,5 @@ htmlcov/
 .DS_Store
 .vscode/
 .idea/
+raw_data/
+data/

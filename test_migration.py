@@ -5,6 +5,11 @@ from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
+# Set HF_TOKEN to avoid unauthenticated warnings
+hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
+if hf_token:
+    os.environ["HF_TOKEN"] = hf_token
+
 def test_local_embeddings():
     print("\n--- Testing Local Embeddings (all-MiniLM-L6-v2) ---")
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
