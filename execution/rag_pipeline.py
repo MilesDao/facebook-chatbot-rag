@@ -7,13 +7,12 @@ Responsibilities:
 """
 
 import os
-import requests
 from supabase import create_client, Client
+from sentence_transformers import SentenceTransformer
 
 # Initialize Supabase
 url: str = os.getenv("SUPABASE_URL", "")
 key: str = os.getenv("SUPABASE_KEY", "")
-HF_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
 
 if url and key:
     try:
@@ -24,29 +23,22 @@ if url and key:
 else:
     supabase = None
 
+# Initialize Local Embedding Model
+# This will download the model (~80MB) on first run
+print("Loading Local Embedding Model (sentence-transformers/all-MiniLM-L6-v2)...")
+embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings using Hugging Face Inference API.
-    Avoids loading heavy models locally on resource-constrained environments like Render.
+    Generate 384-dimension embeddings locally using SentenceTransformer.
     """
-    if not HF_API_KEY:
-        print("Error: HUGGINGFACE_API_KEY is not set for embeddings")
-        return [0.0] * 768
-
-    # E5 models strictly expect the 'query: ' prefix for robust asymmetric search.
-    model_id = "intfloat/multilingual-e5-base"
-    api_url = f"https://api-inference.huggingface.co/models/{model_id}"
-    headers = {"Authorization": f"Bearer {HF_API_KEY}", "X-Wait-For-Model": "true"}
-    
-    payload = {"inputs": f"query: {text}"}
-    
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
-        response.raise_for_status()
-        return response.json()
+        # all-MiniLM-L6-v2 produces 384-dim vectors
+        embedding = embedder.encode(text).tolist()
+        return embedding
     except Exception as e:
-        print(f"Error generating embedding via HF API: {e}")
-        return [0.0] * 768
+        print(f"Error generating local embedding: {e}")
+        return [0.0] * 384
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
     """

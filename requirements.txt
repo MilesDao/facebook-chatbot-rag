@@ -2,10 +2,11 @@ fastapi
 requests
 supabase
 redis
-google-genai
 langchain
 python-dotenv
 huggingface_hub
 uvicorn
 langchain-community
 langchain-text-splitters
+groq
+sentence-transformers

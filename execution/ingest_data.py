@@ -17,8 +17,8 @@ if not url or not key:
 
 supabase: Client = create_client(url, key)
 
-print("Loading Embedding Model (intfloat/multilingual-e5-base)...")
-embedder = SentenceTransformer("intfloat/multilingual-e5-base")
+print("Loading Local Embedding Model (sentence-transformers/all-MiniLM-L6-v2)...")
+embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
 # Setup generic recursive text splitter
 text_splitter = RecursiveCharacterTextSplitter(
@@ -50,9 +50,7 @@ def ingest_all_files():
         chunks = text_splitter.split_text(content)
         
         for i, chunk in enumerate(chunks):
-            # IMPORTANT: For intfloat/multilingual-e5-base, documents require 'passage: ' prefix
-            prefixed_passage = f"passage: {chunk}"
-            embedding = embedder.encode(prefixed_passage).tolist()
+            embedding = embedder.encode(chunk).tolist()
             
             # Insert to Supabase DB table `documents`
             try:

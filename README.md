@@ -29,7 +29,7 @@ You will need credentials from multiple services:
 1.  **APP_SECRET:** Head to your Facebook Developers App Dashboard > Settings > Basic.
 2.  **SUPABASE_URL & SUPABASE_KEY:** Create a new project on [Supabase.com](https://supabase.com/). Retrieve the API URL and Service Role Key from the Project Settings > API.
 3.  **REDIS_URL:** Ensure Redis is running on your machine, or acquire a cloud Redis instance. Default is `redis://localhost:6379`.
-4.  **GEMINI_API_KEY:** Generate an API key from Google AI Studio.
+4.  **GROQ_API_KEY:** Generate an API key from [Groq Console](https://console.groq.com/).
 
 Open the `.env` file and fill in your values:
 ```env
@@ -37,35 +37,26 @@ APP_SECRET=your_facebook_app_secret
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_KEY=your_supabase_service_role_key
 REDIS_URL=redis://localhost:6379
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL_ID=llama-3.3-70b-versatile
 ```
-
-### Step 3: Run the Webhook Server
-Start the FastAPI server via Uvicorn. This will be the interface receiving requests from Messenger.
-
-```bash
-uvicorn execution.webhook_server:app --reload --host 0.0.0.0 --port 8000
-```
-*The server will start on `http://localhost:8000`.*
-
-### Step 4: Expose Localhost to the Internet
-Facebook Messenger requires an HTTPS endpoint. We use **Cloudflare Tunnel** (`cloudflared`) to safely expose your local port (8000) to the web.
-
-1. **Install cloudflared:** Download and install the Cloudflare Tunnel daemon for your system from the [official documentation](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
-2. **Start the tunnel:** Run the following command in a new terminal window:
-```bash
-cloudflared tunnel --url http://localhost:8000
-```
-3. Copy the **Forwarding HTTPS URL** generated in the console output (it will look something like `https://random-words.trycloudflare.com`).
 
 ---
 
-## Deployment on Render (24/7 Hosting)
+## Architecture Change: Groq + Local Embeddings
 
-This project is optimized for deployment on **Render**'s Free Tier using a custom FastAPI wrapper architecture. This allows the bot to run 24/7 by offloading inference directly to the Hugging Face Inference API.
+This project now uses **Groq (Llama 3.3 70B)** for low-latency, high-performance chat generation and **Local SentenceTransformers** for Vietnamese embeddings.
+
+### 📝 Important Notes:
+1. **Local Model**: The first time you run the bot or `ingest_data.py`, it will download the `AITeamVN/Vietnamese_Embedding` model (~1GB).
+2. **Database Dimension**: Ensure your Supabase `documents` table uses `vector(1024)`. Run the updated [setup_supabase.sql](file:///e:/User/documentaries/USTH_codes/facebookchatbot-rag/execution/setup_supabase.sql) if you are starting fresh.
+
+### Deployment on Render (24/7 Hosting)
+
+This project is optimized for deployment on **Render**. For the Free Tier, ensure you have enough memory allocated for the local embedding model, or consider a plan that supports the ~1GB model footprint.
 
 ### Architecture Overview
-`User → Messenger → Webhook (Render) → Hugging Face → Response`
+`User → Messenger → Webhook (Render) → Groq (Llama 3.3) ← Local Embeddings (AITeamVN) ← Response`
 
 ### Setup Instructions
 1.  **Push to GitHub:** Ensure your code is pushed to a GitHub repository.

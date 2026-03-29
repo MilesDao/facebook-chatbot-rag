@@ -13,7 +13,7 @@ Responsibilities:
 
 from execution import memory
 from execution import rag_pipeline
-from execution import huggingface_integration as llm_integration
+from execution import groq_integration as llm_integration
 from execution import handoff
 from execution import analytics
 
