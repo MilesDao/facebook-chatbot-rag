@@ -1,6 +1,12 @@
-# AI Messenger Bot (RAG + Gemini)
+# AI Messenger Bot (RAG + Groq)
 
-This project provides a fully automated AI Messenger Bot utilizing Facebook Messenger, Supabase (for Retrieval-Augmented Generation context), Redis (for short-term memory), and Google Gemini (for generative text).
+This project provides a fully automated AI Messenger Bot utilizing:
+- **Facebook Messenger** - User interface
+- **Supabase** - Vector database for Retrieval-Augmented Generation (RAG) context
+- **Redis** - Short-term conversation memory
+- **Groq (Llama 3.3 70B)** - High-performance generative text
+
+The bot uses local sentence transformers for Vietnamese embeddings.
 
 ## System Architecture
 
@@ -185,11 +191,18 @@ This transforms your system from a stateless Q&A bot into a context-aware conver
 
 ## Directory Structure
 - `directives/` - Standard operating procedures and system instructions.
-- `execution/` - Deterministic python tools defining project functionality.
+- `execution/` - Deterministic python tools defining project functionality. All app and webhook scripts are organized here.
   - `webhook_server.py`: FastAPI server logic.
   - `message_handler.py`: Central coordination for memory, RAG, and LLM.
   - `rag_pipeline.py`: Handles fetching contexts from Supabase.
   - `gemini_integration.py`: Handles passing queries and contexts to the Gemini LLM.
+  - `groq_integration.py`: Handles passing queries and contexts to the Groq LLM.
+  - `huggingface_integration.py`: Hugging Face model integrations.
+  - `ingest_data.py`: Script to process, embed, and upload documents to Supabase.
+  - `memory.py`: Redis-based conversation memory management.
   - `handoff.py`: Triggers notifications if confidence scores drop too low.
   - `analytics.py`: Logs system performance and query results.
+  - `check_model.py`: Utility to verify model loading.
+  - `check_token.py`: Utility to verify token availability.
+  - `setup_supabase.sql`: SQL queries to set up the Supabase database.
 - `.tmp/` - Gitignored temporary storage.
