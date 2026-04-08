@@ -1,0 +1,132 @@
+:root {
+  --background: #050505;
+  --foreground: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.05);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;
+  min-height: 100vh;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(147, 51, 234, 0.15) 0, transparent 50%);
+}
+
+.glass {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.glass:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  z-index: 100;
+}
+
+.main-content {
+  margin-left: 260px;
+  padding: 40px;
+  width: calc(100% - 260px);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.6);
+  transition: all 0.2s ease;
+}
+
+.nav-item:hover, .nav-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.nav-item.active {
+  border-left: 3px solid var(--accent);
+}
+
+.card {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s ease;
+}
+
+.btn:hover {
+  opacity: 0.9;
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+h1, h2, h3 {
+  margin-bottom: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+th, td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+}
+
+th {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  text-transform: uppercase;
+}
