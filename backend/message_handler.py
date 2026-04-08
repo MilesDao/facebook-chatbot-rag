@@ -11,22 +11,17 @@ Responsibilities:
 - Update memory
 """
 
-from execution import memory
-from execution import rag_pipeline
-from execution import groq_integration as llm_integration
-from execution import handoff
-from execution import analytics
+from . import rag_pipeline
+from . import groq_integration as llm_integration
+from . import handoff
+from . import analytics
 
 def handle_message(sender_id: str, user_message: str):
     """
     Orchestrate the AI message flow.
     """
-    # 1. Load history from Redis
-    raw_history = memory.get_history(sender_id)
+    # 1. No history (Redis removed)
     formatted_history = []
-    for turn in raw_history:
-        formatted_history.append({"role": "user", "content": turn.get("user", "")})
-        formatted_history.append({"role": "model", "content": turn.get("bot", "")})
 
     # 2. RAG retrieve from Supabase
     context_str, confidence_score = rag_pipeline.retrieve_context(user_message)
@@ -43,8 +38,7 @@ def handle_message(sender_id: str, user_message: str):
     # 5. Log analytics
     analytics.log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered)
     
-    # 6. Save new history to Redis
-    memory.append_message(sender_id, user_message, ai_reply)
+    # 6. (Memory saving removed)
     
     # 7. Return/Send response to Messenger
     return ai_reply

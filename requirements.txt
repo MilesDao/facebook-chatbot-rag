@@ -1,7 +1,6 @@
 fastapi
 requests
 supabase
-redis
 langchain
 python-dotenv
 huggingface_hub
@@ -10,3 +9,4 @@ langchain-community
 langchain-text-splitters
 groq
 sentence-transformers
+python-multipart

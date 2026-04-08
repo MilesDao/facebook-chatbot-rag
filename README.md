@@ -1,208 +1,54 @@
 # AI Messenger Bot (RAG + Groq)
 
-This project provides a fully automated AI Messenger Bot utilizing:
-- **Facebook Messenger** - User interface
-- **Supabase** - Vector database for Retrieval-Augmented Generation (RAG) context
-- **Redis** - Short-term conversation memory
-- **Groq (Llama 3.3 70B)** - High-performance generative text
+A professional, end-to-end AI Messenger Bot system featuring a high-performance Backend and a premium Admin Dashboard.
 
-The bot uses local sentence transformers for Vietnamese embeddings.
+## 🏗️ Project Structure
 
-## System Architecture
+- **`backend/`**: FastAPI server handling Facebook webhooks, RAG logic, and management APIs.
+- **`admin-dashboard/`**: Next.js (TypeScript) management interface with a premium glassmorphic UI.
+- **`raw_data/`**: Storage for documents pending ingestion.
 
-**Pipeline:**
-`User → Facebook Messenger → Webhook (FastAPI) → Message Handler (Core Logic) → RAG (Supabase) → Redis Memory → Gemini LLM → Handoff Decision → Analytics Logging → Response → User`
+## 🚀 Getting Started
 
-### Design Principles
-1.  **Lightweight Webhook:** The FastAPI webhook layer is minimal, forwarding everything immediately.
-2.  **Centralized Logic:** `execution/message_handler.py` acts as the orchestrator.
-3.  **Confidence-based Handoff:** Similarities from Supabase vector search determine confidence to escalate queries to human admins.
+### 1. Prerequisites
+- Python 3.10+
+- Node.js 18+
+- Supabase account (for Vector DB)
+- Groq API Key (for LLM)
 
----
-
-## Step-By-Step Setup Guide
-
-Follow these instructions to configure and run the bot locally.
-
-### Step 1: Install Dependencies
-Ensure you have Python 3.8+ installed, and run:
+### 2. Backend Setup
 ```bash
+# Install dependencies
 pip install -r requirements.txt
+
+# Configure .env in the root project folder
+
+# Run Backend
+python -m backend.main
 ```
+Your backend will be live at `http://localhost:8000`.
 
-### Step 2: Configure Environment Variables
-You will need credentials from multiple services:
-1.  **APP_SECRET:** Head to your Facebook Developers App Dashboard > Settings > Basic.
-2.  **SUPABASE_URL & SUPABASE_KEY:** Create a new project on [Supabase.com](https://supabase.com/). Retrieve the API URL and Service Role Key from the Project Settings > API.
-3.  **REDIS_URL:** Ensure Redis is running on your machine, or acquire a cloud Redis instance. Default is `redis://localhost:6379`.
-4.  **GROQ_API_KEY:** Generate an API key from [Groq Console](https://console.groq.com/).
-
-Open the `.env` file and fill in your values:
-```env
-APP_SECRET=your_facebook_app_secret
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_supabase_service_role_key
-REDIS_URL=redis://localhost:6379
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL_ID=llama-3.3-70b-versatile
+### 3. Dashboard Setup
+```bash
+cd admin-dashboard
+npm install
+npm run dev
 ```
+Open `http://localhost:3000` to manage your bot.
 
----
+## 🌟 Key Features
 
-## Architecture Change: Groq + Local Embeddings
+### 1. Confidence-Based Human Handoff
+The bot monitors its own confidence via RAG similarity scores. If confidence falls below 60%, the interaction is flagged in the **Handoff Inbox** for human management.
 
-This project now uses **Groq (Llama 3.3 70B)** for low-latency, high-performance chat generation and **Local SentenceTransformers** for Vietnamese embeddings.
+### 2. Knowledge Management
+Upload `.txt` or `.pdf` files via the dashboard. Trigger re-indexing with a single click to update the bot's intelligence.
 
-### 📝 Important Notes:
-1. **Local Model**: The first time you run the bot or `ingest_data.py`, it will download the `AITeamVN/Vietnamese_Embedding` model (~1GB).
-2. **Database Dimension**: Ensure your Supabase `documents` table uses `vector(1024)`. Run the updated [setup_supabase.sql](file:///e:/User/documentaries/USTH_codes/facebookchatbot-rag/execution/setup_supabase.sql) if you are starting fresh.
+### 3. Real-time Analytics
+Monitor interaction volume, user count, average confidence, and handoff rates through a glassmorphic data visualization panel.
 
-### Deployment on Render (24/7 Hosting)
+## 🛠️ Deployment
 
-This project is optimized for deployment on **Render**. For the Free Tier, ensure you have enough memory allocated for the local embedding model, or consider a plan that supports the ~1GB model footprint.
-
-### Architecture Overview
-`User → Messenger → Webhook (Render) → Groq (Llama 3.3) ← Local Embeddings (AITeamVN) ← Response`
-
-### Setup Instructions
-1.  **Push to GitHub:** Ensure your code is pushed to a GitHub repository.
-2.  **Create Render Web Service:** 
-    - Log in to [Render](https://render.com).
-    - Create a **New +** → **Web Service**.
-    - Connect your GitHub repository.
-3.  **Configure Environment:**
-    - **Runtime:** Docker
-    - **Plan:** Free
-4.  **Add Environment Variables:**
-    - `HUGGINGFACE_API_KEY`: Your Hugging Face token.
-    - `HUGGINGFACE_MODEL_ID`: `Qwen/Qwen2.5-1.5B-Instruct` (Recommended).
-    - `APP_SECRET`, `SUPABASE_URL`, `SUPABASE_KEY`, `REDIS_URL`, etc.
-5.  **Final Step:** Update your Facebook App's Webhook URL to point to your new Render URL: `https://your-app.onrender.com/webhook`.
-
----
-
-## Redis Memory – Implementation Plan
-
-### 🎯 Goal
-Enable the chatbot to retain short-term conversation context so it can respond naturally across multiple turns.
-
-**Example Behavior:**
-- User: I want to ask about shipping
-- Bot: Shipping takes 3 days
-- User: What about returns?
-→ The bot understands this is a follow-up question, not a new topic.
-
-### 1. Setup Redis
-**Recommended Approach: Local Deployment**
-- **Option A – Docker (fastest)**
-  Run Redis using Docker: Start a Redis container on port 6379
-- **Option B – Native Install**
-  macOS/Linux: install via package manager and start Redis server
-- **Verification**
-  Use Redis CLI to check connection. Expected response: PONG
-
-### 2. Install Redis Client (Python)
-Install the Redis Python library to allow your backend to communicate with Redis.
-
-### 3. Connection Layer
-Create a dedicated module: `execution/memory.py`
-
-**Responsibilities:**
-- Initialize Redis client
-- Load connection from environment variables (`REDIS_URL`)
-- Provide reusable memory functions
-
-### 4. Memory Data Design
-- **Key Concept**: Each user has one conversation session
-- **Key Format**: `chat:<user_id>`
-- **Value**: Conversation history (either plain text or structured JSON)
-
-### 5. Core Memory Operations
-- **5.1 Retrieve History**
-  Fetch conversation data using user ID. Return empty if no history exists.
-- **5.2 Save History**
-  Store updated conversation back into Redis. Apply TTL (expiration time).
-- **5.3 Append New Messages**
-  Combine previous history with new user message and bot response. Save updated result.
-
-### 6. Integration with LLM (Gemini)
-**Flow:**
-Retrieve RAG context → Load conversation history from Redis → Build prompt using: history, retrieved context, current user message → Generate response via Gemini → Append new interaction to memory.
-
-**Key Behavior:**
-The model should use previous conversation only when relevant. Avoid blindly repeating history.
-
-### 7. Memory Testing
-**Manual Testing Steps:**
-1. Check initial history (should be empty).
-2. Send first message → verify it gets stored.
-3. Send follow-up message → verify context is used.
-
-**Expected Outcome:**
-Second response reflects previous conversation. Tone becomes more natural and coherent.
-
-### 8. Memory Size Control (Critical)
-**Problem:** Unlimited history → Slower responses, higher token cost, possible prompt overflow.
-**Solution:** Limit stored memory.
-- **Option A – Character-based**: Keep only last ~1000 characters.
-- **Option B – Turn-based (recommended)**: Keep last 5–10 conversation turns.
-
-### 9. Structured Memory (Recommended Upgrade)
-Instead of plain text, store memory as JSON.
-```json
-[
-  { "user": "...", "bot": "..." },
-  { "user": "...", "bot": "..." }
-]
-```
-**Benefits:** Cleaner formatting, easier to manipulate, better control over memory length.
-**Prompt Conversion:** Convert JSON into readable conversation format before sending to LLM.
-
-### 10. Expiration Strategy (TTL)
-**Standard**: 24 hours (86400 seconds)
-**Purpose**: Prevent memory from growing indefinitely, reset stale conversations, reduce infrastructure load.
-
-### 11. Final Memory Flow
-Incoming Message → Retrieve Redis History → Retrieve RAG Context → Build Prompt (History + Context + Query) → Generate Response (Gemini) → Store Updated Conversation in Redis → Return Response
-
-### 12. Best Practices
-- Always set TTL on keys
-- Use consistent key naming (`chat:<user_id>`)
-- Limit memory size (turn-based preferred)
-- Keep memory module isolated (no business logic inside)
-- Avoid storing unnecessary data in conversation history
-
-### 13. Optional Enhancements (Future Upgrades)
-- Store user preferences (e.g., language, tone)
-- Add conversation summarization for long chats
-- Detect user intent from history
-- Separate memory types: `chat:<user_id>` → conversation, `profile:<user_id>` → user metadata
-- Integrate with memory frameworks (e.g., LangChain memory wrappers)
-
-### 🎯 Final Outcome
-After implementation, your chatbot will:
-- Maintain conversational continuity
-- Handle follow-up questions naturally
-- Provide more human-like interactions
-
-This transforms your system from a stateless Q&A bot into a context-aware conversational AI, which is a major step toward production-level quality.
-
----
-
-## Directory Structure
-- `directives/` - Standard operating procedures and system instructions.
-- `execution/` - Deterministic python tools defining project functionality. All app and webhook scripts are organized here.
-  - `webhook_server.py`: FastAPI server logic.
-  - `message_handler.py`: Central coordination for memory, RAG, and LLM.
-  - `rag_pipeline.py`: Handles fetching contexts from Supabase.
-  - `gemini_integration.py`: Handles passing queries and contexts to the Gemini LLM.
-  - `groq_integration.py`: Handles passing queries and contexts to the Groq LLM.
-  - `huggingface_integration.py`: Hugging Face model integrations.
-  - `ingest_data.py`: Script to process, embed, and upload documents to Supabase.
-  - `memory.py`: Redis-based conversation memory management.
-  - `handoff.py`: Triggers notifications if confidence scores drop too low.
-  - `analytics.py`: Logs system performance and query results.
-  - `check_model.py`: Utility to verify model loading.
-  - `check_token.py`: Utility to verify token availability.
-  - `setup_supabase.sql`: SQL queries to set up the Supabase database.
-- `.tmp/` - Gitignored temporary storage.
+- **Backend**: Deploy the `backend/` package to **Render** as a Web Service.
+- **Dashboard**: Deploy the `admin-dashboard/` project to **Vercel** or **Render**.
+- **Database**: Use **Supabase** for pgvector storage and analytics logging.

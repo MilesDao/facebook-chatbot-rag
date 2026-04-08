@@ -11,26 +11,7 @@ from dotenv import load_dotenv
 from supabase import create_client, Client
 from sentence_transformers import SentenceTransformer
 
-# Load environment variables
-load_dotenv()
-
-# Set HF_TOKEN to avoid unauthenticated warnings
-hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
-if hf_token:
-    os.environ["HF_TOKEN"] = hf_token
-
-# Initialize Supabase
-url: str = os.getenv("SUPABASE_URL", "")
-key: str = os.getenv("SUPABASE_KEY", "")
-
-if url and key:
-    try:
-        supabase: Client = create_client(url, key)
-    except Exception as e:
-        print(f"Warning: Supabase client could not be initialized: {e}")
-        supabase = None
-else:
-    supabase = None
+from .database import supabase
 
 # Initialize Local Embedding Model
 # This will download the model (~80MB) on first run

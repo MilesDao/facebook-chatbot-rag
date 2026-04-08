@@ -41,3 +41,24 @@ create index if not exists documents_embedding_idx
 on documents 
 using ivfflat (embedding vector_cosine_ops)
 with (lists = 100);
+
+-- Table for analytics logging
+create table if not exists logs (
+  id uuid primary key default gen_random_uuid(),
+  sender_id text,
+  user_message text,
+  ai_reply text,
+  confidence_score float,
+  handoff_triggered boolean,
+  created_at timestamptz default now()
+);
+
+-- Table for human handoff status
+create table if not exists handoffs (
+  id uuid primary key default gen_random_uuid(),
+  sender_id text,
+  user_message text,
+  confidence_score float,
+  status text default 'active', -- 'active' or 'resolved'
+  created_at timestamptz default now()
+);
