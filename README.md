@@ -1,4 +1,4 @@
-# AI Messenger Bot (RAG + Groq)
+# AI Messenger Bot (RAG + Dashboard)
 
 A professional, end-to-end AI Messenger Bot system featuring a high-performance Backend and a premium Admin Dashboard.
 
@@ -8,47 +8,49 @@ A professional, end-to-end AI Messenger Bot system featuring a high-performance 
 - **`admin-dashboard/`**: Next.js (TypeScript) management interface with a premium glassmorphic UI.
 - **`raw_data/`**: Storage for documents pending ingestion.
 
-## 🚀 Getting Started
+---
 
-### 1. Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Supabase account (for Vector DB)
-- Groq API Key (for LLM)
+## 🚀 Deployment
 
-### 2. Backend Setup
-```bash
-# Install dependencies
-pip install -r requirements.txt
+We recommend **Render** for the Backend and **Vercel** for the Frontend.
 
-# Configure .env in the root project folder
+### 📜 [Detailed Step-by-Step Deployment Guide](deployment_guide.md)
 
-# Run Backend
-python -m backend.main
-```
-Your backend will be live at `http://localhost:8000`.
+### 1. Backend (Render)
+- **Repo**: Connect your GitHub.
+- **Root**: Root directory `/`.
+- **Command**: Docker will automatically use the `Dockerfile`.
+- **Environment Variables**:
+  - `SUPABASE_URL`, `SUPABASE_KEY`
+  - `PAGE_ACCESS_TOKEN`, `VERIFY_TOKEN` (your hub token)
+  - `GROQ_API_KEY`, `HUGGINGFACE_API_KEY`
+  - `DASHBOARD_URL`: (Your Vercel URL)
 
-### 3. Dashboard Setup
-```bash
-cd admin-dashboard
-npm install
-npm run dev
-```
-Open `http://localhost:3000` to manage your bot.
+### 2. Dashboard (Vercel)
+- **Repo**: Connect your GitHub.
+- **Root**: Select `admin-dashboard`.
+- **Environment Variables**:
+  - `NEXT_PUBLIC_BACKEND_URL`: (Your Render URL)
 
-## 🌟 Key Features
+---
 
-### 1. Confidence-Based Human Handoff
-The bot monitors its own confidence via RAG similarity scores. If confidence falls below 60%, the interaction is flagged in the **Handoff Inbox** for human management.
+## 🌟 Local Development
 
-### 2. Knowledge Management
-Upload `.txt` or `.pdf` files via the dashboard. Trigger re-indexing with a single click to update the bot's intelligence.
+1. **Backend**:
+   ```bash
+   pip install -r requirements.txt
+   python -m backend.main
+   ```
 
-### 3. Real-time Analytics
-Monitor interaction volume, user count, average confidence, and handoff rates through a glassmorphic data visualization panel.
+2. **Dashboard**:
+   ```bash
+   cd admin-dashboard
+   npm install
+   npm run dev
+   ```
 
-## 🛠️ Deployment
+## 🛠️ Key Features
 
-- **Backend**: Deploy the `backend/` package to **Render** as a Web Service.
-- **Dashboard**: Deploy the `admin-dashboard/` project to **Vercel** or **Render**.
-- **Database**: Use **Supabase** for pgvector storage and analytics logging.
+- **Confidence-Based Handoff**: Automatically flags low-confidence interactions for human review.
+- **Knowledge Management**: Upload and index your documents directly from the dashboard.
+- **Analytics**: Real-time glassmorphic data visualization of your bot's health.

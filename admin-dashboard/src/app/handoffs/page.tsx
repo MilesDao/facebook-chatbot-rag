@@ -1,5 +1,7 @@
 "use client";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 import { useEffect, useState } from "react";
 import { 
   Inbox, 
@@ -17,7 +19,7 @@ export default function HandoffInbox() {
   useEffect(() => {
     async function fetchHandoffs() {
       try {
-        const res = await fetch("http://localhost:8000/api/handoffs");
+        const res = await fetch(`${BACKEND_URL}/api/handoffs`);
         if (res.ok) {
           const data = await res.json();
           setHandoffs(data);

@@ -1,5 +1,7 @@
 "use client";
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+
 import { useState, useEffect } from "react";
 import { 
   FileUp, 
@@ -36,7 +38,7 @@ export default function KnowledgeBase() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload", {
+      const res = await fetch(`${BACKEND_URL}/api/upload`, {
         method: "POST",
         body: formData,
       });
@@ -60,7 +62,7 @@ export default function KnowledgeBase() {
     setStatus("Indexing in progress...");
 
     try {
-      const res = await fetch("http://localhost:8000/api/index", {
+      const res = await fetch(`${BACKEND_URL}/api/index`, {
         method: "POST"
       });
 

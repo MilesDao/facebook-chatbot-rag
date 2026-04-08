@@ -31,9 +31,10 @@ class GenerateRequest(BaseModel):
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
 # Enable CORS for the Admin Dashboard
+DASHBOARD_URL = os.getenv("DASHBOARD_URL", "*")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to your dashboard URL
+    allow_origins=[DASHBOARD_URL], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
