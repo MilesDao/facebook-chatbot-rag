@@ -1,14 +1,18 @@
 import os
 import glob
-from sentence_transformers import SentenceTransformer
+from google import genai
+from google.genai import types
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
+from dotenv import load_dotenv
 
+load_dotenv()
 class IngestionService:
     def __init__(self):
-        print("Initializing Ingestion Service...")
+        print("Initializing Ingestion Service with Gemini Embedding")
         # Load local embedding model
-        self.embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -18,8 +22,8 @@ class IngestionService:
         )
 
     def ingest_file(self, filepath: str):
-        if not supabase:
-            print("Supabase not initialized.")
+        if not self.client or not supabase:    
+            print("Client or Supabase not initialized.")
             return
 
         filename = os.path.basename(filepath)
@@ -32,14 +36,19 @@ class IngestionService:
         chunks = self.text_splitter.split_text(content)
         
         for i, chunk in enumerate(chunks):
-            embedding = self.embedder.encode(chunk).tolist()
+            try:
+                result = self.client.models.embed_content(
+                    model="gemini-embedding-001",
+                    contents=chunk
+                )
+                embedding = result.embeddings[0].values
             
             # Insert to Supabase DB table `documents`
             try:
                 supabase.table("documents").insert({
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
-                    "embedding": embedding
+                    "embedding": embedding # dimension of gemini is 768
                 }).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:
