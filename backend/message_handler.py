@@ -32,8 +32,8 @@ def handle_message(sender_id: str, user_message: str):
         handoff.trigger_handoff(sender_id, user_message, confidence_score)
         handoff_triggered = True
         
-    # 4. Call Hugging Face LLM if confident
-    ai_reply = llm_integration.generate_response(user_message, context_str, formatted_history)
+    # 4. Call Gemini if confident
+    ai_reply = ChatGoogleGenerativeAI.generate_response(user_message, context_str, formatted_history)
     
     # 5. Log analytics
     analytics.log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered)
