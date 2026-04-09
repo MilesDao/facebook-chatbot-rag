@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { 
@@ -36,7 +36,7 @@ export default function KnowledgeBase() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload", {
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -60,7 +60,7 @@ export default function KnowledgeBase() {
     setStatus("Indexing in progress...");
 
     try {
-      const res = await fetch("http://localhost:8000/api/index", {
+      const res = await fetch("/api/index", {
         method: "POST"
       });
 

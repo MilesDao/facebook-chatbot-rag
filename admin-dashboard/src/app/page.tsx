@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { 
@@ -21,7 +21,7 @@ export default function Overview() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("http://localhost:8000/api/analytics");
+        const res = await fetch("/api/analytics");
         if (res.ok) {
           const data = await res.json();
           setLogs(data);

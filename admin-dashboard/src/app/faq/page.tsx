@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";
@@ -12,7 +12,7 @@ export default function FAQSetup() {
 
   const fetchFaqs = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/faq");
+      const res = await fetch("/api/faq");
       if (res.ok) {
         const data = await res.json();
         setFaqs(data);
@@ -32,7 +32,7 @@ export default function FAQSetup() {
     setLoading(true);
     
     try {
-      const res = await fetch("http://localhost:8000/api/faq", {
+      const res = await fetch("/api/faq", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword, question, answer })
@@ -55,7 +55,7 @@ export default function FAQSetup() {
     if (!confirm("Are you sure you want to delete this FAQ?")) return;
     
     try {
-      const res = await fetch(`http://localhost:8000/api/faq/${faqId}`, {
+      const res = await fetch(`/api/faq/${faqId}`, {
         method: "DELETE"
       });
       

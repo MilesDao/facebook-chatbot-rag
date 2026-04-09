@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { 
@@ -17,7 +17,7 @@ export default function HandoffInbox() {
   useEffect(() => {
     async function fetchHandoffs() {
       try {
-        const res = await fetch("http://localhost:8000/api/handoffs");
+        const res = await fetch("/api/handoffs");
         if (res.ok) {
           const data = await res.json();
           setHandoffs(data);
