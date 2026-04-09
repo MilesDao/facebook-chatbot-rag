@@ -35,20 +35,30 @@ class IngestionService:
         # Split into chunks
         chunks = self.text_splitter.split_text(content)
         
-        for i, chunk in enumerate(chunks):
-            try:
-                result = self.client.models.embed_content(
-                    model="gemini-embedding-001",
-                    contents=chunk
-                )
-                embedding = result.embeddings[0].values
+        # Batch create all embeddings
+        try:
+            print(f"Generating embeddings for {len(chunks)} chunks...")
+            result = self.client.models.embed_content(
+                model="gemini-embedding-001",
+                contents=chunks
+            )
+            embeddings = result.embeddings
+        except Exception as e:
+            print(f"Failed to generate embeddings batch: {e}")
+            return
+            
+        for i, (chunk, embed_obj) in enumerate(zip(chunks, embeddings)):
+            raw_embed = embed_obj.values
+            embedding = raw_embed[:768]
+            if len(embedding) < 768:
+                embedding += [0.0] * (768 - len(embedding))
             
             # Insert to Supabase DB table `documents`
             try:
                 supabase.table("documents").insert({
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
-                    "embedding": embedding # dimension of gemini is 768
+                    "embedding": embedding # padded to 768
                 }).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:

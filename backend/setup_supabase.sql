@@ -6,12 +6,12 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
-  embedding vector(384)        -- 384 dimensions for sentence-transformers/all-MiniLM-L6-v2
+  embedding vector(768)        -- 768 dimensions
 );
 
 -- Create a function to perform similarity search via RPC
 create or replace function match_documents (
-  query_embedding vector(384),
+  query_embedding vector(768),
   match_threshold float,
   match_count int
 )
@@ -60,14 +60,5 @@ create table if not exists handoffs (
   user_message text,
   confidence_score float,
   status text default 'active', -- 'active' or 'resolved'
-  created_at timestamptz default now()
-);
-
--- Table for manually managed FAQs
-create table if not exists faqs (
-  id bigint primary key generated always as identity,
-  keyword text not null,
-  question text,
-  answer text not null,
   created_at timestamptz default now()
 );

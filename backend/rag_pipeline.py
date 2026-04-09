@@ -9,7 +9,6 @@ Responsibilities:
 import os
 from dotenv import load_dotenv
 from google import genai
-from sentence_transformers import SentenceTransformer
 from .database import supabase
 
 load_dotenv()
@@ -21,7 +20,7 @@ client = genai.Client(api_key=api_key) if api_key else None
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings locally using SentenceTransformer.
+    Generate 768-dimension embeddings locally.
     """
     if not client:
         print("Error: Gemini Client is not initialized.")
@@ -32,7 +31,11 @@ def get_embedding(text: str) -> list[float]:
             model="gemini-embedding-001",
             contents=text
         )
-        return result.embeddings[0].values
+        raw_embed = result.embeddings[0].values
+        embedding = raw_embed[:768]
+        if len(embedding) < 768:
+            embedding += [0.0] * (768 - len(embedding))
+        return embedding
     except Exception as e:
         print(f"Error generating local embedding: {e}")
         return [0.0] * 768
