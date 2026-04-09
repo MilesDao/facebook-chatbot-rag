@@ -8,27 +8,34 @@ Responsibilities:
 
 import os
 from dotenv import load_dotenv
-from supabase import create_client, Client
+from google import genai
 from sentence_transformers import SentenceTransformer
-
 from .database import supabase
+
+load_dotenv()
 
 # Initialize Local Embedding Model
 # This will download the model (~80MB) on first run
-print("Loading Local Embedding Model (sentence-transformers/all-MiniLM-L6-v2)...")
-embedder = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+api_key = os.getenv("GEMINI_API_KEY")
+client = genai.Client(api_key=api_key) if api_key else None
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 384-dimension embeddings locally using SentenceTransformer.
+    Generate 768-dimension embeddings locally using SentenceTransformer.
     """
+    if not client:
+        print("Error: Gemini Client is not initialized.")
+        return [0.0] * 768
     try:
-        # all-MiniLM-L6-v2 produces 384-dim vectors
-        embedding = embedder.encode(text).tolist()
-        return embedding
+        # gemini-embedding-001 produces 768-dim vectors
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text
+        )
+        return result.embeddings[0].values
     except Exception as e:
         print(f"Error generating local embedding: {e}")
-        return [0.0] * 384
+        return [0.0] * 768
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
     """
