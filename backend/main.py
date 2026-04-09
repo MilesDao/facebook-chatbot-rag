@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .message_handler import handle_message
-from .huggingface_integration import generate_response
+from .gemini_integration import generate_response
 from .database import supabase
 from .services.ingestion import IngestionService
 
