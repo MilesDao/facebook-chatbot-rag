@@ -28,6 +28,11 @@ class GenerateRequest(BaseModel):
     context: str = ""
     history: List[dict] = []
 
+class FAQCreate(BaseModel):
+    keyword: str
+    question: Optional[str] = ""
+    answer: str
+
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
 # Enable CORS for the Admin Dashboard
@@ -161,6 +166,32 @@ async def get_handoffs():
     try:
         response = supabase.table("handoffs").select("*").eq("status", "active").order("created_at", desc=True).execute()
         return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/faq")
+async def get_faqs():
+    """Fetch all FAQs."""
+    from .services.faq_service import get_all_faqs
+    return get_all_faqs()
+
+@app.post("/api/faq")
+async def create_faq(faq: FAQCreate):
+    """Create a new FAQ."""
+    from .services.faq_service import create_faq
+    try:
+        data = create_faq(faq.keyword, faq.question, faq.answer)
+        return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/faq/{faq_id}")
+async def delete_faq(faq_id: int):
+    """Delete an FAQ by ID."""
+    from .services.faq_service import delete_faq
+    try:
+        data = delete_faq(faq_id)
+        return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
