@@ -14,7 +14,7 @@ load_dotenv()
 
 # Configure Gemini Client
 api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else genai.Client()
+client = genai.Client(api_key=api_key) if api_key else None
 
 def generate_response(user_message: str, context: str, history: list) -> str:
     """
