@@ -62,3 +62,12 @@ create table if not exists handoffs (
   status text default 'active', -- 'active' or 'resolved'
   created_at timestamptz default now()
 );
+
+-- Table for manually managed FAQs
+create table if not exists faqs (
+  id bigint primary key generated always as identity,
+  keyword text not null,
+  question text,
+  answer text not null,
+  created_at timestamptz default now()
+);
