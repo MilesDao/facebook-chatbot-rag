@@ -1,12 +1,16 @@
+# Web Server
 fastapi
-requests
-supabase
-langchain
-python-dotenv
-huggingface_hub
 uvicorn
-langchain-community
-langchain-text-splitters
-groq
-sentence-transformers
 python-multipart
+requests
+
+# AI & LLM (Google GenAI Official SDK)
+google-genai
+langchain-text-splitters
+python-dotenv
+
+# Database & Storage
+supabase
+
+# Environment & Schema
+pydantic
