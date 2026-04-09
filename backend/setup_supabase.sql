@@ -6,12 +6,12 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
-  embedding vector(384)        -- 384 dimensions for sentence-transformers/all-MiniLM-L6-v2
+  embedding vector(786)        -- 786 dimensions
 );
 
 -- Create a function to perform similarity search via RPC
 create or replace function match_documents (
-  query_embedding vector(384),
+  query_embedding vector(786),
   match_threshold float,
   match_count int
 )
