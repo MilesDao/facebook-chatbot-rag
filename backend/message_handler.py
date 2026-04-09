@@ -12,7 +12,7 @@ Responsibilities:
 """
 
 from . import rag_pipeline
-from . import groq_integration as llm_integration
+from . import gemini_integration as ChatGoogleGenerativeAI
 from . import handoff
 from . import analytics
 
