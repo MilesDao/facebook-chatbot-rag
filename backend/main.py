@@ -98,7 +98,8 @@ def send_action(sender_id: str, action: str):
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "backend", "origins": ALLOWED_ORIGINS}
+    return {"status": "ok", "service": "backend", "origins": origins}
+
 
 @app.get("/webhook")
 def verify_webhook(request: Request):
