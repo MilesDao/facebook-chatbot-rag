@@ -13,18 +13,31 @@ from .database import supabase
 
 load_dotenv()
 
-# Initialize Local Embedding Model
-# This will download the model (~80MB) on first run
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
+# Initialize Gemini Client
+def get_gemini_client():
+    key = os.getenv("GEMINI_API_KEY")
+    if not key:
+        return None
+    try:
+        return genai.Client(api_key=key)
+    except:
+        return None
+
+client = get_gemini_client()
+
 
 def get_embedding(text: str) -> list[float]:
     """
     Generate 768-dimension embeddings locally.
     """
+    global client
     if not client:
-        print("Error: Gemini Client is not initialized.")
+        client = get_gemini_client()
+        
+    if not client:
+        print("Error: Gemini Client is not initialized (API Key missing).")
         return [0.0] * 768
+
     try:
         # gemini-embedding-001 produces 768-dim vectors
         result = client.models.embed_content(

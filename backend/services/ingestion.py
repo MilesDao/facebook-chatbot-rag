@@ -12,7 +12,10 @@ class IngestionService:
         print("Initializing Ingestion Service with Gemini Embedding")
         # Load local embedding model
         self.api_key = os.getenv("GEMINI_API_KEY")
+        if not self.api_key:
+            print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
+
         
         # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(

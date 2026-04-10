@@ -13,8 +13,19 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure Gemini Client
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
+def get_gemini_client():
+    key = os.getenv("GEMINI_API_KEY")
+    if not key:
+        print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
+        return None
+    try:
+        return genai.Client(api_key=key)
+    except Exception as e:
+        print(f"Error initializing Gemini Client: {e}")
+        return None
+
+client = get_gemini_client()
+
 
 def generate_response(user_message: str, context: str, history: list) -> str:
     """
@@ -47,12 +58,21 @@ def generate_response(user_message: str, context: str, history: list) -> str:
             
     full_prompt += f"\nUser: {user_message}\nAssistant:"
     
+    global client
+    if not client:
+        client = get_gemini_client()
+        
+    if not client:
+        return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
+
     try:
+        # Using a stable model name
         response = client.models.generate_content(
-            model='gemini-3.1-flash-lite-preview',
+            model='gemini-1.5-flash',
             contents=full_prompt,
         )
         return response.text
     except Exception as e:
         print(f"Error calling Gemini: {e}")
         return "I'm having trouble connecting to my brain right now. Please try again later."
+
