@@ -15,12 +15,20 @@ from . import rag_pipeline
 from . import groq_integration as llm_integration
 from . import handoff
 from . import analytics
+from .services import faq_service
 
 def handle_message(sender_id: str, user_message: str):
     """
     Orchestrate the AI message flow.
     """
-    # 1. No history (Redis removed)
+    # 1. Check FAQ Database first
+    faq_answer = faq_service.search_faq(user_message)
+    if faq_answer:
+        # If match, return immediately and log it
+        analytics.log_interaction(sender_id, user_message, faq_answer, 1.0, False)
+        return faq_answer
+
+    # 2. No history (Redis removed)
     formatted_history = []
 
     # 2. RAG retrieve from Supabase
