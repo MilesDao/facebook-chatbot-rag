@@ -53,9 +53,10 @@ graph TD
    * `SUPABASE_URL` = `your_supabase_url`
    * `SUPABASE_KEY` = `your_supabase_service_role_key`
 5. Click **Create Web Service**. Wait for the build to finish.
-6. Copy the resulting Render domain URL (e.g., `https://facebook-chatbot-backend.onrender.com`).
+6. Copy the resulting Render domain URL: `https://facebook-chatbot-rag.onrender.com`.
 
-*Important: Once deployed, remember to go to your Facebook Developer Portal and update your Messenger Webhook URL to point to this new Render URL (e.g., `https://facebook-chatbot-backend.onrender.com/webhook`).*
+*Important: Once deployed, remember to go to your Facebook Developer Portal and update your Messenger Webhook URL to point to this new Render URL: `https://facebook-chatbot-rag.onrender.com/webhook`.*
+
 
 ---
 
@@ -68,7 +69,8 @@ graph TD
    * **Framework Preset**: `Next.js`
    * **Root Directory**: Click "Edit" and select the `admin-dashboard` folder.
 4. Expand the **Environment Variables** section and add:
-   * `NEXT_PUBLIC_API_URL` = `https://facebook-chatbot-backend.onrender.com` (Paste the exact URL Render gave you in step 1).
+   * `NEXT_PUBLIC_API_URL` = `https://facebook-chatbot-rag.onrender.com`
+
 5. Click **Deploy**. Vercel will automatically detect the Next.js setup and run `npm run build`.
 
 ---
@@ -97,8 +99,9 @@ app.add_middleware(
     # Replace the wildcard with your specific Vercel frontend URL
     allow_origins=[
         "http://localhost:3000", 
-        "https://your-vercel-project-name.vercel.app"
+        "https://facebook-chatbot-rag.vercel.app"
     ],
+
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
