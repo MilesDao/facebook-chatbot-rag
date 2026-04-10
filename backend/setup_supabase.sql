@@ -9,6 +9,10 @@ create table if not exists documents (
   embedding vector(768)        -- 768 dimensions
 );
 
+-- Disable Row Level Security (RLS) to allow the backend to insert documents
+alter table documents disable row level security;
+
+
 -- Create a function to perform similarity search via RPC
 create or replace function match_documents (
   query_embedding vector(768),
@@ -53,6 +57,10 @@ create table if not exists logs (
   created_at timestamptz default now()
 );
 
+-- Disable Row Level Security (RLS) for logs
+alter table logs disable row level security;
+
+
 -- Table for human handoff status
 create table if not exists handoffs (
   id uuid primary key default gen_random_uuid(),
@@ -63,6 +71,10 @@ create table if not exists handoffs (
   created_at timestamptz default now()
 );
 
+-- Disable Row Level Security (RLS) for handoffs
+alter table handoffs disable row level security;
+
+
 -- Table for manually managed FAQs
 create table if not exists faqs (
   id bigint primary key generated always as identity,
@@ -71,3 +83,6 @@ create table if not exists faqs (
   answer text not null,
   created_at timestamptz default now()
 );
+
+-- Disable Row Level Security (RLS) for faqs
+alter table faqs disable row level security;

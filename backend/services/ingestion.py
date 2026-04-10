@@ -29,8 +29,28 @@ class IngestionService:
         filename = os.path.basename(filepath)
         print(f"Processing {filename}...")
         
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
+        content = ""
+        if filepath.lower().endswith(".txt"):
+            with open(filepath, "r", encoding="utf-8") as f:
+                content = f.read()
+        elif filepath.lower().endswith(".pdf"):
+            try:
+                from pypdf import PdfReader
+                reader = PdfReader(filepath)
+                for page in reader.pages:
+                    text = page.extract_text()
+                    if text:
+                        content += text + "\n"
+            except Exception as e:
+                print(f"Failed to read PDF {filename}: {e}")
+                return
+        else:
+            print(f"Unsupported file type: {filename}")
+            return
+
+        if not content.strip():
+            print(f"No content extracted from {filename}")
+            return
 
         # Split into chunks
         chunks = self.text_splitter.split_text(content)
@@ -69,10 +89,12 @@ class IngestionService:
             print(f"Data directory not found at {data_dir}")
             return
 
-        txt_files = glob.glob(os.path.join(data_dir, "*.txt"))
-        if not txt_files:
-            print(f"No .txt files found in {data_dir}")
+        # Support both .txt and .pdf
+        files = glob.glob(os.path.join(data_dir, "*.txt")) + glob.glob(os.path.join(data_dir, "*.pdf"))
+        if not files:
+            print(f"No .txt or .pdf files found in {data_dir}")
             return
 
-        for filepath in txt_files:
+        for filepath in files:
             self.ingest_file(filepath)
+
