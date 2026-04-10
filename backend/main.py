@@ -36,9 +36,11 @@ class FAQCreate(BaseModel):
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
 # Enable CORS for the Admin Dashboard
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this to your dashboard URL
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,8 +90,10 @@ def send_action(sender_id: str, action: str):
 # --- Core Webhook Endpoints ---
 
 @app.get("/")
+@app.get("/health")
+@app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "backend"}
+    return {"status": "ok", "service": "backend", "origins": ALLOWED_ORIGINS}
 
 @app.get("/webhook")
 def verify_webhook(request: Request):
