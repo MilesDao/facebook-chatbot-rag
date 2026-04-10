@@ -1,20 +1,18 @@
 import os
 import glob
 from google import genai
-from google.genai import types
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
 from dotenv import load_dotenv
 
 load_dotenv()
+
 class IngestionService:
     def __init__(self):
-        print("Initializing Ingestion Service with Gemini Embedding")
-        # Load local embedding model
+        print("Initializing Ingestion Service with Gemini Cloud API")
         self.api_key = os.getenv("GEMINI_API_KEY")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
         
-        # Setup text splitter
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
             chunk_overlap=150,
@@ -23,7 +21,7 @@ class IngestionService:
 
     def ingest_file(self, filepath: str):
         if not self.client or not supabase:    
-            print("Client or Supabase not initialized.")
+            print("Error: Gemini Client or Supabase not initialized.")
             return
 
         filename = os.path.basename(filepath)
@@ -32,12 +30,10 @@ class IngestionService:
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
 
-        # Split into chunks
         chunks = self.text_splitter.split_text(content)
         
-        # Batch create all embeddings
         try:
-            print(f"Generating embeddings for {len(chunks)} chunks...")
+            print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.models.embed_content(
                 model="gemini-embedding-001",
                 contents=chunks
@@ -49,20 +45,21 @@ class IngestionService:
             
         for i, (chunk, embed_obj) in enumerate(zip(chunks, embeddings)):
             raw_embed = embed_obj.values
-            embedding = raw_embed[:786]
-            if len(embedding) < 786:
-                embedding += [0.0] * (786 - len(embedding))
             
-            # Insert to Supabase DB table `documents`
+            # Sửa lỗi Typo: Đảm bảo kích thước vector là 768 / Fixed dimension typo to 768
+            embedding = raw_embed[:768]
+            if len(embedding) < 768:
+                embedding += [0.0] * (768 - len(embedding))
+            
             try:
                 supabase.table("documents").insert({
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
-                    "embedding": embedding # padded to 786
+                    "embedding": embedding 
                 }).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:
-                print(f"  > Failed to insert chunk {i}: {e}")
+                print(f"  > Failed to insert chunk {i+1}: {e}")
 
     def ingest_directory(self, data_dir: str):
         if not os.path.exists(data_dir):

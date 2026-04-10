@@ -13,32 +13,40 @@ from .database import supabase
 
 load_dotenv()
 
-# Initialize Local Embedding Model
-# This will download the model (~80MB) on first run
+# LƯU Ý CHO FEN: Đây là API gọi lên Cloud của Google, không tải model về máy.
+# NOTE: This initializes the Cloud API client, it does NOT download any local model.
 api_key = os.getenv("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 786-dimension embeddings locally.
+    Generate 768-dimension embeddings using Gemini API.
     """
     if not client:
         print("Error: Gemini Client is not initialized.")
-        return [0.0] * 786
+        # Sửa thành 768 / Fixed typo 786 -> 768
+        return [0.0] * 768 
+        
     try:
-        # gemini-embedding-001 produces 768-dim vectors
+        # gemini-embedding-001 produces exactly 768-dim vectors
         result = client.models.embed_content(
             model="gemini-embedding-001",
             contents=text
         )
-        raw_embed = result.embeddings[0].values
-        embedding = raw_embed[:786]
-        if len(embedding) < 786:
-            embedding += [0.0] * (786 - len(embedding))
+        embedding = result.embeddings[0].values
+        
+        # Đảm bảo an toàn tuyệt đối độ dài vector là 768 / Strictly enforce 768 dimensions
+        if len(embedding) > 768:
+            embedding = embedding[:768]
+        elif len(embedding) < 768:
+            embedding += [0.0] * (768 - len(embedding))
+            
         return embedding
+        
     except Exception as e:
-        print(f"Error generating local embedding: {e}")
-        return [0.0] * 786
+        print(f"Error generating API embedding: {e}")
+        # Sửa thành 768 / Fixed typo 786 -> 768
+        return [0.0] * 768
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
     """
