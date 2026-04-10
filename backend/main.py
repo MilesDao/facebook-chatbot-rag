@@ -36,15 +36,20 @@ class FAQCreate(BaseModel):
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
 # Enable CORS for the Admin Dashboard
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+origins = [
+    "http://localhost:3000",
+    frontend_url
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "tuyensinh2026")
 PAGE_ACCESS_TOKEN = os.getenv("PAGE_ACCESS_TOKEN", "")

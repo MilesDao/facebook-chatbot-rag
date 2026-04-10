@@ -99,8 +99,9 @@ app.add_middleware(
     # Replace the wildcard with your specific Vercel frontend URL
     allow_origins=[
         "http://localhost:3000", 
-        "https://facebook-chatbot-rag.vercel.app"
+        os.getenv("FRONTEND_URL")
     ],
+
 
     allow_credentials=True,
     allow_methods=["*"],
