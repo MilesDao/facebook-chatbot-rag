@@ -33,7 +33,15 @@ def handle_message(sender_id: str, user_message: str) -> str:
     """
     Orchestrate the AI message flow.
     """
-    print(f"\n[📩 Processing] User {sender_id}: {user_message}")
+    # 1. Check FAQ Database first
+    faq_answer = faq_service.search_faq(user_message)
+    if faq_answer:
+        # If match, return immediately and log it
+        analytics.log_interaction(sender_id, user_message, faq_answer, 1.0, False)
+        return faq_answer
+
+    # 2. No history (Redis removed)
+    formatted_history = []
 
     # 1. Initialize History (Kéo lịch sử từ Redis lên, lấy 6 tin nhắn gần nhất)
     history = get_history(sender_id, limit=6)

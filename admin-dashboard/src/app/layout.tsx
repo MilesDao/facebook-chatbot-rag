@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
@@ -7,7 +7,8 @@ import {
   Database, 
   Inbox, 
   MessageSquare, 
-  Settings 
+  Settings,
+  HelpCircle
 } from "lucide-react";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -37,6 +38,9 @@ export default function RootLayout({
             </Link>
             <Link href="/knowledge" className="nav-item">
               <Database size={20} /> Knowledge
+            </Link>
+            <Link href="/faq" className="nav-item">
+              <HelpCircle size={20} /> FAQ Setup
             </Link>
             <Link href="/handoffs" className="nav-item">
               <Inbox size={20} /> Handoff Inbox

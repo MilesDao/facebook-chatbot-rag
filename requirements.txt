@@ -7,6 +7,7 @@ requests
 # AI & LLM (Google GenAI Official SDK)
 google-genai
 langchain-text-splitters
+pypdf
 python-dotenv
 
 # Database & Storage

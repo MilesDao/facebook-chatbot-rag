@@ -6,12 +6,24 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
+<<<<<<< HEAD
   embedding vector(786)        -- 786 dimensions
+=======
+  embedding vector(768)        -- 768 dimensions
+>>>>>>> main
 );
+
+-- Disable Row Level Security (RLS) to allow the backend to insert documents
+alter table documents disable row level security;
+
 
 -- Create a function to perform similarity search via RPC
 create or replace function match_documents (
+<<<<<<< HEAD
   query_embedding vector(786),
+=======
+  query_embedding vector(768),
+>>>>>>> main
   match_threshold float,
   match_count int
 )
@@ -53,6 +65,10 @@ create table if not exists logs (
   created_at timestamptz default now()
 );
 
+-- Disable Row Level Security (RLS) for logs
+alter table logs disable row level security;
+
+
 -- Table for human handoff status
 create table if not exists handoffs (
   id uuid primary key default gen_random_uuid(),
@@ -62,3 +78,19 @@ create table if not exists handoffs (
   status text default 'active', -- 'active' or 'resolved'
   created_at timestamptz default now()
 );
+
+-- Disable Row Level Security (RLS) for handoffs
+alter table handoffs disable row level security;
+
+
+-- Table for manually managed FAQs
+create table if not exists faqs (
+  id bigint primary key generated always as identity,
+  keyword text not null,
+  question text,
+  answer text not null,
+  created_at timestamptz default now()
+);
+
+-- Disable Row Level Security (RLS) for faqs
+alter table faqs disable row level security;
