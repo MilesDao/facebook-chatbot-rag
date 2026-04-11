@@ -5,7 +5,7 @@ Responsibilities:
 - Central controller of the system
 - Classify intent (Router)
 - Retrieve relevant context from RAG (Supabase)
-- Load & update conversation history (In-memory)
+- Load & update conversation history (Redis)
 - Generate response using Gemini structured outputs
 - Decide whether to trigger human handoff based on LLM flag
 - Log interaction for analytics
@@ -14,8 +14,8 @@ Responsibilities:
 from .intent_router import classify_intent
 from .rag_pipeline import retrieve_context
 from .gemini_integration import generate_response
+from .services.history_service import add_message, get_history # Tích hợp Redis vào đây
 
-# Dùng try-except để tránh lỗi nếu chị chưa tạo 2 file handoff và analytics
 # Graceful fallback if analytics/handoff modules are not fully implemented yet
 try:
     from . import handoff
@@ -27,19 +27,16 @@ try:
 except ImportError:
     analytics = None
 
-# Thêm bộ nhớ tạm vào RAM để bot nhớ ngữ cảnh / Simple in-memory session storage
-user_sessions = {}
+# ĐÃ XÓA user_sessions (Vì giờ hệ thống dùng Redis để quản lý session chuyên nghiệp hơn)
 
 def handle_message(sender_id: str, user_message: str) -> str:
     """
     Orchestrate the AI message flow.
     """
-    # 1. Initialize History
-    if sender_id not in user_sessions:
-        user_sessions[sender_id] = []
-    history = user_sessions[sender_id]
-
     print(f"\n[📩 Processing] User {sender_id}: {user_message}")
+
+    # 1. Initialize History (Kéo lịch sử từ Redis lên, lấy 6 tin nhắn gần nhất)
+    history = get_history(sender_id, limit=6)
 
     # 2. Route Intent (Chitchat vs QA)
     intent = classify_intent(user_message)
@@ -73,10 +70,12 @@ def handle_message(sender_id: str, user_message: str) -> str:
         except Exception as e:
             print(f"  [❌ Analytics Error]: {e}")
 
-    # 7. Update Memory (Keep last 6 messages to avoid token overflow)
-    history.append({"role": "user", "content": user_message})
-    history.append({"role": "assistant", "content": final_answer})
-    user_sessions[sender_id] = history[-6:]
+    # 7. Update Memory (Lưu vào Redis)
+    # Lưu tin nhắn của khách
+    add_message(sender_id, role="user", content=user_message)
+    # Lưu câu trả lời của AI
+    add_message(sender_id, role="assistant", content=final_answer)
 
     # 8. Return strictly the text string for Messenger API
+    # Nhớ chuỗi này vẫn đang chứa các ký tự [SPLIT] để main.py xử lý nhả chữ từ từ
     return final_answer
