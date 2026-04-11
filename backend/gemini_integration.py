@@ -3,14 +3,29 @@ Gemini Integration
 
 Responsibilities:
 - Generate responses using Gemini and provided context/history.
+- Enforce Structured Outputs (JSON/Pydantic) for downstream processing.
 """
 
 import os
 from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
+class BotResponse(BaseModel):
+    answer: str = Field(
+        description="Câu trả lời gửi cho khách hàng, tuân thủ nghiêm ngặt việc chia nhỏ bằng ký tự [SPLIT]."
+    )
+    confidence_score: float = Field(
+        description="Điểm tự tin của câu trả lời từ 0.0 đến 1.0 (1.0 là cực kỳ chắc chắn vì có dữ liệu trong Context)."
+    )
+    needs_human: bool = Field(
+        description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quá phức tạp mà Context không có, cần chuyển cho tư vấn viên là người thật."
+    )
 
 # Configure Gemini Client
 def get_gemini_client():
@@ -27,14 +42,9 @@ def get_gemini_client():
 client = get_gemini_client()
 
 
-def generate_response(user_message: str, context: str, history: list) -> str:
+def generate_response(user_message: str, context: str, history: list) -> BotResponse:
     """
-    Call Gemini API with grounded context.
-    
-    Args:
-        user_message: The latest message from the user
-        context: Context retrieved from vector database
-        history: Array of prior conversation messages (dicts with 'role' and 'content')
+    Call Gemini API with grounded context and return a Structured Output object.
     """
     system_prompt = (
         "You are a friendly, polite, and professional student advisor/consultant at USTH "
@@ -42,20 +52,19 @@ def generate_response(user_message: str, context: str, history: list) -> str:
         "You chat like a real person: natural, approachable, concise, but always respectful. "
         "Follow these STRICT guidelines:\n"
         "1. TONE: Use the pronoun 'mình' for yourself and 'bạn' for the user. "
-        "Be polite but not robotic. Add soft Vietnamese particles like 'ạ', 'nhé', or 'nha' naturally "
-        "(e.g., 'Bạn quan tâm ngành nào ạ?', 'Mình gửi thông tin nhé.'). "
-        "DO NOT be overly casual or use slang. AVOID cliché AI openings/closings like 'Chào bạn!', 'Rất vui được hỗ trợ'.\n"
+        "Be polite but not robotic. Add soft Vietnamese particles like 'ạ', 'nhé', or 'nha' naturally. "
+        "AVOID cliché AI openings/closings like 'Chào bạn!', 'Rất vui được hỗ trợ'.\n"
         "2. CONCISENESS: Keep answers extremely short. NEVER write long paragraphs. "
-        "If asked about a long list (e.g., majors, facilities), DO NOT list everything. Instead, summarize into broad categories "
-        "and ask a short, polite follow-up question to see what specific area the user cares about.\n"
-        "3. MESSAGE SPLITTING: Real humans text in multiple short bubbles. "
-        "Break your response into 2 to 4 short, separate thoughts. You MUST use the exact string '[SPLIT]' to separate each bubble. "
+        "Summarize lists into broad categories and ask a polite follow-up question.\n"
+        "3. MESSAGE SPLITTING: Break your response into 2 to 4 short, separate thoughts. "
+        "You MUST use the exact string '[SPLIT]' to separate each bubble. "
         "Example format: 'Dạ trường có nhiều ngành lắm ạ [SPLIT] Phổ biến nhất là mảng ICT và Hàng không [SPLIT] Bạn đang quan tâm nhóm ngành nào ạ?'\n"
-        "4. ACCURACY: Base your answers ONLY on the provided Background Context. "
-        "If the context doesn't have the answer, politely admit you don't know or will check later. DO NOT invent information."
+        "4. ACCURACY & HANDOFF: Base your answers ONLY on the provided Background Context. "
+        "If you don't know the answer, politely say you will check. "
+        "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
+        "Evaluate your 'confidence_score' based on how well the context covers the question."
     )
     
-    # We construct the prompt combining the system message, context, history, and query
     full_prompt = f"System: {system_prompt}\n\n"
     
     if context:
@@ -63,7 +72,6 @@ def generate_response(user_message: str, context: str, history: list) -> str:
         
     if history:
         full_prompt += "Conversation Chat History:\n"
-        # Include a limited window of recent history
         for msg in history[-10:]:
             role = "User" if msg.get("role") == "user" else "Assistant"
             full_prompt += f"{role}: {msg.get('content')}\n"
@@ -75,15 +83,32 @@ def generate_response(user_message: str, context: str, history: list) -> str:
         client = get_gemini_client()
         
     if not client:
-        return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
+        # Fallback object if API fails
+        return BotResponse(
+            answer="Dạ hệ thống bên mình đang bảo trì một chút [SPLIT] Bạn vui lòng chờ trong giây lát nhé ạ.",
+            confidence_score=0.0,
+            needs_human=True
+        )
 
     try:
-        # Using a stable model name
+        # --- 2. ÉP GEMINI TRẢ VỀ THEO SCHEMA ---
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-1.5-flash', # Đã nâng cấp lên bản 2.5 flash mới nhất cho chuẩn logic
             contents=full_prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=BotResponse,
+                temperature=0.7 # Tạo độ tự nhiên vừa phải
+            )
         )
-        return response.text
+        
+        # Trả về Object đã được parse sẵn
+        return response.parsed
+        
     except Exception as e:
         print(f"Error calling Gemini: {e}")
-        return "I'm having trouble connecting to my brain right now. Please try again later."
+        return BotResponse(
+            answer="Dạ hiện tại đường truyền đang hơi chậm [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
+            confidence_score=0.0,
+            needs_human=True
+        )
