@@ -1,67 +1,89 @@
+"""
+Gemini Integration
+
+Responsibilities:
+- Generate responses using Gemini and provided context/history.
+"""
+
 import os
 from google import genai
-from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
+# Load environment variables
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else genai.Client()
+# Configure Gemini Client
+def get_gemini_client():
+    key = os.getenv("GEMINI_API_KEY")
+    if not key:
+        print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
+        return None
+    try:
+        return genai.Client(api_key=key)
+    except Exception as e:
+        print(f"Error initializing Gemini Client: {e}")
+        return None
 
-class BotResponse(BaseModel):
-    answer: str = Field(description="The final response to be sent to the user on Messenger.")
-    confidence_score: float = Field(description="A score from 0.0 to 1.0 evaluating the confidence of the answer based ONLY on the provided context. If it's a casual greeting (no context needed), set to 1.0.")
-    needs_human: bool = Field(description="Return True if the user explicitly asks for a human agent, or if the query is out of context and the bot cannot answer.")
+client = get_gemini_client()
 
-def generate_response(user_message: str, context: str, history: list) -> BotResponse:
+
+def generate_response(user_message: str, context: str, history: list) -> str:
     """
-    Call Gemini API with grounded context and strict JSON output.
-    """
-    system_prompt = """
-    You are a professional, friendly, and honest AI admission consulting assistant on Messenger.
+    Call Gemini API with grounded context.
     
-    CORE RULES:
-    1. CONTEXT-BOUND: Only use information from the [BACKGROUND CONTEXT] to answer.
-    2. NO HALLUCINATION: If the user asks for information not present in the context, ABSOLUTELY DO NOT invent facts. Reply with: "I currently do not have the exact information regarding this matter. Let me transfer you to our human consultants for further assistance." and set needs_human = True.
-    3. CHITCHAT: If [BACKGROUND CONTEXT] is empty, this means it is a casual greeting or conversation. Respond politely, naturally, and set confidence_score = 1.0.
-    4. MESSENGER FORMATTING: Keep answers concise, use clear paragraph breaks, use emojis for friendliness, and avoid complex formatting like Markdown (**, #, *) as Messenger does not render it well.
+    Args:
+        user_message: The latest message from the user
+        context: Context retrieved from vector database
+        history: Array of prior conversation messages (dicts with 'role' and 'content')
     """
+    system_prompt = (
+        "You are a friendly, polite, and professional student advisor/consultant at USTH "
+        "(University of Science and Technology of Hanoi), acting as a page admin answering messages on Facebook Messenger. "
+        "You chat like a real person: natural, approachable, concise, but always respectful. "
+        "Follow these STRICT guidelines:\n"
+        "1. TONE: Use the pronoun 'mình' for yourself and 'bạn' for the user. "
+        "Be polite but not robotic. Add soft Vietnamese particles like 'ạ', 'nhé', or 'nha' naturally "
+        "(e.g., 'Bạn quan tâm ngành nào ạ?', 'Mình gửi thông tin nhé.'). "
+        "DO NOT be overly casual or use slang. AVOID cliché AI openings/closings like 'Chào bạn!', 'Rất vui được hỗ trợ'.\n"
+        "2. CONCISENESS: Keep answers extremely short. NEVER write long paragraphs. "
+        "If asked about a long list (e.g., majors, facilities), DO NOT list everything. Instead, summarize into broad categories "
+        "and ask a short, polite follow-up question to see what specific area the user cares about.\n"
+        "3. MESSAGE SPLITTING: Real humans text in multiple short bubbles. "
+        "Break your response into 2 to 4 short, separate thoughts. You MUST use the exact string '[SPLIT]' to separate each bubble. "
+        "Example format: 'Dạ trường có nhiều ngành lắm ạ [SPLIT] Phổ biến nhất là mảng ICT và Hàng không [SPLIT] Bạn đang quan tâm nhóm ngành nào ạ?'\n"
+        "4. ACCURACY: Base your answers ONLY on the provided Background Context. "
+        "If the context doesn't have the answer, politely admit you don't know or will check later. DO NOT invent information."
+    )
     
-    # Use a list to build the prompt elements safely
-    prompt_elements = [system_prompt, "\n=== BACKGROUND CONTEXT ==="]
+    # We construct the prompt combining the system message, context, history, and query
+    full_prompt = f"System: {system_prompt}\n\n"
     
     if context:
-        prompt_elements.append(context)
-    else:
-        prompt_elements.append("[No search context provided. This is a casual conversation.]")
+        full_prompt += f"Background Context:\n{context}\n\n"
         
     if history:
-        prompt_elements.append("\n=== CHAT HISTORY ===")
-        for msg in history[-6:]: 
+        full_prompt += "Conversation Chat History:\n"
+        # Include a limited window of recent history
+        for msg in history[-10:]:
             role = "User" if msg.get("role") == "user" else "Assistant"
-            prompt_elements.append(f"{role}: {msg.get('content')}")
+            full_prompt += f"{role}: {msg.get('content')}\n"
             
-    prompt_elements.append(f"\n=== CURRENT QUERY ===\nUser: {user_message}\nAssistant:")
+    full_prompt += f"\nUser: {user_message}\nAssistant:"
     
-    # Join all elements into a single string safely
-    final_prompt = "\n".join(prompt_elements)
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-3.1-flash-lite-preview',
-            contents=final_prompt,
-            config=genai.types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=BotResponse,
-                temperature=0.2 
-            )
-        )
-        return response.parsed 
+    global client
+    if not client:
+        client = get_gemini_client()
         
+    if not client:
+        return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
+
+    try:
+        # Using a stable model name
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=full_prompt,
+        )
+        return response.text
     except Exception as e:
         print(f"Error calling Gemini: {e}")
-        return BotResponse(
-            answer="Our system is currently busy. Please wait a moment or try messaging again later!",
-            confidence_score=0.0,
-            needs_human=True
-        )
+        return "I'm having trouble connecting to my brain right now. Please try again later."
