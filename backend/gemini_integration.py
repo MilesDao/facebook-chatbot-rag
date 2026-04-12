@@ -6,25 +6,39 @@ Responsibilities:
 """
 
 import os
+import threading
 from google import genai
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-# Configure Gemini Client
-def get_gemini_client():
-    key = os.getenv("GEMINI_API_KEY")
-    if not key:
-        print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
-        return None
-    try:
-        return genai.Client(api_key=key)
-    except Exception as e:
-        print(f"Error initializing Gemini Client: {e}")
-        return None
+# ---------------------------------------------------------------------------
+# FIX: Thread-safe Gemini client singleton (mirrors rag_pipeline.py fix)
+# Previously `client` was a module-level global re-assigned via `global client`
+# inside generate_response() — concurrent FastAPI requests race-conditioned it.
+# ---------------------------------------------------------------------------
+_client_lock = threading.Lock()
+_gemini_client: genai.Client | None = None
 
-client = get_gemini_client()
+
+def _get_client() -> genai.Client | None:
+    """Return the singleton Gemini client, initializing it once under a lock."""
+    global _gemini_client
+    if _gemini_client is not None:
+        return _gemini_client
+    with _client_lock:
+        if _gemini_client is None:
+            key = os.getenv("GEMINI_API_KEY")
+            if not key:
+                print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
+                return None
+            try:
+                _gemini_client = genai.Client(api_key=key)
+            except Exception as e:
+                print(f"Error initializing Gemini Client: {e}")
+                return None
+    return _gemini_client
 
 
 def generate_response(user_message: str, context: str, history: list) -> str:
@@ -58,10 +72,7 @@ def generate_response(user_message: str, context: str, history: list) -> str:
             
     full_prompt += f"\nUser: {user_message}\nAssistant:"
     
-    global client
-    if not client:
-        client = get_gemini_client()
-        
+    client = _get_client()
     if not client:
         return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
 

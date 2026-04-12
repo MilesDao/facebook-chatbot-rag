@@ -7,35 +7,49 @@ Responsibilities:
 """
 
 import os
+import threading
 from dotenv import load_dotenv
 from google import genai
 from .database import supabase
 
 load_dotenv()
 
-# Initialize Gemini Client
-def get_gemini_client():
-    key = os.getenv("GEMINI_API_KEY")
-    if not key:
-        return None
-    try:
-        return genai.Client(api_key=key)
-    except:
-        return None
+# ---------------------------------------------------------------------------
+# FIX: Thread-safe Gemini client singleton
+# Previously `client` was a bare module-level global mutated inside coroutines
+# via `global client` — concurrent FastAPI requests could race to re-init it,
+# potentially creating multiple genai.Client instances simultaneously → RAM leak.
+# ---------------------------------------------------------------------------
+_client_lock = threading.Lock()
+_gemini_client: genai.Client | None = None
 
-client = get_gemini_client()
+
+def _get_client() -> genai.Client | None:
+    """Return the singleton Gemini client, initializing it once under a lock."""
+    global _gemini_client
+    if _gemini_client is not None:
+        return _gemini_client
+    with _client_lock:
+        # Double-checked locking: re-check inside the lock
+        if _gemini_client is None:
+            key = os.getenv("GEMINI_API_KEY")
+            if not key:
+                print("Error: Gemini Client is not initialized (GEMINI_API_KEY missing).")
+                return None
+            try:
+                _gemini_client = genai.Client(api_key=key)
+            except Exception as e:
+                print(f"Error initializing Gemini client: {e}")
+                return None
+    return _gemini_client
 
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings locally.
+    Generate 768-dimension embeddings via Gemini API.
     """
-    global client
+    client = _get_client()
     if not client:
-        client = get_gemini_client()
-        
-    if not client:
-        print("Error: Gemini Client is not initialized (API Key missing).")
         return [0.0] * 768
 
     try:
@@ -45,7 +59,7 @@ def get_embedding(text: str) -> list[float]:
             contents=text
         )
         raw_embed = result.embeddings[0].values
-        embedding = raw_embed[:768]
+        embedding = list(raw_embed[:768])
         if len(embedding) < 768:
             embedding += [0.0] * (768 - len(embedding))
         return embedding

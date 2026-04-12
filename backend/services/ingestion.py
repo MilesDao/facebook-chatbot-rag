@@ -34,8 +34,16 @@ class IngestionService:
         
         content = ""
         if filepath.lower().endswith(".txt"):
+            # FIX: Stream file in chunks instead of f.read() which loads
+            # the entire file into RAM before processing. Safe for large files.
+            chunks_io: list[str] = []
             with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
+                while True:
+                    block = f.read(65536)  # 64 KB per read
+                    if not block:
+                        break
+                    chunks_io.append(block)
+            content = "".join(chunks_io)
         elif filepath.lower().endswith(".pdf"):
             try:
                 from pypdf import PdfReader

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { 
@@ -137,7 +137,10 @@ export default function KnowledgeBase() {
             onClick={handleIndex}
             disabled={indexing}
           >
-            <RefreshCw size={18} className={indexing ? 'animate-spin' : ''} />
+            <RefreshCw
+              size={18}
+              style={indexing ? { animation: 'spin 2s linear infinite' } : {}}
+            />
             {indexing ? "Indexing..." : "Trigger Re-indexing"}
           </button>
 
@@ -159,15 +162,7 @@ export default function KnowledgeBase() {
         </div>
       </div>
 
-      <style jsx>{`
-        .animate-spin {
-          animation: spin 2s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+      {/* Keyframe injected via globals.css — styled-jsx removed (not supported in App Router) */}
     </>
   );
 }
