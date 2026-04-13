@@ -101,7 +101,7 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
     try:
         # --- 2. ÉP TRẢ VỀ THEO SCHEMA BẰNG CÁCH YÊU CẦU JSON VÀ PARSE ---
         response = client.chat.completions.create(
-            model='nvidia/nemotron-3-super-120b-a12b:free',
+            model='openai/gpt-oss-120b:free',
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": full_prompt}
