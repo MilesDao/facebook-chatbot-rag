@@ -59,8 +59,13 @@ class IngestionService:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.embeddings.create(
                 model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-                input=chunks
+                input=chunks,
+                encoding_format="float",
+                extra_body={"input_type": "passage"}
             )
+            if not result.data:
+                print("Error: No embedding data received from API")
+                return
             embeddings = [r.embedding for r in result.data]
         except Exception as e:
             print(f"Failed to generate embeddings batch: {e}")
@@ -68,10 +73,10 @@ class IngestionService:
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Đảm bảo kích thước vector là 768 / Fixed dimension typo to 768
-            embedding = raw_embed[:768]
-            if len(embedding) < 768:
-                embedding += [0.0] * (768 - len(embedding))
+            # Fixed dimension to 2048
+            embedding = raw_embed[:2048]
+            if len(embedding) < 2048:
+                embedding += [0.0] * (2048 - len(embedding))
             
             try:
                 supabase.table("documents").insert({

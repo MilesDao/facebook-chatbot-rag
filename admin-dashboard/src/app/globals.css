@@ -130,3 +130,9 @@ th {
   font-size: 14px;
   text-transform: uppercase;
 }
+
+/* Spinner animation — used by knowledge/page.tsx indexing button */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

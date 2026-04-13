@@ -30,7 +30,7 @@ def classify_intent(user_query: str) -> str:
     
     try:
         response = client.chat.completions.create(
-            model='nvidia/nemotron-3-super-120b-a12b:free', 
+            model='openai/gpt-oss-120b:free', 
             messages=[
                 {"role": "system", "content": system_instruction},
                 {"role": "user", "content": user_query}
@@ -49,4 +49,4 @@ def classify_intent(user_query: str) -> str:
     except Exception as e:
         print(f"Router Error: {e}")
         # Best Practice: Nếu lỗi API, mặc định đẩy vào RAG (QA) để đảm bảo không rớt câu hỏi của khách
-        return "QA"
+        return "QA"

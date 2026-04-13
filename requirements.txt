@@ -16,3 +16,6 @@ supabase
 
 # Environment & Schema
 pydantic
+
+redis
+
