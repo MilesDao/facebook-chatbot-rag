@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+print(f"DEBUG: Using API Key: {os.getenv('GEMINI_API_KEY')[:10]}...")
 # --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
 class BotResponse(BaseModel):
     answer: str = Field(
@@ -93,7 +94,7 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
     try:
         # --- 2. ÉP GEMINI TRẢ VỀ THEO SCHEMA ---
         response = client.models.generate_content(
-            model='gemini-1.5-flash', # Đã nâng cấp lên bản 2.5 flash mới nhất cho chuẩn logic
+            model='gemini-2.5-flash',
             contents=full_prompt,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",

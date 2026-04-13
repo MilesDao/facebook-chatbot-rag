@@ -15,6 +15,7 @@ from .intent_router import classify_intent
 from .rag_pipeline import retrieve_context
 from .gemini_integration import generate_response
 from .services.history_service import add_message, get_history # Tích hợp Redis vào đây
+from .services import faq_service
 
 # Graceful fallback if analytics/handoff modules are not fully implemented yet
 try:
@@ -54,6 +55,9 @@ def handle_message(sender_id: str, user_message: str) -> str:
     context_str = ""
     if intent == "QA":
         context_str, db_score = retrieve_context(user_message)
+        print(f"DEBUG RAG: Tìm thấy {len(context_str)} ký tự. Score: {db_score}") # Thêm dòng này để soi
+    if len(context_str) > 0:
+        print(f"CONTEXT NỘI DUNG: {context_str[:200]}...") # In thử 200 ký tự đầu
 
     # 4. Generate AI Response (Returns Pydantic Object)
     reply_obj = generate_response(user_message, context_str, history)

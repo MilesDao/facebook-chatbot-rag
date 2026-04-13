@@ -6,11 +6,7 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
-<<<<<<< HEAD
   embedding vector(786)        -- 786 dimensions
-=======
-  embedding vector(768)        -- 768 dimensions
->>>>>>> main
 );
 
 -- Disable Row Level Security (RLS) to allow the backend to insert documents

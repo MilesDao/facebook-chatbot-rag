@@ -13,16 +13,6 @@ from .database import supabase
 
 load_dotenv()
 
-<<<<<<< HEAD
-# LƯU Ý CHO FEN: Đây là API gọi lên Cloud của Google, không tải model về máy.
-# NOTE: This initializes the Cloud API client, it does NOT download any local model.
-api_key = os.getenv("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
-
-def get_embedding(text: str) -> list[float]:
-    """
-    Generate 768-dimension embeddings using Gemini API.
-=======
 # Initialize Gemini Client
 def get_gemini_client():
     key = os.getenv("GEMINI_API_KEY")
@@ -38,54 +28,34 @@ client = get_gemini_client()
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings locally.
->>>>>>> main
+    Generate 768-dimension embeddings using Gemini API.
     """
     global client
     if not client:
-<<<<<<< HEAD
-        print("Error: Gemini Client is not initialized.")
-        # Sửa thành 768 / Fixed typo 786 -> 768
-        return [0.0] * 768 
-        
-=======
         client = get_gemini_client()
         
     if not client:
         print("Error: Gemini Client is not initialized (API Key missing).")
         return [0.0] * 768
 
->>>>>>> main
     try:
         # gemini-embedding-001 produces exactly 768-dim vectors
         result = client.models.embed_content(
             model="gemini-embedding-001",
             contents=text
         )
-<<<<<<< HEAD
         embedding = result.embeddings[0].values
-        
-        # Đảm bảo an toàn tuyệt đối độ dài vector là 768 / Strictly enforce 768 dimensions
-        if len(embedding) > 768:
-            embedding = embedding[:768]
-        elif len(embedding) < 768:
+        embedding = embedding[:768]
+        if len(embedding) < 768:
             embedding += [0.0] * (768 - len(embedding))
             
         return embedding
         
-=======
-        raw_embed = result.embeddings[0].values
-        embedding = raw_embed[:768]
-        if len(embedding) < 768:
-            embedding += [0.0] * (768 - len(embedding))
-        return embedding
->>>>>>> main
     except Exception as e:
         print(f"Error generating API embedding: {e}")
-        # Sửa thành 768 / Fixed typo 786 -> 768
         return [0.0] * 768
 
-def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
+def retrieve_context(user_message: str, match_threshold: float = 0.3, match_count: int = 5):
     """
     Retrieve documents from Supabase vector db.
     Returns:

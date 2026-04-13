@@ -22,7 +22,7 @@ def classify_intent(user_query: str) -> str:
     
     try:
         response = client.models.generate_content(
-            model='gemini-3.1-flash-lite-preview', 
+            model='gemini-2.5-flash', 
             contents=user_query,
             config=genai.types.GenerateContentConfig(
                 system_instruction=system_instruction,
