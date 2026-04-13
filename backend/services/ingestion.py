@@ -68,10 +68,10 @@ class IngestionService:
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Đảm bảo kích thước vector là 768 / Fixed dimension typo to 768
-            embedding = raw_embed[:768]
-            if len(embedding) < 768:
-                embedding += [0.0] * (768 - len(embedding))
+            # Đảm bảo kích thước vector là 2048 / Fixed dimension typo to 2048
+            embedding = raw_embed[:2048]
+            if len(embedding) < 2048:
+                embedding += [0.0] * (2048 - len(embedding))
             
             try:
                 supabase.table("documents").insert({

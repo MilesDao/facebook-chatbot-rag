@@ -15,15 +15,15 @@ This project implements a professional Retrieval-Augmented Generation (RAG) arch
 ### A. Data Ingestion Pipeline
 1.  **Upload:** User uploads `.txt` or `.pdf` via the Admin Dashboard.
 2.  **Chunking:** `RecursiveCharacterTextSplitter` breaks text into 1000-character segments.
-3.  **Embedding:** Each chunk is sent to Gemini API to generate a **768-dim vector**.
+3.  **Embedding:** Each chunk is sent to OpenRouter API to generate a **2048-dim vector**.
 4.  **Storage:** Chunks and vectors are stored in the Supabase `documents` table.
 
 ### B. Retrieval & Generation Pipeline (RAG)
 1.  **Query:** User sends a message via Messenger.
-2.  **Vectorization:** The query is converted into a 768-dim vector.
+2.  **Vectorization:** The query is converted into a 2048-dim vector.
 3.  **Semantic Search:** Supabase performs a Cosine Similarity search (`<=>`).
 4.  **Augmentation:** Relevant context is injected into the System Prompt.
-5.  **Generation:** Gemini generates a response based **strictly** on the retrieved context.
+5.  **Generation:** The LLM generates a response based **strictly** on the retrieved context.
 
 ### C. Human Handoff Logic
 * The system calculates a `confidence_score` based on vector similarity.

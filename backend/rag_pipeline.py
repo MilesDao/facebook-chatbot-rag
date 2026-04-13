@@ -31,7 +31,7 @@ client = get_llm_client()
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings using OpenRouter API.
+    Generate 2048-dimension embeddings using OpenRouter API.
     """
     global client
     if not client:
@@ -39,7 +39,7 @@ def get_embedding(text: str) -> list[float]:
         
     if not client:
         print("Error: Client is not initialized (API Key missing).")
-        return [0.0] * 768
+        return [0.0] * 2048
 
     try:
         result = client.embeddings.create(
@@ -47,15 +47,15 @@ def get_embedding(text: str) -> list[float]:
             input=[text]
         )
         embedding = result.data[0].embedding
-        embedding = embedding[:768]
-        if len(embedding) < 768:
-            embedding += [0.0] * (768 - len(embedding))
+        embedding = embedding[:2048]
+        if len(embedding) < 2048:
+            embedding += [0.0] * (2048 - len(embedding))
             
         return embedding
         
     except Exception as e:
         print(f"Error generating API embedding: {e}")
-        return [0.0] * 768
+        return [0.0] * 2048
 
 def retrieve_context(user_message: str, match_threshold: float = 0.3, match_count: int = 5):
     """

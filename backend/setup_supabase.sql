@@ -7,6 +7,7 @@ create table if not exists documents (
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
   embedding vector(786)        -- 786 dimensions
+  embedding vector(2048)        -- 2048 dimensions
 );
 
 -- Disable Row Level Security (RLS) to allow the backend to insert documents
@@ -15,11 +16,7 @@ alter table documents disable row level security;
 
 -- Create a function to perform similarity search via RPC
 create or replace function match_documents (
-<<<<<<< HEAD
-  query_embedding vector(786),
-=======
-  query_embedding vector(768),
->>>>>>> main
+  query_embedding vector(2048),
   match_threshold float,
   match_count int
 )

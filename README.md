@@ -16,7 +16,7 @@ A professional, end-to-end AI Messenger Bot system featuring a high-performance 
 * Google AI Studio API Key (Gemini)
 
 ### 2. Database Initialization (Supabase)
-Execute the following SQL in your Supabase SQL Editor to support **768-dimensional** vectors:
+Execute the following SQL in your Supabase SQL Editor to support **2048-dimensional** vectors:
 
 ```sql
 -- Enable Vector Extension
@@ -27,12 +27,12 @@ create table documents (
   id bigint primary key generated always as identity,
   content text,
   metadata jsonb,
-  embedding vector(768) 
+  embedding vector(2048) 
 );
 
 -- Create Search Function
 create or replace function match_documents (
-  query_embedding vector(768),
+  query_embedding vector(2048),
   match_threshold float,
   match_count int
 )
