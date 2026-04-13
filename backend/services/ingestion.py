@@ -1,6 +1,6 @@
 import os
 import glob
-from google import genai
+from openai import OpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
 from dotenv import load_dotenv
@@ -9,11 +9,11 @@ load_dotenv()
 
 class IngestionService:
     def __init__(self):
-        print("Initializing Ingestion Service with Gemini Cloud API")
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        print("Initializing Ingestion Service with OpenRouter API")
+        self.api_key = os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
-            print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
-        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
+            print("CRITICAL: OPENROUTER_API_KEY missing in IngestionService")
+        self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key) if self.api_key else None
 
         
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -24,7 +24,7 @@ class IngestionService:
 
     def ingest_file(self, filepath: str):
         if not self.client or not supabase:    
-            print("Error: Gemini Client or Supabase not initialized.")
+            print("Error: Client or Supabase not initialized.")
             return
 
         filename = os.path.basename(filepath)
@@ -55,30 +55,20 @@ class IngestionService:
 
         chunks = self.text_splitter.split_text(content)
         
-<<<<<<< HEAD
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
-=======
-        # Batch create all embeddings
-        try:
-            print(f"Generating embeddings for {len(chunks)} chunks...")
->>>>>>> main
-            result = self.client.models.embed_content(
-                model="gemini-embedding-001",
-                contents=chunks
+            result = self.client.embeddings.create(
+                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                input=chunks
             )
-            embeddings = result.embeddings
+            embeddings = [r.embedding for r in result.data]
         except Exception as e:
             print(f"Failed to generate embeddings batch: {e}")
             return
             
-        for i, (chunk, embed_obj) in enumerate(zip(chunks, embeddings)):
-            raw_embed = embed_obj.values
-<<<<<<< HEAD
+        for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Sửa lỗi Typo: Đảm bảo kích thước vector là 768 / Fixed dimension typo to 768
-=======
->>>>>>> main
+            # Đảm bảo kích thước vector là 768 / Fixed dimension typo to 768
             embedding = raw_embed[:768]
             if len(embedding) < 768:
                 embedding += [0.0] * (768 - len(embedding))
@@ -87,11 +77,7 @@ class IngestionService:
                 supabase.table("documents").insert({
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
-<<<<<<< HEAD
                     "embedding": embedding 
-=======
-                    "embedding": embedding # padded to 768
->>>>>>> main
                 }).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:
@@ -108,11 +94,5 @@ class IngestionService:
             print(f"No .txt or .pdf files found in {data_dir}")
             return
 
-<<<<<<< HEAD
-        for filepath in txt_files:
-            self.ingest_file(filepath)
-=======
         for filepath in files:
             self.ingest_file(filepath)
-
->>>>>>> main

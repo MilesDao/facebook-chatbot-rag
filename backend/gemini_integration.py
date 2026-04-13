@@ -1,21 +1,22 @@
 """
-Gemini Integration
+Gemini Integration -> Migrated to OpenRouter Integration
 
 Responsibilities:
-- Generate responses using Gemini and provided context/history.
+- Generate responses using OpenRouter models and provided context/history.
 - Enforce Structured Outputs (JSON/Pydantic) for downstream processing.
 """
-
+from openai import OpenAI
 import os
-from google import genai
-from google.genai import types
+import json
+import re
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-print(f"DEBUG: Using API Key: {os.getenv('GEMINI_API_KEY')[:10]}...")
+print(f"DEBUG: Using API Key: {os.getenv('OPENROUTER_API_KEY')[:10] if os.getenv('OPENROUTER_API_KEY') else 'None'}...")
+
 # --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
 class BotResponse(BaseModel):
     answer: str = Field(
@@ -28,24 +29,26 @@ class BotResponse(BaseModel):
         description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quá phức tạp mà Context không có, cần chuyển cho tư vấn viên là người thật."
     )
 
-# Configure Gemini Client
-def get_gemini_client():
-    key = os.getenv("GEMINI_API_KEY")
+# Configure OpenRouter Client
+def get_llm_client():
+    key = os.getenv("OPENROUTER_API_KEY")
     if not key:
-        print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
+        print("CRITICAL: OPENROUTER_API_KEY is missing from environment variables!")
         return None
     try:
-        return genai.Client(api_key=key)
+        return OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=key
+        )
     except Exception as e:
-        print(f"Error initializing Gemini Client: {e}")
+        print(f"Error initializing Client: {e}")
         return None
 
-client = get_gemini_client()
-
+client = get_llm_client()
 
 def generate_response(user_message: str, context: str, history: list) -> BotResponse:
     """
-    Call Gemini API with grounded context and return a Structured Output object.
+    Call API with grounded context and return a Structured Output object.
     """
     system_prompt = (
         "You are a friendly, polite, and professional student advisor/consultant at USTH "
@@ -63,10 +66,14 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
         "4. ACCURACY & HANDOFF: Base your answers ONLY on the provided Background Context. "
         "If you don't know the answer, politely say you will check. "
         "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
-        "Evaluate your 'confidence_score' based on how well the context covers the question."
+        "Evaluate your 'confidence_score' based on how well the context covers the question.\n\n"
+        "You MUST output your response strictly as a JSON object with the following fields:\n"
+        '- "answer" (string)\n'
+        '- "confidence_score" (float)\n'
+        '- "needs_human" (boolean)\n'
     )
     
-    full_prompt = f"System: {system_prompt}\n\n"
+    full_prompt = ""
     
     if context:
         full_prompt += f"Background Context:\n{context}\n\n"
@@ -77,11 +84,11 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
             role = "User" if msg.get("role") == "user" else "Assistant"
             full_prompt += f"{role}: {msg.get('content')}\n"
             
-    full_prompt += f"\nUser: {user_message}\nAssistant:"
+    full_prompt += f"\nUser: {user_message}"
     
     global client
     if not client:
-        client = get_gemini_client()
+        client = get_llm_client()
         
     if not client:
         # Fallback object if API fails
@@ -92,22 +99,32 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
         )
 
     try:
-        # --- 2. ÉP GEMINI TRẢ VỀ THEO SCHEMA ---
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=full_prompt,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=BotResponse,
-                temperature=0.7 # Tạo độ tự nhiên vừa phải
-            )
+        # --- 2. ÉP TRẢ VỀ THEO SCHEMA BẰNG CÁCH YÊU CẦU JSON VÀ PARSE ---
+        response = client.chat.completions.create(
+            model='nvidia/nemotron-3-super-120b-a12b:free',
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": full_prompt}
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.7 # Tạo độ tự nhiên vừa phải
         )
         
-        # Trả về Object đã được parse sẵn
-        return response.parsed
+        content = response.choices[0].message.content
+        # Clean potential markdown wrapping
+        clean_content = re.sub(r"```json\s*", "", content)
+        clean_content = re.sub(r"\s*```", "", clean_content).strip()
+        
+        data = json.loads(clean_content)
+        # Bắt buộc các keys, fallback nếu model làm sai
+        return BotResponse(
+            answer=data.get("answer", "Dạ mình chưa hiểu ý bạn lắm ạ."),
+            confidence_score=float(data.get("confidence_score", 0.0)),
+            needs_human=bool(data.get("needs_human", True))
+        )
         
     except Exception as e:
-        print(f"Error calling Gemini: {e}")
+        print(f"Error calling LLM API: {e}")
         return BotResponse(
             answer="Dạ hiện tại đường truyền đang hơi chậm [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
             confidence_score=0.0,

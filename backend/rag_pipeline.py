@@ -8,43 +8,45 @@ Responsibilities:
 
 import os
 from dotenv import load_dotenv
-from google import genai
+from openai import OpenAI
 from .database import supabase
 
 load_dotenv()
 
-# Initialize Gemini Client
-def get_gemini_client():
-    key = os.getenv("GEMINI_API_KEY")
+# Initialize Client
+def get_llm_client():
+    key = os.getenv("OPENROUTER_API_KEY")
     if not key:
         return None
     try:
-        return genai.Client(api_key=key)
+        return OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=key
+        )
     except:
         return None
 
-client = get_gemini_client()
+client = get_llm_client()
 
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 768-dimension embeddings using Gemini API.
+    Generate 768-dimension embeddings using OpenRouter API.
     """
     global client
     if not client:
-        client = get_gemini_client()
+        client = get_llm_client()
         
     if not client:
-        print("Error: Gemini Client is not initialized (API Key missing).")
+        print("Error: Client is not initialized (API Key missing).")
         return [0.0] * 768
 
     try:
-        # gemini-embedding-001 produces exactly 768-dim vectors
-        result = client.models.embed_content(
-            model="gemini-embedding-001",
-            contents=text
+        result = client.embeddings.create(
+            model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+            input=[text]
         )
-        embedding = result.embeddings[0].values
+        embedding = result.data[0].embedding
         embedding = embedding[:768]
         if len(embedding) < 768:
             embedding += [0.0] * (768 - len(embedding))
