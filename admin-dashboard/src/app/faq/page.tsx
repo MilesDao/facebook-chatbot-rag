@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/components/LanguageContext";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";
 
 export default function FAQSetup() {
+  const { t } = useLanguage();
   const [faqs, setFaqs] = useState<any[]>([]);
   const [keyword, setKeyword] = useState("");
   const [question, setQuestion] = useState("");
@@ -52,7 +54,7 @@ export default function FAQSetup() {
   };
 
   const handleDelete = async (faqId: number) => {
-    if (!confirm("Are you sure you want to delete this FAQ?")) return;
+    if (!confirm(t("faq.deleteConfirm"))) return;
     
     try {
       const res = await fetch(`/api/faq/${faqId}`, {
@@ -71,46 +73,46 @@ export default function FAQSetup() {
     <>
       <header style={{ marginBottom: '40px' }}>
         <h1 style={{ fontSize: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <HelpCircle size={32} /> FAQ Setup
+          <HelpCircle size={32} /> {t("faq.title")}
         </h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)' }}>Manage custom keyword-based answers for immediate priority.</p>
+        <p style={{ color: 'var(--text-muted)' }}>{t("faq.desc")}</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
         <div className="card glass" style={{ height: 'fit-content' }}>
           <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={20} /> Add New FAQ
+            <Plus size={20} /> {t("faq.addNew")}
           </h2>
           <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} onSubmit={handleAddFaq}>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Keyword(s) *</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.keyword")}</label>
               <input 
                 type="text" 
-                placeholder="e.g. pricing" 
+                placeholder={t("faq.keywordPlaceholder")} 
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--nav-hover)', border: '1px solid var(--card-border)', color: 'var(--foreground)' }}
                 required
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Optional Question</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.question")}</label>
               <input 
                 type="text" 
-                placeholder="e.g. What is the pricing?" 
+                placeholder={t("faq.questionPlaceholder")} 
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--nav-hover)', border: '1px solid var(--card-border)', color: 'var(--foreground)' }}
               />
             </div>
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: '#94a3b8' }}>Answer *</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.answer")}</label>
               <textarea 
-                placeholder="Our pricing starts at..." 
+                placeholder={t("faq.answerPlaceholder")} 
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 rows={4}
-                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: 'white' }}
+                style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--nav-hover)', border: '1px solid var(--card-border)', color: 'var(--foreground)' }}
                 required
               />
             </div>
@@ -119,29 +121,29 @@ export default function FAQSetup() {
               disabled={loading}
               style={{ 
                 padding: '12px', 
-                background: loading ? '#64748b' : '#3b82f6', 
-                color: 'white', 
+                background: loading ? 'var(--nav-hover)' : 'var(--accent)', 
+                color: loading ? 'var(--foreground)' : '#ffffff', 
                 border: 'none', 
                 borderRadius: '8px', 
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: 'bold'
               }}
             >
-              {loading ? "Adding..." : "Add FAQ Entry"}
+              {loading ? t("faq.adding") : t("faq.addBtn")}
             </button>
           </form>
         </div>
 
         <div className="card glass">
-          <h2 style={{ marginBottom: '20px' }}>Existing FAQs</h2>
+          <h2 style={{ marginBottom: '20px' }}>{t("faq.existing")}</h2>
           {faqs.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: '40px' }}>No FAQs added yet.</p>
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>{t("faq.empty")}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {faqs.map((faq) => (
                 <div key={faq.id} style={{ 
-                  background: 'rgba(255,255,255,0.03)', 
-                  border: '1px solid rgba(255,255,255,0.05)', 
+                  background: 'var(--nav-hover)', 
+                  border: '1px solid var(--card-border)', 
                   padding: '16px', 
                   borderRadius: '12px',
                   display: 'flex',
@@ -150,17 +152,17 @@ export default function FAQSetup() {
                 }}>
                   <div style={{ paddingRight: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                      <span style={{ background: '#3b82f633', color: '#60a5fa', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
+                      <span style={{ background: 'var(--accent-glow)', color: 'var(--accent)', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>
                         {faq.keyword}
                       </span>
-                      {faq.question && <span style={{ color: '#94a3b8', fontSize: '14px', fontStyle: 'italic' }}>{faq.question}</span>}
+                      {faq.question && <span style={{ color: 'var(--text-muted)', fontSize: '14px', fontStyle: 'italic' }}>{faq.question}</span>}
                     </div>
-                    <p style={{ color: '#e2e8f0', fontSize: '15px', lineHeight: '1.5' }}>{faq.answer}</p>
+                    <p style={{ color: 'var(--foreground)', fontSize: '15px', lineHeight: '1.5' }}>{faq.answer}</p>
                   </div>
                   <button 
                     onClick={() => handleDelete(faq.id)}
                     style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                    title="Delete FAQ"
+                    title={t("faq.deleteTitle")}
                   >
                     <Trash2 size={18} />
                   </button>

@@ -86,3 +86,15 @@ create table if not exists faqs (
 
 -- Disable Row Level Security (RLS) for faqs
 alter table faqs disable row level security;
+
+-- Table for app settings (e.g., theme)
+create table if not exists app_settings (
+  id bigint primary key generated always as identity,
+  setting_key text unique not null,
+  setting_value text not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Disable Row Level Security (RLS) for app_settings
+alter table app_settings disable row level security;

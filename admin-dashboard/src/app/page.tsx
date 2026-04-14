@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useLanguage } from "@/components/LanguageContext";
 import { 
   Users, 
   MessageCircle, 
@@ -10,13 +11,37 @@ import {
 } from "lucide-react";
 
 export default function Overview() {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
+  const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
   const [stats, setStats] = useState({
     totalMessages: 0,
     uniqueUsers: 0,
     avgConfidence: 0,
     handoffRate: 0
   });
+
+  const groupedLogs = useMemo(() => {
+    const groups: Record<string, { sender_id: string; totalScore: number; items: any[] }> = {};
+    
+    logs.forEach(log => {
+      const id = log.sender_id;
+      if (!groups[id]) {
+        groups[id] = { sender_id: id, totalScore: 0, items: [] };
+      }
+      groups[id].items.push(log);
+      groups[id].totalScore += log.confidence_score;
+    });
+
+    return Object.values(groups).map(g => {
+      const avgScore = g.items.length > 0 ? g.totalScore / g.items.length : 0;
+      return {
+        ...g,
+        avgScore,
+        status: avgScore >= 0.5 ? 'auto' : 'handoff'
+      };
+    });
+  }, [logs]);
 
   useEffect(() => {
     async function fetchData() {
@@ -46,28 +71,32 @@ export default function Overview() {
     fetchData();
   }, []);
 
+  const toggleExpand = (key: string) => {
+    setExpandedLogs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px' }}>System Overview</h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)' }}>Real-time performance metrics and bot health.</p>
+        <h1 style={{ fontSize: '32px' }}>{t("overview.title")}</h1>
+        <p style={{ color: 'var(--text-muted)' }}>{t("overview.desc")}</p>
       </header>
 
       <div className="stats-grid">
         <div className="card glass">
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>Total Interactions</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.total")}</p>
               <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.totalMessages}</h2>
             </div>
-            <MessageCircle color="#3b82f6" />
+            <MessageCircle color="var(--accent)" />
           </div>
         </div>
 
         <div className="card glass">
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>Active Users</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.active")}</p>
               <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.uniqueUsers}</h2>
             </div>
             <Users color="#a855f7" />
@@ -77,7 +106,7 @@ export default function Overview() {
         <div className="card glass">
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>Avg. Confidence</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.confidence")}</p>
               <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.avgConfidence}%</h2>
             </div>
             <Activity color="#22c55e" />
@@ -87,7 +116,7 @@ export default function Overview() {
         <div className="card glass">
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>Handoff Rate</p>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.handoffRate")}</p>
               <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.handoffRate}%</h2>
             </div>
             <AlertCircle color="#ef4444" />
@@ -96,40 +125,77 @@ export default function Overview() {
       </div>
 
       <div className="card glass">
-        <h2>Recent Interactions</h2>
-        <table>
+        <h2>{t("overview.recent")}</h2>
+        <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
-              <th>Sender</th>
-              <th>Message</th>
-              <th>AI Reply</th>
-              <th>Score</th>
-              <th>Status</th>
+              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.sender")}</th>
+              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.score")} (Avg)</th>
+              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.status")}</th>
             </tr>
           </thead>
           <tbody>
-            {(logs.length > 0 ? logs.slice(0, 10) : []).map((log, i) => (
-              <tr key={i}>
-                <td style={{ fontSize: '12px' }}>{log.sender_id.substring(0, 8)}...</td>
-                <td>{log.user_message.substring(0, 30)}...</td>
-                <td>{log.ai_reply.substring(0, 30)}...</td>
-                <td>{Math.round(log.confidence_score * 100)}%</td>
-                <td>
-                  <span style={{ 
-                    padding: '4px 8px', 
-                    borderRadius: '4px', 
-                    fontSize: '12px',
-                    background: log.handoff_triggered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                    color: log.handoff_triggered ? '#ef4444' : '#22c55e'
-                  }}>
-                    {log.handoff_triggered ? 'Handoff' : 'Auto'}
-                  </span>
-                </td>
-              </tr>
+            {(groupedLogs.length > 0 ? groupedLogs.slice(0, 10) : []).map((group, i) => (
+              <React.Fragment key={i}>
+                <tr onClick={() => toggleExpand(`group-${i}`)} style={{ cursor: 'pointer', background: expandedLogs[`group-${i}`] ? 'var(--nav-hover)' : 'transparent' }}>
+                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}>{group.sender_id.substring(0, 12)}...</td>
+                  <td style={{ textAlign: 'center' }}>{Math.round(group.avgScore * 100)}%</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{ 
+                      padding: '4px 8px', 
+                      borderRadius: '4px', 
+                      fontSize: '12px',
+                      background: group.status === 'handoff' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                      color: group.status === 'handoff' ? '#ef4444' : '#22c55e'
+                    }}>
+                      {group.status === 'handoff' ? t("table.handoff") : t("table.auto")}
+                    </span>
+                  </td>
+                </tr>
+                {expandedLogs[`group-${i}`] && (
+                  <tr>
+                    <td colSpan={3} style={{ padding: '0', borderBottom: 'none' }}>
+                      <div style={{ background: 'var(--nav-hover)', padding: '16px', borderBottom: '1px solid var(--card-border)' }}>
+                        <h4 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-muted)' }}>{t("table.interactionDetails")}</h4>
+                        <table style={{ width: '100%', tableLayout: 'fixed', background: 'var(--background)', borderRadius: '8px', overflow: 'hidden' }}>
+                          <thead style={{ background: 'rgba(0,0,0,0.1)' }}>
+                            <tr>
+                              <th style={{ width: '35%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.message")}</th>
+                              <th style={{ width: '35%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.reply")}</th>
+                              <th style={{ width: '15%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.score")}</th>
+                              <th style={{ width: '15%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.status")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {group.items.map((log: any, idx: number) => (
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--card-border)' }}>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>{log.user_message}</td>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>{log.ai_reply}</td>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>{Math.round(log.confidence_score * 100)}%</td>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>
+                                  <span style={{ 
+                                    padding: '2px 6px', 
+                                    borderRadius: '4px', 
+                                    fontSize: '10px',
+                                    background: log.handoff_triggered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
+                                    color: log.handoff_triggered ? '#ef4444' : '#22c55e'
+                                  }}>
+                                    {log.handoff_triggered ? t("table.handoff") : t("table.auto")}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
-            {logs.length === 0 && (
+            {groupedLogs.length === 0 && (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>No interaction data logged yet.</td>
+                <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t("table.empty")}</td>
               </tr>
             )}
           </tbody>
