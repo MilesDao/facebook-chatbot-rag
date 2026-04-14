@@ -20,6 +20,9 @@ from .services.ingestion import IngestionService
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "raw_data")
 os.makedirs(RAW_DATA_DIR, exist_ok=True)
 
+# FIX: Set to store processed message IDs to prevent Facebook retry spam
+processed_message_ids = set()
+
 class Message(BaseModel):
     role: str
     content: str
@@ -123,18 +126,32 @@ async def webhook_endpoint(request: Request, background_tasks: BackgroundTasks):
                     sender_id = msg.get("sender", {}).get("id")
                     message = msg.get("message", {})
                     user_text = message.get("text")
-                    if sender_id and user_text:
+                    
+                    # FIX: Extract the unique message ID from Facebook payload
+                    message_id = message.get("mid")
+
+                    if sender_id and user_text and message_id:
+                        
+                        # FIX: Deduplication check to ignore retried requests from Facebook
+                        if message_id in processed_message_ids:
+                            print(f"Message {message_id} already processed. Ignoring retry.")
+                            continue
+                        
+                        # FIX: Mark message as processed
+                        processed_message_ids.add(message_id)
+                        
                         background_tasks.add_task(process_message, sender_id, user_text)
     except Exception as e:
         print(f"Error processing webhook: {e}")
-    return {"status": "ok"}
+        
+    # FIX: Return explicitly 200 OK string format preferred by FB instead of a JSON dict
+    return Response(content="EVENT_RECEIVED", status_code=200)
 
 def process_message(sender_id: str, user_text: str):
     # 1. Báo đã xem tin nhắn
     send_action(sender_id, "mark_seen")
     
     # 2. Lấy câu trả lời từ AI (lúc này nó đang chứa các cụm [SPLIT])
-    # Lưu ý: Hàm handle_message của chị ở bên dưới sẽ tự gọi Gemini
     ai_full_response = handle_message(sender_id, user_text)
     
     # 3. Tách chuỗi dựa trên từ khóa [SPLIT]
@@ -162,83 +179,4 @@ async def upload_file(file: UploadFile = File(...)):
     """Upload a document to the raw_data directory."""
     try:
         file_path = os.path.join(RAW_DATA_DIR, file.filename)
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        return {"filename": file.filename, "status": "uploaded"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/index")
-async def trigger_indexing(background_tasks: BackgroundTasks):
-    """Trigger the RAG ingestion process in the background."""
-    def run_indexing():
-        service = IngestionService()
-        service.ingest_directory(RAW_DATA_DIR)
-    
-    background_tasks.add_task(run_indexing)
-    return {"status": "indexing_started"}
-
-@app.get("/api/analytics")
-async def get_analytics():
-    """Fetch recent logs from Supabase."""
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Database not configured")
-    try:
-        response = supabase.table("logs").select("*").order("created_at", desc=True).limit(50).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/handoffs")
-async def get_handoffs():
-    """Fetch active handoff requests."""
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Database not configured")
-    try:
-        response = supabase.table("handoffs").select("*").eq("status", "active").order("created_at", desc=True).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/faq")
-async def get_faqs():
-    """Fetch all FAQs."""
-    from .services.faq_service import get_all_faqs
-    return get_all_faqs()
-
-@app.post("/api/faq")
-async def create_faq(faq: FAQCreate):
-    """Create a new FAQ."""
-    from .services.faq_service import create_faq
-    try:
-        data = create_faq(faq.keyword, faq.question, faq.answer)
-        return {"status": "success", "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/faq/{faq_id}")
-async def delete_faq(faq_id: int):
-    """Delete an FAQ by ID."""
-    from .services.faq_service import delete_faq
-    try:
-        data = delete_faq(faq_id)
-        return {"status": "success", "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/generate")
-async def generate(request: GenerateRequest):
-    try:
-        reply = generate_response(
-            user_message=request.user_message,
-            context=request.context,
-            history=request.history
-        )
-        return {"response": reply.answer}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+        with open

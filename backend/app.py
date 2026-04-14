@@ -20,7 +20,7 @@ def send_message(sender_id, text):
 # --- ĐÂY LÀ BƯỚC 1: HỨNG WEBHOOK ---
 @app.route('/webhook', methods=['POST'])
 def webhook_receive():
-    data = request.get_json() # Bắt cục data JSON từ Facebook ném sang
+    data = request.get_json()
 
     if data['object'] == 'page':
         for entry in data['entry']:

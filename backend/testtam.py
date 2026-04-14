@@ -11,36 +11,36 @@ def run_test():
     fake_sender_id = "test_user_2026"
     
     print("="*50)
-    print("🤖 TERMINAL CHATBOT TESTER V1.0")
+    print("[BOT] TERMINAL CHATBOT TESTER V1.0")
     print("Gõ 'quit' hoặc 'exit' để dừng chat.")
     print("="*50)
 
     while True:
         # 1. Nhập câu hỏi từ bàn phím
-        user_message = input("\n[👤 Khách hàng]: ")
+        user_message = input("\n[Khach hang]: ")
         
         if user_message.lower() in ['quit', 'exit']:
             print("Đã thoát trình test!")
             break
 
-        print("[⏳ Bot đang gõ phím...]")
+        print("[Bot dang mo go ban phim...]")
         
         try:
-            # 2. Chạy luồng xử lý lõi (Gọi Gemini + Lưu Redis)
+            # 2. Chạy luồng xử lý lõi
             reply = handle_message(fake_sender_id, user_message)
             
             # 3. In kết quả để test Prompt
-            print(f"[🤖 Bot trả lời]: {reply}")
+            print(f"[Bot tra loi]: {reply}")
             
-            # 4. In Lịch sử Redis ra để xem nó có nhớ không
-            print("\n" + "-"*20 + " REDIS HISTORY " + "-"*20)
+            # 4. In Lịch sử ra để xem nó có nhớ không
+            print("\n" + "-"*20 + " SUPABASE HISTORY " + "-"*20)
             history = get_history(fake_sender_id, limit=4)
             for msg in history:
-                print(f" 👉 {msg['role'].upper()}: {msg['content']}")
+                print(f" -> {msg['role'].upper()}: {msg['content']}")
             print("-" * 55)
 
         except Exception as e:
-            print(f"❌ LỖI RỒI M ƠI: {e}")
+            print(f"[LOI_ROI]: {e}")
 
 if __name__ == "__main__":
     run_test()

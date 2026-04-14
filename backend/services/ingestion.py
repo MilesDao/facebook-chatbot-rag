@@ -1,6 +1,7 @@
 import os
 import glob
-from openai import OpenAI
+import time
+from google import genai
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
 from dotenv import load_dotenv
@@ -9,11 +10,11 @@ load_dotenv()
 
 class IngestionService:
     def __init__(self):
-        print("Initializing Ingestion Service with OpenRouter API")
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
+        print("Initializing Ingestion Service with Gemini API")
+        self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
-            print("CRITICAL: OPENROUTER_API_KEY missing in IngestionService")
-        self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key) if self.api_key else None
+            print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
+        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
 
         
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -55,18 +56,31 @@ class IngestionService:
 
         chunks = self.text_splitter.split_text(content)
         
-        try:
-            print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
-            result = self.client.embeddings.create(
-                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-                input=chunks
-            )
-            embeddings = [r.embedding for r in result.data]
-        except Exception as e:
-            print(f"Failed to generate embeddings batch: {e}")
+        max_retries = 6
+        base_delay = 3.0
+        embeddings = None
+
+        for attempt in range(max_retries):
+            try:
+                if attempt == 0:
+                    print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
+                result = self.client.models.embed_content(
+                    model="gemini-embedding-001",
+                    contents=chunks
+                )
+                embeddings = result.embeddings
+                break # Success, exit retry loop
+            except Exception as e:
+                print(f"Failed to generate embeddings batch (Attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    
+        if embeddings is None:
+            print("Failed to generate embeddings after all retries.")
             return
             
-        for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
+        for i, (chunk, embed_obj) in enumerate(zip(chunks, embeddings)):
+            raw_embed = embed_obj.values
             
             # Đảm bảo kích thước vector là 2048 / Fixed dimension typo to 2048
             embedding = raw_embed[:2048]

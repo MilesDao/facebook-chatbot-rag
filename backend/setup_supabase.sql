@@ -6,7 +6,6 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,       -- The actual text content to be fed to the LLM
   metadata jsonb,              -- Optional metadata (e.g., source url, title)
-  embedding vector(786)        -- 786 dimensions
   embedding vector(2048)        -- 2048 dimensions
 );
 
@@ -87,3 +86,23 @@ create table if not exists faqs (
 
 -- Disable Row Level Security (RLS) for faqs
 alter table faqs disable row level security;
+
+-- ====================================================================
+-- NEW FEATURES ADDED FOR MANUAL/AUTO INTERRUPT (HANDOFF STATE)
+-- ====================================================================
+
+-- 1. Create a table to manage the current conversational state of each user
+-- Using sender_id as the primary key ensures a 1-to-1 relationship for quick lookups
+create table if not exists user_sessions (
+  sender_id text primary key,
+  status text default 'active', -- States: 'active' or 'human_takeover'
+  updated_at timestamptz default now()
+);
+
+-- 2. Disable Row Level Security (RLS) to match your existing backend setup
+alter table user_sessions disable row level security;
+
+-- 3. Enable Supabase Realtime for the user_sessions table
+-- This allows the Node.js/Python backend to listen for instant status changes 
+-- and immediately interrupt the Gemini text generation stream.
+alter publication supabase_realtime add table user_sessions;

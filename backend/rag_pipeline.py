@@ -7,55 +7,60 @@ Responsibilities:
 """
 
 import os
+import time
 from dotenv import load_dotenv
-from openai import OpenAI
+from google import genai
 from .database import supabase
 
 load_dotenv()
 
-# Initialize Client
-def get_llm_client():
-    key = os.getenv("OPENROUTER_API_KEY")
+# Initialize Gemini Client
+def get_gemini_client():
+    key = os.getenv("GEMINI_API_KEY")
     if not key:
         return None
     try:
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=key
-        )
+        return genai.Client(api_key=key)
     except:
         return None
 
-client = get_llm_client()
+client = get_gemini_client()
 
 
 def get_embedding(text: str) -> list[float]:
     """
-    Generate 2048-dimension embeddings using OpenRouter API.
+    Generate 2048-dimension embeddings using Gemini API (padded from 768).
     """
     global client
     if not client:
-        client = get_llm_client()
+        client = get_gemini_client()
         
     if not client:
-        print("Error: Client is not initialized (API Key missing).")
+        print("Error: Gemini Client is not initialized (API Key missing).")
         return [0.0] * 2048
+    max_retries = 6
+    base_delay = 1.5
 
-    try:
-        result = client.embeddings.create(
-            model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-            input=[text]
-        )
-        embedding = result.data[0].embedding
-        embedding = embedding[:2048]
-        if len(embedding) < 2048:
-            embedding += [0.0] * (2048 - len(embedding))
+    for attempt in range(max_retries):
+        try:
+            # gemini-embedding-001 produces exactly 768-dim vectors
+            result = client.models.embed_content(
+                model="gemini-embedding-001",
+                contents=text
+            )
+            embedding = result.embeddings[0].values
+            embedding = embedding[:2048]
+            if len(embedding) < 2048:
+                embedding += [0.0] * (2048 - len(embedding))
+                
+            return embedding
             
-        return embedding
-        
-    except Exception as e:
-        print(f"Error generating API embedding: {e}")
-        return [0.0] * 2048
+        except Exception as e:
+            print(f"Error generating API embedding (Attempt {attempt + 1}/{max_retries}): {e}")
+            if attempt < max_retries - 1:
+                time.sleep(base_delay * (2 ** attempt))
+            else:
+                return [0.0] * 2048
 
 def retrieve_context(user_message: str, match_threshold: float = 0.3, match_count: int = 5):
     """

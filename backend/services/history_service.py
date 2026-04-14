@@ -1,53 +1,64 @@
 import os
-import json
-import redis
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Khởi tạo kết nối Redis
-# decode_responses=True cực kỳ quan trọng để dữ liệu trả về là String chứ không phải Bytes
-redis_client = redis.Redis(
-    host=os.getenv("REDIS_HOST"),
-    port=int(os.getenv("REDIS_PORT", 6379)),
-    password=os.getenv("REDIS_PASSWORD"),
-    decode_responses=True, 
-    ssl=True
-)
+from ..database import supabase
 
 def add_message(sender_id: str, role: str, content: str):
-    """Lưu một tin nhắn mới vào lịch sử của user"""
-    key = f"chat_history:{sender_id}"
-    message = json.dumps({"role": role, "content": content})
-    
+    """
+    Save a new message to Supabase chat_history table.
+    Replaces Redis rpush and ltrim logic.
+    """
+    if not supabase:
+        print("Warning: Supabase not initialized, skipping history logging.")
+        return
+
     try:
-        # rpush: Thêm tin nhắn vào cuối danh sách
-        redis_client.rpush(key, message)
+        # Construct the data object
+        data = {
+            "sender_id": sender_id,
+            "role": role,
+            "content": content
+        }
         
-        # ltrim: Chỉ giữ lại 20 tin nhắn gần nhất (chống tràn RAM và tiết kiệm Token AI)
-        redis_client.ltrim(key, -20, -1)
+        # Insert into chat_history table
+        supabase.table("chat_history").insert(data).execute()
         
-        # expire: Set thời gian hết hạn là 24h (86400 giây). 
-        # Sau 24h không tương tác, lịch sử tự bay màu.
-        redis_client.expire(key, 86400)
     except Exception as e:
-        print(f"Lỗi khi lưu lịch sử vào Redis: {e}")
+        print(f"Error saving history to Supabase: {e}")
 
 def get_history(sender_id: str, limit: int = 10) -> list:
-    """Lấy N tin nhắn gần nhất để nhét vào Prompt cho AI"""
-    key = f"chat_history:{sender_id}"
-    
+    """
+    Retrieve the last N messages for a specific user to provide context for Gemini.
+    Replaces Redis lrange logic.
+    """
+    if not supabase:
+        print("Warning: Supabase not initialized, returning empty history.")
+        return []
+
     try:
-        # lrange: Lấy `limit` tin nhắn từ cuối lên
-        messages_json = redis_client.lrange(key, -limit, -1)
+        # Fetch records ordered by time (newest first)
+        response = supabase.table("chat_history") \
+            .select("role", "content") \
+            .eq("sender_id", sender_id) \
+            .order("created_at", desc=True) \
+            .limit(limit) \
+            .execute()
         
-        # Chuyển đổi từ String JSON sang mảng Dictionary cho Gemini dễ đọc
-        return [json.loads(msg) for msg in messages_json]
+        # Reverse the list to maintain chronological order [oldest -> newest] for the LLM
+        history = response.data[::-1]
+        return history
+        
     except Exception as e:
-        print(f"Lỗi khi đọc lịch sử từ Redis: {e}")
+        print(f"Error fetching history from Supabase: {e}")
         return []
 
 def clear_history(sender_id: str):
-    """(Tuỳ chọn) Hàm dùng để xoá trắng lịch sử khi cần"""
-    key = f"chat_history:{sender_id}"
-    redis_client.delete(key)
+    """
+    Delete all chat history for a specific user.
+    Replaces Redis delete logic.
+    """
+    if not supabase:
+        return
+
+    try:
+        supabase.table("chat_history").delete().eq("sender_id", sender_id).execute()
+    except Exception as e:
+        print(f"Error clearing history from Supabase: {e}")

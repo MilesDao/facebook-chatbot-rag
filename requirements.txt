@@ -5,14 +5,16 @@ python-multipart
 requests
 flask
 
-# AI & LLM (OpenRouter via OpenAI SDK)
-openai
+# AI & LLM (Google GenAI Official SDK)
+google-genai
 langchain-text-splitters
 pypdf
+Pillow
 python-dotenv
 
 # Database & Storage
 supabase
+redis/upstash-redis
 
 # Environment & Schema
 pydantic
