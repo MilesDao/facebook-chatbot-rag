@@ -8,7 +8,9 @@ load_dotenv()
 # Initialize Supabase
 def get_supabase_client():
     url = os.getenv("SUPABASE_URL", "")
-    key = os.getenv("SUPABASE_KEY", "")
+    # Prioritize Service Role Key for backend administrative tasks
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_KEY", "")
+    
     if url and key:
         try:
             return create_client(url, key)

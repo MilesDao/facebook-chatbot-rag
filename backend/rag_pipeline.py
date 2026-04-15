@@ -14,45 +14,16 @@ from .database import supabase
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# FIX: Thread-safe Gemini client singleton
-# Previously `client` was a bare module-level global mutated inside coroutines
-# via `global client` — concurrent FastAPI requests could race to re-init it,
-# potentially creating multiple genai.Client instances simultaneously → RAM leak.
-# ---------------------------------------------------------------------------
-_client_lock = threading.Lock()
-_gemini_client: genai.Client | None = None
-
-
-def _get_client() -> genai.Client | None:
-    """Return the singleton Gemini client, initializing it once under a lock."""
-    global _gemini_client
-    if _gemini_client is not None:
-        return _gemini_client
-    with _client_lock:
-        # Double-checked locking: re-check inside the lock
-        if _gemini_client is None:
-            key = os.getenv("GEMINI_API_KEY")
-            if not key:
-                print("Error: Gemini Client is not initialized (GEMINI_API_KEY missing).")
-                return None
-            try:
-                _gemini_client = genai.Client(api_key=key)
-            except Exception as e:
-                print(f"Error initializing Gemini client: {e}")
-                return None
-    return _gemini_client
-
-
-def get_embedding(text: str) -> list[float]:
+def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
     Generate 768-dimension embeddings via Gemini API.
     """
-    client = _get_client()
-    if not client:
+    gemini_key = api_key or os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
         return [0.0] * 768
 
     try:
+        client = genai.Client(api_key=gemini_key)
         # gemini-embedding-001 produces 768-dim vectors
         result = client.models.embed_content(
             model="gemini-embedding-001",
@@ -67,7 +38,7 @@ def get_embedding(text: str) -> list[float]:
         print(f"Error generating local embedding: {e}")
         return [0.0] * 768
 
-def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5):
+def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, gemini_key: str = None):
     """
     Retrieve documents from Supabase vector db.
     Returns:
@@ -79,18 +50,21 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
         return "", 0.0
 
     # 1. Embed the user query
-    query_embedding = get_embedding(user_message)
+    query_embedding = get_embedding(user_message, api_key=gemini_key)
     
     # 2. Search Supabase via the match_documents RPC configured in SQL
     try:
-        response = supabase.rpc(
-            "match_documents",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": match_threshold,
-                "match_count": match_count
-            }
-        ).execute()
+        rpc_params = {
+            "query_embedding": query_embedding,
+            "match_threshold": match_threshold,
+            "match_count": match_count
+        }
+        
+        # If user_id is provided, use the multi-tenant RPC
+        if user_id:
+            rpc_params["p_user_id"] = user_id
+            
+        response = supabase.rpc("match_documents", rpc_params).execute()
     except Exception as e:
         print(f"Error communicating with Supabase RAG RPC: {e}")
         return "", 0.0

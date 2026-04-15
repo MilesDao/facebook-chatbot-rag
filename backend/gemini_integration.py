@@ -13,35 +13,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# FIX: Thread-safe Gemini client singleton (mirrors rag_pipeline.py fix)
-# Previously `client` was a module-level global re-assigned via `global client`
-# inside generate_response() — concurrent FastAPI requests race-conditioned it.
-# ---------------------------------------------------------------------------
-_client_lock = threading.Lock()
-_gemini_client: genai.Client | None = None
-
-
-def _get_client() -> genai.Client | None:
-    """Return the singleton Gemini client, initializing it once under a lock."""
-    global _gemini_client
-    if _gemini_client is not None:
-        return _gemini_client
-    with _client_lock:
-        if _gemini_client is None:
-            key = os.getenv("GEMINI_API_KEY")
-            if not key:
-                print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
-                return None
-            try:
-                _gemini_client = genai.Client(api_key=key)
-            except Exception as e:
-                print(f"Error initializing Gemini Client: {e}")
-                return None
-    return _gemini_client
-
-
-def generate_response(user_message: str, context: str, history: list) -> str:
+def generate_response(user_message: str, context: str, history: list, api_key: str = None) -> str:
     """
     Call Gemini API with grounded context.
     
@@ -49,6 +21,7 @@ def generate_response(user_message: str, context: str, history: list) -> str:
         user_message: The latest message from the user
         context: Context retrieved from vector database
         history: Array of prior conversation messages (dicts with 'role' and 'content')
+        api_key: The Gemini API key to use (optional, falls back to env)
     """
     system_prompt = (
         "You are an intelligent, helpful AI Messenger Bot. "
@@ -72,11 +45,13 @@ def generate_response(user_message: str, context: str, history: list) -> str:
             
     full_prompt += f"\nUser: {user_message}\nAssistant:"
     
-    client = _get_client()
-    if not client:
+    # Initialize client with provided key or fallback to env
+    gemini_key = api_key or os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
         return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
 
     try:
+        client = genai.Client(api_key=gemini_key)
         # Using a stable model name
         response = client.models.generate_content(
             model='gemini-1.5-flash',
