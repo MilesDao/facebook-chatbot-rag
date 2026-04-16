@@ -1,21 +1,13 @@
-"""
-Gemini Integration
-
-Responsibilities:
-- Generate responses using Gemini and provided context/history.
-- Enforce Structured Outputs (JSON/Pydantic) for downstream processing.
-"""
 import os
 import time
-from google import genai
-from google.genai import types
+import openai
+import json  # Import json for parsing
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-print(f"DEBUG: Using API Key: {os.getenv('GEMINI_API_KEY')[:10] if os.getenv('GEMINI_API_KEY') else 'None'}...")
 
 # --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
 class BotResponse(BaseModel):
@@ -29,24 +21,32 @@ class BotResponse(BaseModel):
         description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quá phức tạp mà Context không có, cần chuyển cho tư vấn viên là người thật."
     )
 
-# Configure Gemini Client
-def get_gemini_client():
-    key = os.getenv("GEMINI_API_KEY")
-    if not key:
-        print("CRITICAL: GEMINI_API_KEY is missing from environment variables!")
+
+# Configure OpenAI client for OpenRouter
+def get_openrouter_client():
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    base_url = "https://openrouter.ai/api/v1"
+    if not api_key:
+        print("CRITICAL: OPENROUTER_API_KEY is missing from environment variables!")
         return None
     try:
-        return genai.Client(api_key=key)
+        client = openai.OpenAI(api_key=api_key, base_url=base_url)
+        return client
     except Exception as e:
-        print(f"Error initializing Gemini Client: {e}")
+        print(f"Error initializing OpenRouter client: {e}")
         return None
 
-client = get_gemini_client()
+
+client = get_openrouter_client()
+
+print(
+    f"DEBUG: Using OpenRouter API Key: {os.getenv('OPENROUTER_API_KEY')[:10] if os.getenv('OPENROUTER_API_KEY') else 'None'}..."
+)
 
 
 def generate_response(user_message: str, context: str, history: list) -> BotResponse:
     """
-    Call Gemini API with grounded context and return a Structured Output object.
+    Call OpenRouter API with grounded context and return a Structured Output object.
     """
     system_prompt = (
         "You are a friendly, polite, and professional student advisor/consultant at USTH "
@@ -66,30 +66,32 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
         "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
         "Evaluate your 'confidence_score' based on how well the context covers the question."
     )
-    
-    full_prompt = f"System: {system_prompt}\n\n"
-    
+
+    messages = [{"role": "system", "content": system_prompt}]
+
     if context:
-        full_prompt += f"Background Context:\n{context}\n\n"
-        
+        messages.append(
+            {"role": "system", "content": f"Background Context:\n{context}"}
+        )
+
     if history:
-        full_prompt += "Conversation Chat History:\n"
+        messages.append({"role": "system", "content": "Conversation Chat History:\n"})
         for msg in history[-10:]:
-            role = "User" if msg.get("role") == "user" else "Assistant"
-            full_prompt += f"{role}: {msg.get('content')}\n"
-            
-    full_prompt += f"\nUser: {user_message}\nAssistant:"
-    
+            role = "user" if msg.get("role") == "user" else "assistant"
+            messages.append({"role": role, "content": msg.get("content")})
+
+    messages.append({"role": "user", "content": user_message})
+
     global client
     if not client:
-        client = get_gemini_client()
-        
+        client = get_openrouter_client()
+
     if not client:
         # Fallback object if API fails
         return BotResponse(
-            answer="Dạ hệ thống bên mình đang bảo trì một chút [SPLIT] Bạn vui lòng chờ trong giây lát nhé ạ.",
+            answer="Dạ hiện tại đường truyền đang hơi chậm [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
             confidence_score=0.0,
-            needs_human=True
+            needs_human=True,
         )
 
     max_retries = 6
@@ -97,28 +99,51 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
 
     for attempt in range(max_retries):
         try:
-            # --- 2. ÉP GEMINI TRẢ VỀ THEO SCHEMA ---
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=full_prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=BotResponse,
-                    temperature=0.7 # Tạo độ tự nhiên vừa phải
-                )
+            # --- Call OpenRouter API ---
+            completion = client.chat.completions.create(
+                model="gpt-oss-120b",  # Use the specified model
+                messages=messages,
+                response_format={"type": "json_object"},  # Request JSON output
+                temperature=0.7,  # Adjust temperature as needed
             )
-            
-            # Trả về Object đã được parse sẵn
-            return response.parsed
-            
+
+            # Extract and parse the JSON response
+            response_content = completion.choices[0].message.content
+            response_data = json.loads(response_content)
+
+            # Map the response to BotResponse
+            return BotResponse(
+                answer=response_data.get("answer", ""),
+                confidence_score=float(response_data.get("confidence_score", 0.0)),
+                needs_human=bool(response_data.get("needs_human", False)),
+            )
+
         except Exception as e:
-            print(f"Error calling Gemini (Attempt {attempt + 1}/{max_retries}): {e}")
+            print(
+                f"Error calling OpenRouter API (Attempt {attempt + 1}/{max_retries}): {e}"
+            )
             if attempt < max_retries - 1:
                 # Exponential backoff
-                time.sleep(base_delay * (2 ** attempt))
+                time.sleep(base_delay * (2**attempt))
             else:
                 return BotResponse(
                     answer="Dạ hiện tại đường truyền đang hơi chậm [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
                     confidence_score=0.0,
-                    needs_human=True
+                    needs_human=True,
                 )
+
+
+# --- Embedding Model Consideration ---
+# The current embedding model used in rag_pipeline.py is 'gemini-embedding-001'.
+# While it might work, it's recommended to use an embedding model compatible with
+# the chosen LLM (gpt-oss-120b). We will keep the current embedding model for now
+# and evaluate performance. If issues arise, we can switch to a different model,
+# potentially one from OpenAI or another provider accessible via OpenRouter.
+#
+# Placeholder for potential future embedding model integration:
+# def get_embedding_model():
+#     pass
+#
+# def get_embedding(text: str) -> list[float]:
+#     # Integrate with a new embedding model here
+#     pass
