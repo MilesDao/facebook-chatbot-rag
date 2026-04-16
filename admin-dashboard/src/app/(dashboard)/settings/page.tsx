@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 import { signOut } from "@/lib/auth";
+import { useLanguage } from "@/components/LanguageContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface BotSettings {
     page_access_token: string;
@@ -33,6 +35,7 @@ interface ValidationErrors {
 }
 
 export default function SettingsPage() {
+    const { t } = useLanguage();
     const [settings, setSettings] = useState<BotSettings>({
         page_access_token: "",
         gemini_api_key: "",
@@ -158,8 +161,8 @@ export default function SettingsPage() {
         <form onSubmit={handleSave} noValidate>
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '32px' }}>Settings</h1>
-                    <p style={{ color: 'rgba(255,255,255,0.5)' }}>Manage your AI bot configuration and deployment settings.</p>
+                    <h1 style={{ fontSize: '32px' }}>{t("settings.title")}</h1>
+                    <p style={{ color: 'var(--text-muted)' }}>{t("settings.desc")}</p>
                 </div>
                 <button 
                     type="submit" 
@@ -174,7 +177,7 @@ export default function SettingsPage() {
                     }}
                 >
                     {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                    {saving ? 'Saving...' : 'Save Changes'}
+                    {saving ? t("settings.saving") || "Saving..." : t("settings.saveBtn") || "Save Changes"}
                 </button>
             </header>
 
@@ -199,8 +202,8 @@ export default function SettingsPage() {
                 {/* Facebook Integration */}
                 <div className="card glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <Globe color="#3b82f6" />
-                        <h2 style={{ margin: 0 }}>Facebook Platform</h2>
+                        <Globe color="var(--accent)" />
+                        <h2 style={{ margin: 0 }}>{t("settings.publicSettings")}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -281,7 +284,7 @@ export default function SettingsPage() {
                 <div className="card glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <Cpu color="#a855f7" />
-                        <h2 style={{ margin: 0 }}>AI Brain (Gemini)</h2>
+                        <h2 style={{ margin: 0 }}>{t("settings.aiIntegration")}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -322,8 +325,8 @@ export default function SettingsPage() {
                 {/* Deployment Info */}
                 <div className="card glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <Server color="#f59e0b" />
-                        <h2 style={{ margin: 0 }}>System Info</h2>
+                        <Server color="var(--accent)" />
+                        <h2 style={{ margin: 0 }}>{t("settings.deployment")}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -359,7 +362,7 @@ export default function SettingsPage() {
                 <div className="card glass" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <LogOut color="#ef4444" />
-                        <h2 style={{ margin: 0 }}>Account</h2>
+                        <h2 style={{ margin: 0 }}>{t("settings.account") || "Account"}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

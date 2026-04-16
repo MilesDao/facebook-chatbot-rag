@@ -231,6 +231,36 @@ async def trigger_indexing(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_indexing)
     return {"status": "indexing_started"}
 
+@app.get("/api/sources")
+async def get_sources():
+    """Fetch list of uploaded raw source files."""
+    try:
+        files = []
+        if os.path.exists(RAW_DATA_DIR):
+            for filename in os.listdir(RAW_DATA_DIR):
+                if os.path.isfile(os.path.join(RAW_DATA_DIR, filename)):
+                    files.append({"id": filename, "name": filename})
+        return files
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/sources/{filename}")
+async def delete_source(filename: str):
+    """Delete a raw source file and its embeddings from the database."""
+    try:
+        # Delete from disk
+        file_path = os.path.join(RAW_DATA_DIR, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        # Delete from DB
+        if supabase:
+            supabase.table("documents").delete().contains("metadata", {"source": filename}).execute()
+            
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/analytics")
 async def get_analytics():
     """Fetch recent logs from Supabase."""
@@ -244,11 +274,11 @@ async def get_analytics():
 
 @app.get("/api/handoffs")
 async def get_handoffs():
-    """Fetch active handoff requests."""
+    """Fetch all handoff requests."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").select("*").eq("status", "active").order("created_at", desc=True).execute()
+        response = supabase.table("handoffs").select("*").order("created_at", desc=True).limit(100).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -302,6 +332,46 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
         print(f"Error updating settings: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@app.get("/api/handoffs/{handoff_id}/chat-link")
+async def get_chat_link(handoff_id: str):
+    """Fetch the direct Business Suite chat link for a conversation."""
+    if not supabase or not PAGE_ACCESS_TOKEN:
+        raise HTTPException(status_code=500, detail="Database or Token not configured")
+        
+    try:
+        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Handoff not found")
+            
+        sender_id = response.data[0]["sender_id"]
+        
+        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={PAGE_ACCESS_TOKEN}"
+        r = requests.get(url)
+        r.raise_for_status()
+        data = r.json()
+        
+        if "data" in data and len(data["data"]) > 0:
+            link = data["data"][0].get("link")
+            if link:
+                return {"status": "success", "link": link}
+                
+        return {"status": "success", "link": f"https://business.facebook.com/latest/inbox/all?selected_item_id={sender_id}"}
+        
+    except Exception as e:
+        print(f"Error fetching chat link: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/handoffs/{handoff_id}/resolve")
+async def resolve_handoff(handoff_id: str):
+    """Mark a handoff as resolved."""
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).execute()
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/faq")
 async def get_faqs():
     """Fetch all FAQs."""
@@ -325,6 +395,32 @@ async def delete_faq(faq_id: int):
     try:
         data = delete_faq(faq_id)
         return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/settings/{key}")
+async def get_setting(key: str):
+    """Get a specific setting value."""
+    from .services.settings_service import SettingsService
+    value = SettingsService.get_setting(key)
+    if value is None:
+        return {"value": None}
+    return {"value": value}
+
+@app.post("/api/settings")
+async def update_setting(request: Request):
+    """Update a setting."""
+    from .services.settings_service import SettingsService, AppSetting
+    try:
+        body = await request.json()
+        setting_key = body.get("setting_key")
+        setting_value = body.get("setting_value")
+        if not setting_key or not setting_value:
+            raise HTTPException(status_code=400, detail="Missing key or value")
+            
+        setting = AppSetting(setting_key=setting_key, setting_value=setting_value)
+        value = SettingsService.set_setting(setting)
+        return {"status": "success", "value": value}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
