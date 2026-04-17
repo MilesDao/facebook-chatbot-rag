@@ -16,13 +16,13 @@ import {
     LogOut
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-import { signOut } from "@/lib/auth";
+import { signOut, apiFetch } from "@/lib/auth";
 import { useLanguage } from "@/components/LanguageContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface BotSettings {
     page_access_token: string;
-    gemini_api_key: string;
+    openrouter_api_key: string;
     page_id: string;
     verify_token: string;
 }
@@ -30,7 +30,7 @@ interface BotSettings {
 interface ValidationErrors {
     page_id?: string;
     page_access_token?: string;
-    gemini_api_key?: string;
+    openrouter_api_key?: string;
     verify_token?: string;
 }
 
@@ -38,7 +38,7 @@ export default function SettingsPage() {
     const { t } = useLanguage();
     const [settings, setSettings] = useState<BotSettings>({
         page_access_token: "",
-        gemini_api_key: "",
+        openrouter_api_key: "",
         page_id: "",
         verify_token: "tuyensinh2026"
     });
@@ -48,7 +48,6 @@ export default function SettingsPage() {
     const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const supabase = createClient();
 
     useEffect(() => {
         fetchSettings();
@@ -56,20 +55,13 @@ export default function SettingsPage() {
 
     const fetchSettings = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const response = await fetch(`${backendUrl}/api/settings`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
+            const response = await apiFetch("/api/settings");
             
             if (response.ok) {
                 const data = await response.json();
                 setSettings({
                     page_access_token: data.page_access_token || "",
-                    gemini_api_key: data.gemini_api_key || "",
+                    openrouter_api_key: data.openrouter_api_key || "",
                     page_id: data.page_id || "",
                     verify_token: data.verify_token || "tuyensinh2026"
                 });
@@ -96,8 +88,8 @@ export default function SettingsPage() {
             newErrors.page_access_token = "Valid Page Access Token is required";
         }
 
-        if (!settings.gemini_api_key || settings.gemini_api_key.length < 15) {
-            newErrors.gemini_api_key = "Gemini API Key is required";
+        if (!settings.openrouter_api_key || settings.openrouter_api_key.length < 15) {
+            newErrors.openrouter_api_key = "OpenRouter API Key is required";
         }
 
         if (!settings.verify_token || settings.verify_token.length < 5) {
@@ -120,15 +112,8 @@ export default function SettingsPage() {
         setMessage(null);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("No session found. Please log in again.");
-
-            const response = await fetch(`${backendUrl}/api/settings`, {
+            const response = await apiFetch("/api/settings", {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
                 body: JSON.stringify(settings)
             });
 
@@ -147,7 +132,7 @@ export default function SettingsPage() {
 
     const isFormValid = settings.page_id.length >= 10 && 
                         settings.page_access_token.length >= 20 && 
-                        settings.gemini_api_key.length >= 15;
+                        settings.openrouter_api_key.length >= 15;
 
     if (loading) {
         return (
@@ -289,30 +274,30 @@ export default function SettingsPage() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
-                            Your bot uses Google Gemini 1.5 Flash for reasoning and retrieval.
+                            Your bot uses OpenRouter (e.g., DeepSeek, Gemini, GPT) for reasoning and retrieval.
                         </p>
                         
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>Gemini API Key</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'rgba(255,255,255,0.7)' }}>OpenRouter API Key</label>
                             <input 
                                 type="password"
                                 className="glass-input"
-                                value={settings.gemini_api_key}
+                                value={settings.openrouter_api_key}
                                 onChange={e => {
-                                    setSettings({...settings, gemini_api_key: e.target.value});
-                                    if (errors.gemini_api_key) setErrors({...errors, gemini_api_key: undefined});
+                                    setSettings({...settings, openrouter_api_key: e.target.value});
+                                    if (errors.openrouter_api_key) setErrors({...errors, openrouter_api_key: undefined});
                                 }}
-                                placeholder="AIzaSy..."
+                                placeholder="sk-or-v1-..."
                                 style={{ 
                                     width: '100%', 
                                     padding: '12px', 
                                     borderRadius: '8px', 
                                     background: 'rgba(255,255,255,0.05)', 
-                                    border: `1px solid ${errors.gemini_api_key ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, 
+                                    border: `1px solid ${errors.openrouter_api_key ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, 
                                     color: 'white' 
                                 }}
                             />
-                            {errors.gemini_api_key && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.gemini_api_key}</p>}
+                            {errors.openrouter_api_key && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.openrouter_api_key}</p>}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '13px' }}>

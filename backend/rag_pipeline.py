@@ -16,30 +16,38 @@ load_dotenv()
 
 def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
-    Generate 768-dimension embeddings via Gemini API.
+    Generate 2048-dimension embeddings via OpenRouter.
     """
-    gemini_key = api_key or os.getenv("GEMINI_API_KEY")
-    if not gemini_key:
-        return [0.0] * 768
+    openrouter_key = api_key or os.getenv("OPENROUTER_API_KEY")
+    if not openrouter_key:
+        print("Error: No OpenRouter API key found for embedding generation.")
+        return [0.0] * 2048
 
     try:
-        client = genai.Client(api_key=gemini_key)
-        # gemini-embedding-001 produces 768-dim vectors
-        result = client.models.embed_content(
-            model="gemini-embedding-001",
-            contents=text
+        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_key)
+        # Using a model that supports embeddings via OpenRouter
+        # NOTE: Model must match the one used during ingestion
+        result = client.embeddings.create(
+            model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+            input=text,
+            encoding_format="float",
+            extra_body={"input_type": "query"}
         )
-        raw_embed = result.embeddings[0].values
-        embedding = list(raw_embed[:768])
-        if len(embedding) < 768:
-            embedding += [0.0] * (768 - len(embedding))
+        if not result.data:
+            return [0.0] * 2048
+            
+        raw_embed = result.data[0].embedding
+        # Regularize to exactly 2048 dimensions
+        embedding = list(raw_embed[:2048])
+        if len(embedding) < 2048:
+            embedding += [0.0] * (2048 - len(embedding))
         return embedding
         
     except Exception as e:
-        print(f"Error generating API embedding: {e}")
+        print(f"Error generating OpenRouter embedding: {e}")
         return [0.0] * 2048
 
-def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, gemini_key: str = None):
+def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, api_key: str = None):
     """
     Retrieve documents from Supabase vector db.
     Returns:

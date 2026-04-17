@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   AlertCircle
 } from "lucide-react";
+import { apiFetch } from "@/lib/auth";
 
 export default function HandoffInbox() {
   const { t } = useLanguage();
@@ -18,7 +19,7 @@ export default function HandoffInbox() {
 
   const fetchHandoffs = async () => {
     try {
-      const res = await fetch("/api/handoffs");
+      const res = await apiFetch("/api/handoffs");
       if (res.ok) {
         const data = await res.json();
         setHandoffs(data);
@@ -36,7 +37,9 @@ export default function HandoffInbox() {
 
   const handleResolve = async (id: string) => {
     try {
-      const res = await fetch(`/api/handoffs/${id}/resolve`, { method: "PUT" });
+      const res = await apiFetch(`/api/handoffs/${id}/resolve`, { 
+        method: "PUT"
+      });
       if (res.ok) {
         await fetchHandoffs();
       }
@@ -47,7 +50,7 @@ export default function HandoffInbox() {
 
   const handleOpenChat = async (id: string, senderId: string) => {
     try {
-      const res = await fetch(`/api/handoffs/${id}/chat-link`);
+      const res = await apiFetch(`/api/handoffs/${id}/chat-link`);
       if (res.ok) {
         const data = await res.json();
         if (data.link) {

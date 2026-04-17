@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from .message_handler import handle_message
-from .gemini_integration import generate_response
+from .openrouter_integration import generate_response
 from .database import supabase
 from .services.ingestion import IngestionService
 
@@ -38,7 +38,7 @@ from pydantic import BaseModel, Field
 
 class BotSettingsUpdate(BaseModel):
     page_access_token: str = Field(..., min_length=20)
-    gemini_api_key: str = Field(..., min_length=15)
+    openrouter_api_key: str = Field(..., min_length=15)
     page_id: str = Field(..., min_length=10, pattern=r"^\d+$")
     verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
 
@@ -171,7 +171,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         print(f"ERROR fetching settings for page {page_id}: {e}")
 
     token = settings.get("page_access_token") or os.getenv("PAGE_ACCESS_TOKEN")
-    gemini_key = settings.get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+    openrouter_key = settings.get("openrouter_api_key") or os.getenv("OPENROUTER_API_KEY")
     user_id = settings.get("user_id")
 
     if not token:
@@ -200,7 +200,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     try:
         print(f"Generating AI response for: {user_message[:50]}...")
         # Update handle_message to accept our parameters
-        reply = handle_message(sender_id, user_message, user_id=user_id, gemini_key=gemini_key)
+        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key)
         print(f"AI Response generated: {reply[:50]}...")
     except Exception as e:
         print(f"ERROR in handle_message flow: {e}")
@@ -223,11 +223,20 @@ async def upload_file(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/index")
-async def trigger_indexing(background_tasks: BackgroundTasks):
-    """Trigger the RAG ingestion process in the background."""
+async def trigger_indexing(background_tasks: BackgroundTasks, current_user: dict = Depends(get_current_user)):
+    """Trigger the RAG ingestion process in the background for the current user."""
+    user_id = current_user["sub"]
+    
+    # Fetch user's OpenRouter key if available
+    settings_res = supabase.table("bot_settings").select("openrouter_api_key").eq("user_id", user_id).limit(1).execute()
+    openrouter_key = None
+    if settings_res.data and settings_res.data[0].get("openrouter_api_key"):
+        openrouter_key = settings_res.data[0]["openrouter_api_key"]
+
     def run_indexing():
-        service = IngestionService()
-        service.ingest_directory(RAW_DATA_DIR)
+        # Initialize service with user's key if they provided one
+        service = IngestionService(api_key=openrouter_key)
+        service.ingest_directory(RAW_DATA_DIR, user_id=user_id)
     
     background_tasks.add_task(run_indexing)
     return {"status": "indexing_started"}
@@ -263,23 +272,25 @@ async def delete_source(filename: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/analytics")
-async def get_analytics():
-    """Fetch recent logs from Supabase."""
+async def get_analytics(current_user: dict = Depends(get_current_user)):
+    """Fetch recent logs from Supabase for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("logs").select("*").order("created_at", desc=True).limit(50).execute()
+        response = supabase.table("logs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/handoffs")
-async def get_handoffs():
-    """Fetch all handoff requests."""
+async def get_handoffs(current_user: dict = Depends(get_current_user)):
+    """Fetch all handoff requests for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").select("*").order("created_at", desc=True).limit(100).execute()
+        response = supabase.table("handoffs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(100).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -299,7 +310,7 @@ async def get_bot_settings(current_user: dict = Depends(get_current_user)):
             new_settings = {
                 "user_id": user_id,
                 "page_access_token": "",
-                "gemini_api_key": "",
+                "openrouter_api_key": "",
                 "page_id": ""
             }
             supabase.table("bot_settings").insert(new_settings).execute()
@@ -316,7 +327,7 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
         data = {
             "user_id": user_id,
             "page_access_token": settings.page_access_token,
-            "gemini_api_key": settings.gemini_api_key,
+            "openrouter_api_key": settings.openrouter_api_key,
             "page_id": settings.page_id,
             "verify_token": settings.verify_token,
             "updated_at": "now()"
@@ -334,19 +345,28 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/api/handoffs/{handoff_id}/chat-link")
-async def get_chat_link(handoff_id: str):
+async def get_chat_link(handoff_id: str, current_user: dict = Depends(get_current_user)):
     """Fetch the direct Business Suite chat link for a conversation."""
-    if not supabase or not PAGE_ACCESS_TOKEN:
-        raise HTTPException(status_code=500, detail="Database or Token not configured")
+    user_id = current_user["sub"]
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
         
     try:
-        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).execute()
+        # Fetch sender_id for this handoff (ensure it belongs to current user)
+        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).eq("user_id", user_id).execute()
         if not response.data:
-            raise HTTPException(status_code=404, detail="Handoff not found")
+            raise HTTPException(status_code=404, detail="Handoff not found or unauthorized")
             
         sender_id = response.data[0]["sender_id"]
         
-        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={PAGE_ACCESS_TOKEN}"
+        # Fetch user's token
+        settings_res = supabase.table("bot_settings").select("page_access_token").eq("user_id", user_id).limit(1).execute()
+        if not settings_res.data or not settings_res.data[0].get("page_access_token"):
+            raise HTTPException(status_code=400, detail="Page Access Token not configured")
+            
+        token = settings_res.data[0]["page_access_token"]
+        
+        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={token}"
         r = requests.get(url)
         r.raise_for_status()
         data = r.json()
@@ -363,38 +383,42 @@ async def get_chat_link(handoff_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/handoffs/{handoff_id}/resolve")
-async def resolve_handoff(handoff_id: str):
-    """Mark a handoff as resolved."""
+async def resolve_handoff(handoff_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark a handoff as resolved for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).execute()
+        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).eq("user_id", user_id).execute()
         return {"status": "success", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/faq")
-async def get_faqs():
-    """Fetch all FAQs."""
+async def get_faqs(current_user: dict = Depends(get_current_user)):
+    """Fetch all FAQs for the current user."""
+    user_id = current_user["sub"]
     from .services.faq_service import get_all_faqs
-    return get_all_faqs()
+    return get_all_faqs(user_id=user_id)
 
 @app.post("/api/faq")
-async def create_faq(faq: FAQCreate):
-    """Create a new FAQ."""
+async def create_faq(faq: FAQCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new FAQ for the current user."""
+    user_id = current_user["sub"]
     from .services.faq_service import create_faq
     try:
-        data = create_faq(faq.keyword, faq.question, faq.answer)
+        data = create_faq(faq.keyword, faq.question, faq.answer, user_id=user_id)
         return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/faq/{faq_id}")
-async def delete_faq(faq_id: int):
-    """Delete an FAQ by ID."""
+async def delete_faq(faq_id: int, current_user: dict = Depends(get_current_user)):
+    """Delete an FAQ by ID for the current user."""
+    user_id = current_user["sub"]
     from .services.faq_service import delete_faq
     try:
-        data = delete_faq(faq_id)
+        data = delete_faq(faq_id, user_id=user_id)
         return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,83 +1,67 @@
-# 🤖 OpenRouter AI Messenger Bot (RAG)
+# Facebook Chatbot RAG (Multi-Tenant & OpenRouter)
 
-A professional, end-to-end AI Messenger Bot system featuring a high-performance Backend and a premium Admin Dashboard. Fully migrated to the **OpenRouter AI Stack**.
+A powerful, multi-tenant AI chatbot system for Facebook Messenger, powered by OpenRouter LLMs and Retrieval-Augmented Generation (RAG) via Supabase.
 
-## 🏗️ Project Structure
-* `backend/`: FastAPI server handling webhooks, RAG logic, and OpenRouter integration.
-* `admin-dashboard/`: Next.js (TypeScript) management interface with a premium glassmorphic UI.
-* `raw_data/`: Local storage for documents pending ingestion.
+## 🚀 Key Features
 
-## 🚀 Getting Started
+- **Multi-Tenant Architecture**: Supports multiple Facebook Pages and Users with separate configurations and knowledge bases.
+- **OpenRouter Powered**: Integrated with OpenRouter API (OpenAI SDK) for high-performance LLM responses and semantic routing.
+- **Semantic Intent Routing**: Automatically classifies user messages into QA, FAQ, Handoff, or Chitchat to optimize response quality.
+- **Advanced RAG Pipeline**: Uses high-dimensional (2048-dim) embeddings and vector search via Supabase (pgvector) to provide grounded answers.
+- **Automated Human Handoff**: Triggers a handoff to a human agent when the AI confidence score is low or the user requests complex support.
+- **Admin Dashboard**: Next.js-based dashboard to manage configuration, knowledge sources, FAQs, and view analytics.
 
-### 1. Prerequisites
-* Python 3.10+
-* Node.js 18+
-* Supabase Account (for Vector DB)
-* OpenRouter API Key
+## 🛠️ Technology Stack
 
-### 2. Database Initialization (Supabase)
-Execute the following SQL in your Supabase SQL Editor to support **2048-dimensional** vectors (required for NVIDIA Nemo models):
+- **Backend**: FastAPI (Python)
+- **Frontend**: Next.js (React)
+- **Database**: Supabase (PostgreSQL + pgvector)
+- **LLM API**: OpenRouter (GPT, Claude, Llama models)
+- **Memory**: Redis / Upstash (Optional history tracking)
 
-```sql
--- Enable Vector Extension
-create extension if not exists vector;
+## 📦 Project Structure
 
--- Create Documents Table
-create table documents (
-  id bigint primary key generated always as identity,
-  content text,
-  metadata jsonb,
-  embedding vector(2048) 
-);
-
--- Create Search Function
-create or replace function match_documents (
-  query_embedding vector(2048),
-  match_threshold float,
-  match_count int
-)
-returns table (
-  id bigint,
-  content text,
-  metadata jsonb,
-  similarity float
-)
-language plpgsql
-as $$
-begin
-  return query
-  select
-    documents.id,
-    documents.content,
-    documents.metadata,
-    1 - (documents.embedding <=> query_embedding) as similarity
-  from documents
-  where 1 - (documents.embedding <=> query_embedding) > match_threshold
-  order by similarity desc
-  limit match_count;
-end;
-$$;
+```text
+/
+├── admin-dashboard/     # Next.js frontend for bot management
+├── backend/             # FastAPI backend logic
+│   ├── services/        # Business logic: ingestion, faqs, etc.
+│   ├── main.py          # API endpoints & webhooks
+│   ├── message_handler.py # Bot orchestration logic
+│   ├── openrouter_integration.py # LLM interface
+│   └── rag_pipeline.py  # Vector search & RAG logic
+├── raw_data/            # Source documents (.txt, .pdf) for ingestion
+└── requirements.txt     # Python dependencies
 ```
 
-## 🧪 Testing the LLM
+## ⚙️ Setup & Installation
 
-To verify that the LLM and RAG system are working correctly, you can use the built-in test scripts:
+1. **Environment Variables**:
+   Create a `.env` file in the root with:
+   ```env
+   SUPABASE_URL=...
+   SUPABASE_KEY=...
+   OPENROUTER_API_KEY=...
+   VERIFY_TOKEN=...
+   PAGE_ACCESS_TOKEN=...
+   ```
 
-### 1. Interactive Chat Test (Full Pipeline)
-This script tests the intent router, RAG retrieval, and chat completion in an interactive terminal loop.
-```bash
-# Ensure you have the virtual environment active
-./venv/bin/python test_chat.py
-```
+2. **Backend**:
+   ```bash
+   pip install -r requirements.txt
+   uvicorn backend.main:app --reload
+   ```
 
-### 2. Direct Embedding Test
-This script tests the connection to OpenRouter and verifies that embeddings are being generated with the correct 2048 dimensions.
-```bash
-./venv/bin/python backend/scratch_test.py
-```
+3. **Database**:
+   Run the SQL scripts in `backend/setup_supabase.sql` in your Supabase SQL Editor to initialize tables and the vector-search RPC.
 
-### 3. Backend Direct Response Test
-You can also test the raw message handler directly:
-```bash
-./venv/bin/python backend/testtam.py
-```
+4. **Frontend**:
+   ```bash
+   cd admin-dashboard
+   npm install
+   npm run dev
+   ```
+
+## 📝 License
+
+Internal project / Proprietary.

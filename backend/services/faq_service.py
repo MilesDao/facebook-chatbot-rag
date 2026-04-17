@@ -32,11 +32,14 @@ def create_faq(keyword: str, question: str, answer: str, user_id=None):
     except Exception as e:
         raise Exception(f"Error creating FAQ: {e}")
 
-def delete_faq(faq_id: int):
+def delete_faq(faq_id: int, user_id=None):
     if not supabase:
         raise Exception("Supabase client not initialized")
     try:
-        response = supabase.table("faqs").delete().eq("id", faq_id).execute()
+        query = supabase.table("faqs").delete().eq("id", faq_id)
+        if user_id:
+            query = query.eq("user_id", user_id)
+        response = query.execute()
         return response.data
     except Exception as e:
         raise Exception(f"Error deleting FAQ: {e}")

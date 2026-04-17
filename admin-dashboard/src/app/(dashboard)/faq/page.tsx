@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageContext";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";
+import { apiFetch } from "@/lib/auth";
 
 export default function FAQSetup() {
   const { t } = useLanguage();
@@ -14,7 +15,7 @@ export default function FAQSetup() {
 
   const fetchFaqs = async () => {
     try {
-      const res = await fetch("/api/faq");
+      const res = await apiFetch("/api/faq");
       if (res.ok) {
         const data = await res.json();
         setFaqs(data);
@@ -34,9 +35,8 @@ export default function FAQSetup() {
     setLoading(true);
     
     try {
-      const res = await fetch("/api/faq", {
+      const res = await apiFetch("/api/faq", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword, question, answer })
       });
       
@@ -57,7 +57,7 @@ export default function FAQSetup() {
     if (!confirm(t("faq.deleteConfirm"))) return;
     
     try {
-      const res = await fetch(`/api/faq/${faqId}`, {
+      const res = await apiFetch(`/api/faq/${faqId}`, {
         method: "DELETE"
       });
       

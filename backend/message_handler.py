@@ -13,49 +13,78 @@ Responsibilities:
 
 from .intent_router import classify_intent
 from .rag_pipeline import retrieve_context
-from .gemini_integration import generate_response
-from .services.history_service import add_message, get_history # Tích hợp Redis vào đây
+from .openrouter_integration import generate_response
+from .services.history_service import add_message, get_history
 from .services import faq_service
+from .handoff import trigger_handoff
+from .analytics import log_interaction
 
-def handle_message(sender_id: str, user_message: str, user_id: str = None, gemini_key: str = None):
+def handle_message(sender_id: str, user_message: str, user_id: str = None, openrouter_key: str = None):
     """
-    Orchestrate the AI message flow.
+    Orchestrate the AI message flow using OpenRouter and semantic routing.
     """
-    # 1. Check FAQ Database first
-    faq_answer = faq_service.search_faq(user_message, user_id=user_id)
-    if faq_answer:
-        # If match, return immediately and log it
-        analytics.log_interaction(sender_id, user_message, faq_answer, 1.0, False, user_id=user_id)
-        return faq_answer
+    # 1. Classify Intent (Multi-tenant)
+    intent = classify_intent(user_message, openrouter_key=openrouter_key)
+    print(f"DEBUG: Intent for '{user_message[:20]}...' is {intent}")
 
-    # 2. No history (Redis removed)
-    formatted_history = []
+    # 2. Check FAQ Database (High Priority)
+    if intent == "FAQ": # Optional: Use router result to skip if not FAQ, but searching is fast anyway
+        faq_answer = faq_service.search_faq(user_message, user_id=user_id)
+        if faq_answer:
+            log_interaction(sender_id, user_message, faq_answer, 1.0, False, user_id=user_id)
+            return faq_answer
 
-    # 2. RAG retrieve from Supabase
-    context_str, confidence_score = rag_pipeline.retrieve_context(
-        user_message, 
-        user_id=user_id, 
-        gemini_key=gemini_key
-    )
+    # 3. Load History (Redis)
+    history = []
+    try:
+        history = get_history(sender_id, limit=6)
+    except Exception as e:
+        print(f"Error loading history: {e}")
+
+    # 4. Handle based on Intent
+    context_str = ""
+    confidence_score = 1.0
     
-    # 3. Check context confidence for handoff
+    if intent == "QA" or intent == "HANDOFF":
+        # RAG retrieve from Supabase
+        context_str, confidence_score = retrieve_context(
+            user_message, 
+            user_id=user_id, 
+            api_key=openrouter_key
+        )
+    
+    # 5. Check confidence for handoff
     handoff_triggered = False
-    if confidence_score < 0.4 and context_str == "":
-        handoff.trigger_handoff(sender_id, user_message, confidence_score, user_id=user_id)
+    if confidence_score < 0.3 and intent != "CHITCHAT":
+        trigger_handoff(sender_id, user_message, confidence_score, user_id=user_id)
         handoff_triggered = True
         
-    # 4. Call Gemini if confident
-    ai_reply = ChatGoogleGenerativeAI.generate_response(
+    # 6. Generate Response using OpenRouter
+    bot_res = generate_response(
         user_message, 
         context_str, 
-        formatted_history, 
-        api_key=gemini_key
+        history, 
+        openrouter_key=openrouter_key
     )
     
-    # 5. Log analytics
-    analytics.log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered)
+    ai_reply = bot_res.answer
     
-    # 6. (Memory saving removed)
+    # 7. Decide handoff if LLM flagged it
+    if bot_res.needs_human and not handoff_triggered:
+        trigger_handoff(sender_id, user_message, bot_res.confidence_score, user_id=user_id)
+        handoff_triggered = True
+
+    # 8. Log analytics
+    try:
+        log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered, user_id=user_id)
+    except Exception as e:
+        print(f"Analytics Error: {e}")
     
-    # 7. Return/Send response to Messenger
+    # 9. Save to Memory
+    try:
+        add_message(sender_id, role="user", content=user_message)
+        add_message(sender_id, role="assistant", content=ai_reply)
+    except Exception as e:
+        print(f"Memory Error: {e}")
+    
     return ai_reply
