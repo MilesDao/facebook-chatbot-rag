@@ -45,8 +45,8 @@ def generate_response(user_message: str, context: str, history: list, openrouter
     Supports multi-tenant API keys.
     """
     system_prompt = (
-        "You are a friendly, polite, and professional student advisor/consultant at USTH "
-        "(University of Science and Technology of Hanoi), acting as a page admin answering messages on Facebook Messenger. "
+        "You are a friendly, polite, and professional virtual assistant, "
+        "acting as a page admin answering messages on Facebook Messenger. "
         "You chat like a real person: natural, approachable, concise, but always respectful. "
         "Follow these STRICT guidelines:\n"
         "1. TONE: Use the pronoun 'mình' for yourself and 'bạn' for the user. "
@@ -116,9 +116,12 @@ def generate_response(user_message: str, context: str, history: list, openrouter
                 # Fallback: if not JSON, use the whole content as answer
                 return BotResponse(answer=response_content, confidence_score=0.5, needs_human=False)
 
-            # Map the response to BotResponse
+            # Map the response to BotResponse - handle both 'answer' and 'response' keys
+            # as some models might deviate slightly from the schema instructions
+            val_answer = response_data.get("answer") or response_data.get("response") or ""
+            
             return BotResponse(
-                answer=response_data.get("answer", ""),
+                answer=val_answer,
                 confidence_score=float(response_data.get("confidence_score", 0.0)),
                 needs_human=bool(response_data.get("needs_human", False)),
             )

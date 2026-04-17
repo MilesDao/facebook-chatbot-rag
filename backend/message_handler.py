@@ -23,16 +23,20 @@ def handle_message(sender_id: str, user_message: str, user_id: str = None, openr
     """
     Orchestrate the AI message flow using OpenRouter and semantic routing.
     """
-    # 1. Classify Intent (Multi-tenant)
+    # 1. TRUY VẤN FAQ TRƯỚC (FAQ Search First)
+    # This is high priority and doesn't require LLM calls
+    faq_answer = faq_service.search_faq(user_message, user_id=user_id)
+    if faq_answer:
+        print(f"DEBUG: FAQ match found: {faq_answer[:50]}...")
+        # Since it's an exact FAQ match, we log and return immediately
+        log_interaction(sender_id, user_message, faq_answer, 1.0, False, user_id=user_id)
+        add_message(sender_id, "user", user_message)
+        add_message(sender_id, "assistant", faq_answer)
+        return faq_answer
+
+    # 2. PHÂN LOẠI Ý ĐỊNH (Intent Classification)
     intent = classify_intent(user_message, openrouter_key=openrouter_key)
     print(f"DEBUG: Intent for '{user_message[:20]}...' is {intent}")
-
-    # 2. Check FAQ Database (High Priority)
-    if intent == "FAQ": # Optional: Use router result to skip if not FAQ, but searching is fast anyway
-        faq_answer = faq_service.search_faq(user_message, user_id=user_id)
-        if faq_answer:
-            log_interaction(sender_id, user_message, faq_answer, 1.0, False, user_id=user_id)
-            return faq_answer
 
     # 3. Load History (Redis)
     history = []
