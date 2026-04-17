@@ -26,7 +26,6 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     FastAPI dependency — validates the Supabase JWT from the Authorization header.
     Supports both HS256 (symmetric) and ES256 (asymmetric) algorithms.
     """
-    print(f"DEBUG: get_current_user called with auth header: {authorization[:20]}...")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=401,
@@ -68,14 +67,12 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     # Fallback to HS256 (Symmetric)
     jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
     if not jwt_secret:
-        print("DEBUG: SUPABASE_JWT_SECRET is missing!")
         raise HTTPException(
             status_code=500,
             detail="Server misconfiguration: SUPABASE_JWT_SECRET is not set.",
         )
 
     try:
-        print(f"DEBUG: Attempting HS256 decode with secret: {jwt_secret[:5]}...")
         payload = jwt.decode(
             token,
             jwt_secret,
@@ -100,7 +97,6 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
             detail=f"Invalid algorithm: {alg}. Expected HS256/384/512 or ES256.",
         )
     except jwt.InvalidTokenError as e:
-        print(f"DEBUG: JWT invalid: {str(e)}")
         raise HTTPException(
             status_code=401,
             detail=f"Invalid token: {str(e)}",

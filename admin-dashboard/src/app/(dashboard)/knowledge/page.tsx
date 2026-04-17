@@ -82,7 +82,7 @@ export default function KnowledgeBase() {
 
     const formData = new FormData();
     files.forEach(f => {
-      formData.append("files", f);
+      formData.append("file", f);
     });
 
     try {

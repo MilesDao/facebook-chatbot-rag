@@ -66,17 +66,18 @@ class IngestionService:
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.embeddings.create(
-                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                model="google/text-embedding-004",
                 input=chunks,
-                encoding_format="float",
-                extra_body={"input_type": "passage"}
+                encoding_format="float"
             )
             if not result.data:
                 print("Error: No embedding data received from API")
                 return
             embeddings = [r.embedding for r in result.data]
         except Exception as e:
-            print(f"Failed to generate embeddings batch: {e}")
+            print(f"Failed to generate embeddings batch for {filename}: {e}")
+            if "401" in str(e):
+                print("HINT: Your OpenRouter API key might be invalid or your account doesn't have access to this model.")
             return
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):

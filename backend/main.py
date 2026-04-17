@@ -217,17 +217,18 @@ def process_message(sender_id: str, user_message: str, page_id: str):
 # --- Admin API Endpoints ---
 
 @app.post("/api/upload")
-async def upload_files(files: List[UploadFile] = File(...)):
+async def upload_files(file: List[UploadFile] = File(...)):
     """Upload documents to the raw_data directory."""
     uploaded_files = []
     try:
-        for file in files:
-            file_path = os.path.join(RAW_DATA_DIR, file.filename)
+        for f in file:
+            file_path = os.path.join(RAW_DATA_DIR, f.filename)
             with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-            uploaded_files.append(file.filename)
+                shutil.copyfileobj(f.file, buffer)
+            uploaded_files.append(f.filename)
         return {"filenames": uploaded_files, "status": "uploaded"}
     except Exception as e:
+        print(f"ERROR in upload_files: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/index")
@@ -310,9 +311,7 @@ async def get_bot_settings(current_user: dict = Depends(get_current_user)):
     """Fetch bot settings for the current user."""
     user_id = current_user["sub"]
     try:
-        print(f"DEBUG: Fetching settings for user_id: {user_id}")
         response = supabase.table("bot_settings").select("*").eq("user_id", user_id).limit(1).execute()
-        print(f"DEBUG: Fetch response data: {response.data}")
         if not response.data:
             # Create a default entry if not exists
             new_settings = {
@@ -327,9 +326,6 @@ async def get_bot_settings(current_user: dict = Depends(get_current_user)):
             return new_settings
         return response.data[0]
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"DEBUG: Database error in get_bot_settings: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.post("/api/settings")
