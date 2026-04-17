@@ -53,7 +53,7 @@ def handle_message(sender_id: str, user_message: str, user_id: str = None, gemin
     )
     
     # 5. Log analytics
-    analytics.log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered)
+    analytics.log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered, user_id=user_id)
     
     # 6. (Memory saving removed)
     

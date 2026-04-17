@@ -16,7 +16,7 @@ import {
     LogOut
 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
-import { signOut } from "@/lib/auth";
+import { signOut, apiFetch } from "@/lib/auth";
 import { useLanguage } from "@/components/LanguageContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -48,7 +48,6 @@ export default function SettingsPage() {
     const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    const supabase = createClient();
 
     useEffect(() => {
         fetchSettings();
@@ -56,14 +55,7 @@ export default function SettingsPage() {
 
     const fetchSettings = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) return;
-
-            const response = await fetch(`${backendUrl}/api/settings`, {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`
-                }
-            });
+            const response = await apiFetch("/api/settings");
             
             if (response.ok) {
                 const data = await response.json();
@@ -120,15 +112,8 @@ export default function SettingsPage() {
         setMessage(null);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("No session found. Please log in again.");
-
-            const response = await fetch(`${backendUrl}/api/settings`, {
+            const response = await apiFetch("/api/settings", {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`
-                },
                 body: JSON.stringify(settings)
             });
 

@@ -2,7 +2,7 @@ import os
 import requests
 import shutil
 from typing import List, Optional
-from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, File, Form, UploadFile
+from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, File, Form, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -14,6 +14,7 @@ from .message_handler import handle_message
 from .gemini_integration import generate_response
 from .database import supabase
 from .services.ingestion import IngestionService
+from .auth import get_current_user
 
 # Data directory
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "raw_data")
@@ -211,74 +212,111 @@ def process_message(sender_id: str, user_message: str, page_id: str):
 # --- Admin API Endpoints ---
 
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """Upload a document to the raw_data directory."""
+async def upload_file(
+    file: UploadFile = File(...), 
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a document to the user-specific raw_data directory."""
+    user_id = current_user["sub"]
+    user_dir = os.path.join(RAW_DATA_DIR, user_id)
+    os.makedirs(user_dir, exist_ok=True)
+    
     try:
-        file_path = os.path.join(RAW_DATA_DIR, file.filename)
+        file_path = os.path.join(user_dir, file.filename)
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        return {"filename": file.filename, "status": "uploaded"}
+        return {"filename": file.filename, "status": "uploaded", "user_id": user_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/index")
-async def trigger_indexing(background_tasks: BackgroundTasks):
-    """Trigger the RAG ingestion process in the background."""
+async def trigger_indexing(
+    background_tasks: BackgroundTasks, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Trigger the RAG ingestion process for the user's files."""
+    user_id = current_user["sub"]
+    user_dir = os.path.join(RAW_DATA_DIR, user_id)
+    
+    if not os.path.exists(user_dir):
+        return {"status": "error", "message": "No files found to index"}
+
+    # Fetch the user's gemini_api_key to use for embeddings
+    gemini_key = None
+    try:
+        s_res = supabase.table("bot_settings").select("gemini_api_key").eq("user_id", user_id).limit(1).execute()
+        if s_res.data:
+            gemini_key = s_res.data[0].get("gemini_api_key")
+    except Exception as e:
+        print(f"Error fetching gemini_key for indexing: {e}")
+
     def run_indexing():
-        service = IngestionService()
-        service.ingest_directory(RAW_DATA_DIR)
+        service = IngestionService(api_key=gemini_key)
+        # IngestionService needs to be updated to accept user_id
+        service.ingest_directory(user_dir, user_id=user_id)
     
     background_tasks.add_task(run_indexing)
-    return {"status": "indexing_started"}
+    return {"status": "indexing_started", "user_id": user_id}
 
 @app.get("/api/sources")
-async def get_sources():
-    """Fetch list of uploaded raw source files."""
+async def get_sources(current_user: dict = Depends(get_current_user)):
+    """Fetch list of uploaded raw source files for the user."""
+    user_id = current_user["sub"]
+    user_dir = os.path.join(RAW_DATA_DIR, user_id)
+    
     try:
         files = []
-        if os.path.exists(RAW_DATA_DIR):
-            for filename in os.listdir(RAW_DATA_DIR):
-                if os.path.isfile(os.path.join(RAW_DATA_DIR, filename)):
+        if os.path.exists(user_dir):
+            for filename in os.listdir(user_dir):
+                if os.path.isfile(os.path.join(user_dir, filename)):
                     files.append({"id": filename, "name": filename})
         return files
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/sources/{filename}")
-async def delete_source(filename: str):
-    """Delete a raw source file and its embeddings from the database."""
+async def delete_source(
+    filename: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a user's raw source file and its embeddings from the database."""
+    user_id = current_user["sub"]
+    user_dir = os.path.join(RAW_DATA_DIR, user_id)
+    
     try:
         # Delete from disk
-        file_path = os.path.join(RAW_DATA_DIR, filename)
+        file_path = os.path.join(user_dir, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
             
-        # Delete from DB
+        # Delete from DB (metadata contains source filename)
         if supabase:
-            supabase.table("documents").delete().contains("metadata", {"source": filename}).execute()
+            supabase.table("documents").delete().eq("user_id", user_id).contains("metadata", {"source": filename}).execute()
             
-        return {"status": "success"}
+        return {"status": "success", "user_id": user_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/analytics")
-async def get_analytics():
-    """Fetch recent logs from Supabase."""
+async def get_analytics(current_user: dict = Depends(get_current_user)):
+    """Fetch recent logs from Supabase for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("logs").select("*").order("created_at", desc=True).limit(50).execute()
+        response = supabase.table("logs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(50).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/handoffs")
-async def get_handoffs():
-    """Fetch all handoff requests."""
+async def get_handoffs(current_user: dict = Depends(get_current_user)):
+    """Fetch all handoff requests for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").select("*").order("created_at", desc=True).limit(100).execute()
+        response = supabase.table("handoffs").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(100).execute()
         return response.data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -333,19 +371,29 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @app.get("/api/handoffs/{handoff_id}/chat-link")
-async def get_chat_link(handoff_id: str):
-    """Fetch the direct Business Suite chat link for a conversation."""
-    if not supabase or not PAGE_ACCESS_TOKEN:
-        raise HTTPException(status_code=500, detail="Database or Token not configured")
+async def get_chat_link(
+    handoff_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Fetch the direct Business Suite chat link using the user's specific token."""
+    user_id = current_user["sub"]
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
         
     try:
-        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Handoff not found")
-            
-        sender_id = response.data[0]["sender_id"]
+        # 1. Fetch the handoff (ensure it belongs to the user)
+        h_res = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).eq("user_id", user_id).execute()
+        if not h_res.data:
+            raise HTTPException(status_code=404, detail="Handoff not found or unauthorized")
+        sender_id = h_res.data[0]["sender_id"]
+
+        # 2. Fetch the user's Page Access Token
+        s_res = supabase.table("bot_settings").select("page_access_token").eq("user_id", user_id).limit(1).execute()
+        if not s_res.data or not s_res.data[0].get("page_access_token"):
+            raise HTTPException(status_code=400, detail="Page Access Token not configured for your account")
+        token = s_res.data[0]["page_access_token"]
         
-        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={PAGE_ACCESS_TOKEN}"
+        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={token}"
         r = requests.get(url)
         r.raise_for_status()
         data = r.json()
@@ -362,38 +410,51 @@ async def get_chat_link(handoff_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/handoffs/{handoff_id}/resolve")
-async def resolve_handoff(handoff_id: str):
-    """Mark a handoff as resolved."""
+async def resolve_handoff(
+    handoff_id: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Mark a handoff as resolved for the current user."""
+    user_id = current_user["sub"]
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).execute()
+        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).eq("user_id", user_id).execute()
         return {"status": "success", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/faq")
-async def get_faqs():
-    """Fetch all FAQs."""
+async def get_faqs(current_user: dict = Depends(get_current_user)):
+    """Fetch all FAQs for the current user."""
+    user_id = current_user["sub"]
     from .services.faq_service import get_all_faqs
-    return get_all_faqs()
+    return get_all_faqs(user_id=user_id)
 
 @app.post("/api/faq")
-async def create_faq(faq: FAQCreate):
-    """Create a new FAQ."""
+async def create_faq(
+    faq: FAQCreate, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Create a new FAQ for the current user."""
+    user_id = current_user["sub"]
     from .services.faq_service import create_faq
     try:
-        data = create_faq(faq.keyword, faq.question, faq.answer)
+        data = create_faq(faq.keyword, faq.question, faq.answer, user_id=user_id)
         return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/faq/{faq_id}")
-async def delete_faq(faq_id: int):
-    """Delete an FAQ by ID."""
+async def delete_faq(
+    faq_id: int, 
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an FAQ by ID (unauthorized scoping is done in services)."""
+    user_id = current_user["sub"]
     from .services.faq_service import delete_faq
     try:
-        data = delete_faq(faq_id)
+        data = delete_faq(faq_id, user_id=user_id)
         return {"status": "success", "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

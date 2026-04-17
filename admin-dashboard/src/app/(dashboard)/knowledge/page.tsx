@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Trash2
 } from "lucide-react";
+import { apiFetch } from "@/lib/auth";
 
 export default function KnowledgeBase() {
   const { t } = useLanguage();
@@ -41,7 +42,7 @@ export default function KnowledgeBase() {
 
   const fetchSources = async () => {
     try {
-      const res = await fetch("/api/sources");
+      const res = await apiFetch("/api/sources");
       if (res.ok) {
         setSources(await res.json());
       }
@@ -57,7 +58,9 @@ export default function KnowledgeBase() {
   const handleDeleteSource = async (filename: string) => {
     if (!confirm(t("knowledge.deleteConfirm"))) return;
     try {
-      const res = await fetch(`/api/sources/${filename}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/sources/${filename}`, { 
+        method: "DELETE"
+      });
       if (res.ok) {
         await fetchSources();
       }
@@ -81,7 +84,7 @@ export default function KnowledgeBase() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("/api/upload", {
+      const res = await apiFetch("/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -106,7 +109,7 @@ export default function KnowledgeBase() {
     setStatus(t("knowledge.indexing"));
 
     try {
-      const res = await fetch("/api/index", {
+      const res = await apiFetch("/api/index", {
         method: "POST"
       });
 

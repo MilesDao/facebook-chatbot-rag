@@ -114,7 +114,7 @@ create policy "Users can manage own documents"
 -- STEP 7: Update match_documents RPC to filter by user_id
 -- =====================================================================
 create or replace function match_documents (
-  query_embedding  vector(2048),
+  query_embedding  vector(768),
   match_threshold  float,
   match_count      int,
   p_user_id        uuid

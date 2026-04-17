@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Activity
 } from "lucide-react";
+import { apiFetch } from "@/lib/auth";
 
 export default function Overview() {
   const { t } = useLanguage();
@@ -20,6 +21,7 @@ export default function Overview() {
     avgConfidence: 0,
     handoffRate: 0
   });
+  const [loading, setLoading] = useState(true);
 
   const groupedLogs = useMemo(() => {
     const groups: Record<string, { sender_id: string; totalScore: number; items: any[] }> = {};
@@ -46,7 +48,8 @@ export default function Overview() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const res = await fetch("/api/analytics");
+        const res = await apiFetch("/api/analytics");
+        
         if (res.ok) {
           const data = await res.json();
           setLogs(data);
@@ -66,6 +69,8 @@ export default function Overview() {
         }
       } catch (err) {
         console.error("Failed to fetch analytics:", err);
+      } finally {
+        setLoading(false);
       }
     }
     fetchData();

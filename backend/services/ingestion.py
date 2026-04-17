@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 class IngestionService:
-    def __init__(self):
+    def __init__(self, api_key: str = None):
         print("Initializing Ingestion Service with Gemini Embedding")
         # Load local embedding model
-        self.api_key = os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         if not self.api_key:
             print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
@@ -24,7 +24,7 @@ class IngestionService:
             separators=["\n\n", "\n", " ", ""]
         )
 
-    def ingest_file(self, filepath: str):
+    def ingest_file(self, filepath: str, user_id: str = None):
         if not self.client or not supabase:    
             print("Client or Supabase not initialized.")
             return
@@ -86,16 +86,20 @@ class IngestionService:
             
             # Insert to Supabase DB table `documents`
             try:
-                supabase.table("documents").insert({
+                doc_data = {
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
                     "embedding": embedding # padded to 768
-                }).execute()
-                print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
+                }
+                if user_id:
+                    doc_data["user_id"] = user_id
+                    
+                supabase.table("documents").insert(doc_data).execute()
+                print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename} (User: {user_id})")
             except Exception as e:
                 print(f"  > Failed to insert chunk {i}: {e}")
 
-    def ingest_directory(self, data_dir: str):
+    def ingest_directory(self, data_dir: str, user_id: str = None):
         if not os.path.exists(data_dir):
             print(f"Data directory not found at {data_dir}")
             return
@@ -107,5 +111,5 @@ class IngestionService:
             return
 
         for filepath in files:
-            self.ingest_file(filepath)
+            self.ingest_file(filepath, user_id=user_id)
 

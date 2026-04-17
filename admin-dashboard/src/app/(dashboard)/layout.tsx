@@ -1,11 +1,9 @@
-import Link from "next/link";
-import {
-  BarChart3,
-  Database,
-  Inbox,
-  Settings,
-  HelpCircle,
-} from "lucide-react";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Sidebar } from "@/components/Sidebar";
+import { createClient } from "@/lib/supabase";
 
 /**
  * Dashboard layout — wraps all authenticated pages with the sidebar.
@@ -17,36 +15,46 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function checkAuth() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+      } else {
+        setLoading(false);
+      }
+    }
+    checkAuth();
+  }, [router, supabase]);
+
+  if (loading) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        width: '100vw', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: 'var(--background)'
+      }}>
+        <div className="animate-spin" style={{ 
+          width: '40px', 
+          height: '40px', 
+          border: '4px solid var(--accent)', 
+          borderTopColor: 'transparent', 
+          borderRadius: '50%' 
+        }} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <aside className="sidebar glass">
-        <div style={{ padding: "0 16px" }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <BarChart3 color="#3b82f6" /> AI Admin
-          </h2>
-        </div>
-        <nav style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          <Link href="/" className="nav-item">
-            <BarChart3 size={20} /> Overview
-          </Link>
-          <Link href="/knowledge" className="nav-item">
-            <Database size={20} /> Knowledge
-          </Link>
-          <Link href="/faq" className="nav-item">
-            <HelpCircle size={20} /> FAQ Setup
-          </Link>
-          <Link href="/handoffs" className="nav-item">
-            <Inbox size={20} /> Handoff Inbox
-          </Link>
-        </nav>
-
-        <div style={{ marginTop: "auto" }}>
-          <Link href="/settings" className="nav-item">
-            <Settings size={20} /> Settings
-          </Link>
-        </div>
-      </aside>
-
+      <Sidebar />
       <main className="main-content">{children}</main>
     </>
   );
