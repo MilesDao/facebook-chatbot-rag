@@ -173,13 +173,19 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     except Exception as e:
         print(f"ERROR fetching settings for page {page_id}: {e}")
 
-    token = settings.get("page_access_token") or os.getenv("PAGE_ACCESS_TOKEN")
-    openrouter_key = settings.get("openrouter_api_key") or os.getenv("OPENROUTER_API_KEY")
+    token = settings.get("page_access_token")
+    openrouter_key = settings.get("openrouter_api_key")
     user_id = settings.get("user_id")
 
     if not token:
         print(f"CRITICAL: No access token available for page {page_id}. Aborting.")
+        print("DEBUG: Checked Database settings. Ensure you have saved your Page ID and Token in the dashboard.")
         return
+        
+    if not openrouter_key:
+        print(f"WARNING: No OpenRouter API Key available for page {page_id}. Using free models if model name allows.")
+    else:
+        print(f"DEBUG: Using user-provided OpenRouter Key (Redacted: {openrouter_key[:6]}...)")
 
     # Helper function to send message using specific token
     def send_fb(sender: str, text: str, fb_token: str):
