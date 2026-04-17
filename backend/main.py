@@ -224,13 +224,32 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         llm_model = settings.get("llm_model") or "openai/gpt-oss-120b:free"
         print(f"Generating AI response for: {user_message[:50]}... using model {llm_model}")
         # Update handle_message to accept our parameters
-        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key, llm_model=llm_model)
+        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key, llm_model=llm_model) or ""
+        
+        if not reply.strip():
+            print("WARNING: AI returned empty reply. Using fail-safe.")
+            reply = "Dạ mình chưa tìm thấy thông tin này [SPLIT] Bạn có thể hỏi cụ thể hơn được không ạ?"
+            
         print(f"AI Response generated: {reply[:50]}...")
     except Exception as e:
         print(f"ERROR in handle_message flow: {e}")
-        reply = "I'm sorry, I encountered an error processing your request."
+        reply = "Dạ mình đang gặp một chút sự cố kỹ thuật [SPLIT] Bạn vui lòng nhắn lại sau ít phút nhé ạ."
 
-    send_fb(sender_id, reply, token)
+    # 4. Handle [SPLIT] tag and send multiple bubbles
+    parts = [p.strip() for p in reply.split("[SPLIT]") if p.strip()]
+    if not parts:
+        parts = ["Dạ mình đã nhận được thông tin, mình sẽ phản hồi bạn sớm nhé ạ."]
+
+    for part in parts:
+        # Send each part as a separate message
+        print(f"Sending bubble to {sender_id}: {part[:50]}...")
+        send_fb(sender_id, part, token)
+        # Small delay between bubbles to preserve order and look natural
+        time.sleep(0.8)
+    
+    # 5. Turn off typing indicator
+    send_fb_action(sender_id, "typing_off", token)
+    
     print(f"--- Finished processing {sender_id} ---")
 
 # --- Admin API Endpoints ---
