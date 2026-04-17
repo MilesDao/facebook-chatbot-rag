@@ -181,7 +181,7 @@ export default function SettingsPage() {
                     }}
                 >
                     {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                    {saving ? t("settings.saving") || "Saving..." : t("settings.saveBtn") || "Save Changes"}
+                    {saving ? t("settings.saving") || "Saving..." : "Save"}
                 </button>
             </header>
 
