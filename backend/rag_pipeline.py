@@ -80,15 +80,26 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
         return "", 0.0
     
     data = response.data
+    print(f"DEBUG: RAG search returned {len(data) if data else 0} results for user {user_id}")
     
     if not data:
         return "", 0.0
         
     # Extract the context text blocks and concatenate
-    contexts = [str(doc['content']) for doc in data if 'content' in doc]
+    contexts = []
+    for doc in data:
+        content = doc.get('content', '')
+        score = doc.get('similarity', 0.0)
+        print(f"DEBUG: Found chunk with score {score:.4f}: {content[:50]}...")
+        if content:
+             contexts.append(str(content))
+             
     context_str = "\n\n".join(contexts)
     
     # The highest similarity score is always at index 0 from our SQL sorting
     best_score = float(data[0].get('similarity', 0.0))
+    print(f"DEBUG: Final retrieval score: {best_score:.4f}")
+    
+    return context_str, best_score
     
     return context_str, best_score

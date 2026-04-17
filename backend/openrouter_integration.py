@@ -103,7 +103,18 @@ def generate_response(user_message: str, context: str, history: list, openrouter
 
             # Extract and parse the JSON response
             response_content = completion.choices[0].message.content
-            response_data = json.loads(response_content)
+            print(f"DEBUG: Raw OpenRouter response: {response_content}")
+            
+            if not response_content:
+                 print("WARNING: OpenRouter returned empty content.")
+                 return BotResponse(answer="", confidence_score=0.0, needs_human=True)
+
+            try:
+                response_data = json.loads(response_content)
+            except Exception as json_err:
+                print(f"ERROR: Failed to parse JSON from LLM: {json_err}")
+                # Fallback: if not JSON, use the whole content as answer
+                return BotResponse(answer=response_content, confidence_score=0.5, needs_human=False)
 
             # Map the response to BotResponse
             return BotResponse(
