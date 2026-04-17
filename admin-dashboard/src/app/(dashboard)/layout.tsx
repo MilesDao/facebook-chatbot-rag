@@ -1,16 +1,15 @@
 "use client";
 
+// Force dynamic rendering to ensure middleware/auth checks skip static cache
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { createClient } from "@/lib/supabase";
 
 /**
  * Dashboard layout — wraps all authenticated pages with the sidebar.
- * Only applied to routes inside the (dashboard) route group.
- * Auth pages (login/register) use (auth)/layout.tsx instead.
+ * Authenticated redirection is handled at the server level by middleware.ts.
  */
 export default function DashboardLayout({
   children,
@@ -18,20 +17,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-      } else {
+      // If no session, middleware should have intercepted it. 
+      // This is a client-side fallback.
+      if (session) {
         setLoading(false);
       }
     }
     checkAuth();
-  }, [router, supabase]);
+  }, [supabase]);
 
   if (loading) {
     return (
