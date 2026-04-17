@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/components/LanguageContext";
 import { HelpCircle, Plus, Trash2 } from "lucide-react";

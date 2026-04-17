@@ -28,6 +28,16 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 let _browserClientInstance: ReturnType<typeof _createBrowserClient> | null = null;
 
 export function createClient() {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    // Return a dummy client during build to prevent crashes
+    return {
+      auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        getUser: async () => ({ data: { user: null }, error: null }),
+        onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
+      },
+    } as any;
+  }
   if (!_browserClientInstance) {
     _browserClientInstance = _createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
@@ -40,6 +50,14 @@ export function createClient() {
  * Must NOT be a singleton — each request has its own cookie store.
  */
 export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return {
+      auth: {
+        getSession: async () => ({ data: { session: null }, error: null }),
+        getUser: async () => ({ data: { user: null }, error: null }),
+      },
+    } as any;
+  }
   return _createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
       getAll() {
