@@ -28,7 +28,10 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
 let _browserClientInstance: ReturnType<typeof _createBrowserClient> | null = null;
 
 export function createClient() {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const isInvalidUrl = !SUPABASE_URL || SUPABASE_URL === "undefined" || !SUPABASE_URL.startsWith("http");
+  const isInvalidKey = !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "undefined";
+
+  if (isInvalidUrl || isInvalidKey) {
     // Return a dummy client during build to prevent crashes
     return {
       auth: {
@@ -50,7 +53,10 @@ export function createClient() {
  * Must NOT be a singleton — each request has its own cookie store.
  */
 export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const isInvalidUrl = !SUPABASE_URL || SUPABASE_URL === "undefined" || !SUPABASE_URL.startsWith("http");
+  const isInvalidKey = !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === "undefined";
+
+  if (isInvalidUrl || isInvalidKey) {
     return {
       auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
