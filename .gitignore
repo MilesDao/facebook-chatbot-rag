@@ -9,7 +9,7 @@ venv/
 env/
 ENV/
 bin/
-lib/
+/lib/
 include/
 share/
 pyvenv.cfg

@@ -1,25 +1,70 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLanguage } from "@/components/LanguageContext";
 import { 
   FileUp, 
   Database, 
   RefreshCw, 
   FileText,
   Search,
-  CheckCircle2
+  CheckCircle2,
+  Trash2
 } from "lucide-react";
 
 export default function KnowledgeBase() {
+  const { t } = useLanguage();
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [docsCount, setDocsCount] = useState(0);
+  const [sources, setSources] = useState<{id: string, name: string}[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      setFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const fetchSources = async () => {
+    try {
+      const res = await fetch("/api/sources");
+      if (res.ok) {
+        setSources(await res.json());
+      }
+    } catch (err) {
+      console.error("Failed to fetch sources:", err);
+    }
+  };
 
   useEffect(() => {
-    // Initial fetch of docs count or similar if needed
+    fetchSources();
   }, []);
+
+  const handleDeleteSource = async (filename: string) => {
+    if (!confirm(t("knowledge.deleteConfirm"))) return;
+    try {
+      const res = await fetch(`/api/sources/${filename}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchSources();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -30,7 +75,7 @@ export default function KnowledgeBase() {
   const handleUpload = async () => {
     if (!file) return;
     setUploading(true);
-    setStatus("Uploading...");
+    setStatus(t("knowledge.uploading"));
 
     const formData = new FormData();
     formData.append("file", file);
@@ -42,14 +87,15 @@ export default function KnowledgeBase() {
       });
 
       if (res.ok) {
-        setStatus("File uploaded successfully! Ready to index.");
+        setStatus(t("knowledge.statusUploadSuccess"));
         setFile(null);
+        await fetchSources();
       } else {
-        setStatus("Upload failed.");
+        setStatus(t("knowledge.statusUploadFail"));
       }
     } catch (err) {
       console.error(err);
-      setStatus("Error connecting to backend.");
+      setStatus(t("knowledge.statusError"));
     } finally {
       setUploading(false);
     }
@@ -57,7 +103,7 @@ export default function KnowledgeBase() {
 
   const handleIndex = async () => {
     setIndexing(true);
-    setStatus("Indexing in progress...");
+    setStatus(t("knowledge.indexing"));
 
     try {
       const res = await fetch("/api/index", {
@@ -65,13 +111,13 @@ export default function KnowledgeBase() {
       });
 
       if (res.ok) {
-        setStatus("Indexing started in background. Refresh in a moment.");
+        setStatus(t("knowledge.statusIndexSuccess"));
       } else {
-        setStatus("Failed to start indexing.");
+        setStatus(t("knowledge.statusIndexFail"));
       }
     } catch (err) {
       console.error(err);
-      setStatus("Error connecting to backend.");
+      setStatus(t("knowledge.statusError"));
     } finally {
       setIndexing(false);
     }
@@ -80,35 +126,53 @@ export default function KnowledgeBase() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px' }}>Knowledge Base</h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)' }}>Manage the training data and RAG retrieval sources.</p>
+        <h1 style={{ fontSize: '32px' }}>{t("knowledge.title")}</h1>
+        <p style={{ color: 'var(--text-muted)' }}>{t("knowledge.desc")}</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-            <FileUp color="#3b82f6" />
-            <h2 style={{ margin: 0 }}>Add Knowledge</h2>
+            <FileUp color="var(--accent)" />
+            <h2 style={{ margin: 0 }}>{t("knowledge.addSource")}</h2>
           </div>
           
-          <div style={{ 
-            border: '2px dashed rgba(255,255,255,0.1)', 
-            borderRadius: '12px', 
-            padding: '40px', 
-            textAlign: 'center',
-            marginBottom: '20px'
-          }}>
-            <FileText size={48} color="rgba(255,255,255,0.2)" style={{ marginBottom: '16px' }} />
-            <p style={{ marginBottom: '16px', fontSize: '14px' }}>{file ? file.name : "Select a .txt or .pdf file"}</p>
+          <div 
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            style={{ 
+              border: `2px ${isDragging ? 'solid' : 'dashed'} ${isDragging ? 'var(--accent)' : 'var(--card-border)'}`, 
+              borderRadius: '12px', 
+              padding: '40px', 
+              textAlign: 'center',
+              marginBottom: '20px',
+              background: isDragging ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+              transition: 'all 0.2s ease',
+              cursor: 'pointer'
+            }}
+            onClick={() => document.getElementById('file-upload')?.click()}
+          >
+            <FileText size={48} color={isDragging ? 'var(--accent)' : 'var(--text-muted)'} style={{ marginBottom: '16px', transition: 'all 0.2s ease' }} />
+            <p style={{ 
+              marginBottom: '16px', 
+              fontSize: '14px', 
+              pointerEvents: 'none',
+              color: isDragging ? 'var(--accent)' : 'inherit',
+              fontWeight: isDragging ? 'bold' : 'normal',
+              transition: 'all 0.2s ease'
+            }}>
+              {isDragging ? t("knowledge.dropHere") : (file ? file.name : t("knowledge.selectFile"))}
+            </p>
             <input 
               type="file" 
               id="file-upload" 
               onChange={handleFileChange} 
               style={{ display: 'none' }} 
-              accept=".txt,.pdf"
+              accept=".txt,.pdf,.docx"
             />
-            <label htmlFor="file-upload" className="btn btn-secondary">
-              Browse Files
+            <label htmlFor="file-upload" className="btn btn-secondary" style={{ pointerEvents: 'none' }}>
+              {t("knowledge.browse")}
             </label>
           </div>
 
@@ -118,17 +182,17 @@ export default function KnowledgeBase() {
             onClick={handleUpload}
             disabled={!file || uploading}
           >
-            {uploading ? "Uploading..." : "Upload to Backend"}
+            {uploading ? t("knowledge.uploading") : t("knowledge.uploadBtn")}
           </button>
         </div>
 
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
             <Database color="#22c55e" />
-            <h2 style={{ margin: 0 }}>RAG Indexing</h2>
+            <h2 style={{ margin: 0 }}>{t("knowledge.ragTitle") || "RAG Indexing"}</h2>
           </div>
-          <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginBottom: '24px' }}>
-            After uploading files, you must trigger the indexing process to update the Supabase vector database.
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+            {t("knowledge.ragDesc")}
           </p>
 
           <button 
@@ -141,7 +205,7 @@ export default function KnowledgeBase() {
               size={18}
               style={indexing ? { animation: 'spin 2s linear infinite' } : {}}
             />
-            {indexing ? "Indexing..." : "Trigger Re-indexing"}
+            {indexing ? t("knowledge.indexing") : t("knowledge.indexBtn")}
           </button>
 
           {status && (
@@ -150,7 +214,7 @@ export default function KnowledgeBase() {
               padding: '12px', 
               borderRadius: '8px', 
               background: 'rgba(59, 130, 246, 0.1)', 
-              color: '#3b82f6',
+              color: 'var(--accent)',
               fontSize: '14px',
               display: 'flex',
               alignItems: 'center',
@@ -162,7 +226,38 @@ export default function KnowledgeBase() {
         </div>
       </div>
 
-      {/* Keyframe injected via globals.css — styled-jsx removed (not supported in App Router) */}
+      <div className="card glass" style={{ marginTop: '24px' }}>
+        <h2 style={{ marginBottom: '20px' }}>{t("knowledge.existing")}</h2>
+        {sources.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>{t("knowledge.emptySources")}</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {sources.map(source => (
+              <div key={source.id} style={{ 
+                background: 'var(--nav-hover)', 
+                border: '1px solid var(--card-border)', 
+                padding: '16px', 
+                borderRadius: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <FileText color="var(--text-muted)" size={20} />
+                  <span style={{ color: 'var(--foreground)', fontSize: '15px' }}>{source.name}</span>
+                </div>
+                <button 
+                  onClick={() => handleDeleteSource(source.id)}
+                  style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                  title="Delete Source"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) }
+      </div>
     </>
   );
 }

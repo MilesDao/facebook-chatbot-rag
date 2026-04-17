@@ -34,6 +34,14 @@ class FAQCreate(BaseModel):
     question: Optional[str] = ""
     answer: str
 
+from pydantic import BaseModel, Field
+
+class BotSettingsUpdate(BaseModel):
+    page_access_token: str = Field(..., min_length=20)
+    gemini_api_key: str = Field(..., min_length=15)
+    page_id: str = Field(..., min_length=10, pattern=r"^\d+$")
+    verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
+
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
 # Enable CORS for the Admin Dashboard
@@ -108,8 +116,21 @@ def verify_webhook(request: Request):
     hub_verify_token = request.query_params.get("hub.verify_token") or request.query_params.get("hub_verify_token")
     hub_challenge = request.query_params.get("hub.challenge") or request.query_params.get("hub_challenge")
 
-    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+    if hub_mode != "subscribe":
+        return {"error": "Invalid hub.mode"}
+
+    # 1. Check global default first (fallback)
+    if hub_verify_token == VERIFY_TOKEN:
         return Response(content=hub_challenge, media_type="text/plain")
+
+    # 2. Check Database for any user with this verify_token
+    from .database import supabase
+    try:
+        response = supabase.table("bot_settings").select("id").eq("verify_token", hub_verify_token).limit(1).execute()
+        if response.data:
+            return Response(content=hub_challenge, media_type="text/plain")
+    except Exception as e:
+        print(f"Error verifying token in database: {e}")
 
     return {"error": "Verification failed"}
 
@@ -119,41 +140,74 @@ async def webhook_endpoint(request: Request, background_tasks: BackgroundTasks):
         body = await request.json()
         if body.get("object") == "page":
             for entry in body.get("entry", []):
+                page_id = entry.get("id")
                 for msg in entry.get("messaging", []):
                     sender_id = msg.get("sender", {}).get("id")
                     message = msg.get("message", {})
                     user_text = message.get("text")
                     if sender_id and user_text:
-                        background_tasks.add_task(process_message, sender_id, user_text)
+                        background_tasks.add_task(process_message, sender_id, user_text, page_id)
     except Exception as e:
         print(f"Error processing webhook: {e}")
     return {"status": "ok"}
 
-def process_message(sender_id: str, user_text: str):
-    # 1. Báo đã xem tin nhắn
-    send_action(sender_id, "mark_seen")
+def process_message(sender_id: str, user_message: str, page_id: str):
+    """
+    Process message for a specific Page ID (multi-tenant)
+    """
+    print(f"--- Processing message from {sender_id} for Page {page_id} ---")
     
-    # 2. Lấy câu trả lời từ AI (lúc này nó đang chứa các cụm [SPLIT])
-    # Lưu ý: Hàm handle_message của chị ở bên dưới sẽ tự gọi Gemini
-    ai_full_response = handle_message(sender_id, user_text)
+    # 1. Fetch settings for this Page ID
+    from .database import supabase
+    settings = {}
+    try:
+        response = supabase.table("bot_settings").select("*").eq("page_id", page_id).limit(1).execute()
+        if response.data:
+            settings = response.data[0]
+            print(f"Settings found in DB for Page {page_id}")
+        else:
+            print(f"WARNING: No settings found in DB for Page {page_id}")
+    except Exception as e:
+        print(f"ERROR fetching settings for page {page_id}: {e}")
+
+    token = settings.get("page_access_token") or os.getenv("PAGE_ACCESS_TOKEN")
+    gemini_key = settings.get("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+    user_id = settings.get("user_id")
+
+    if not token:
+        print(f"CRITICAL: No access token available for page {page_id}. Aborting.")
+        return
+
+    # Helper function to send message using specific token
+    def send_fb(sender: str, text: str, fb_token: str):
+        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+        try:
+            res = requests.post(url, json={"recipient": {"id": sender}, "message": {"text": text}})
+            res.raise_for_status()
+            print(f"Successfully sent reply to {sender}")
+        except Exception as e:
+            print(f"Error sending reply to {sender}: {e}")
+
+    # Helper function to send typing action
+    def send_fb_action(sender: str, action: str, fb_token: str):
+        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+        requests.post(url, json={"recipient": {"id": sender}, "sender_action": action})
+
+    print("Sending mark_seen and typing_on...")
+    send_fb_action(sender_id, "mark_seen", token)
+    send_fb_action(sender_id, "typing_on", token)
     
-    # 3. Tách chuỗi dựa trên từ khóa [SPLIT]
-    messages = [msg.strip() for msg in ai_full_response.split("[SPLIT]") if msg.strip()]
-    
-    # 4. Gửi lần lượt từng tin nhắn
-    for msg in messages:
-        # Bật hiệu ứng đang gõ
-        send_action(sender_id, "typing_on")
-        
-        # Tính toán thời gian giả lập gõ phím
-        typing_time = len(msg) / 25.0 + 0.8 
-        typing_time = min(typing_time, 4.0) # Gõ tối đa 4 giây để khách không đợi lâu
-        
-        # Dừng luồng một chút
-        time.sleep(typing_time)
-        
-        # Gửi tin nhắn ra
-        send_message(sender_id, msg)
+    try:
+        print(f"Generating AI response for: {user_message[:50]}...")
+        # Update handle_message to accept our parameters
+        reply = handle_message(sender_id, user_message, user_id=user_id, gemini_key=gemini_key)
+        print(f"AI Response generated: {reply[:50]}...")
+    except Exception as e:
+        print(f"ERROR in handle_message flow: {e}")
+        reply = "I'm sorry, I encountered an error processing your request."
+
+    send_fb(sender_id, reply, token)
+    print(f"--- Finished processing {sender_id} ---")
 
 # --- Admin API Endpoints ---
 
@@ -178,6 +232,36 @@ async def trigger_indexing(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_indexing)
     return {"status": "indexing_started"}
 
+@app.get("/api/sources")
+async def get_sources():
+    """Fetch list of uploaded raw source files."""
+    try:
+        files = []
+        if os.path.exists(RAW_DATA_DIR):
+            for filename in os.listdir(RAW_DATA_DIR):
+                if os.path.isfile(os.path.join(RAW_DATA_DIR, filename)):
+                    files.append({"id": filename, "name": filename})
+        return files
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/sources/{filename}")
+async def delete_source(filename: str):
+    """Delete a raw source file and its embeddings from the database."""
+    try:
+        # Delete from disk
+        file_path = os.path.join(RAW_DATA_DIR, filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            
+        # Delete from DB
+        if supabase:
+            supabase.table("documents").delete().contains("metadata", {"source": filename}).execute()
+            
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/analytics")
 async def get_analytics():
     """Fetch recent logs from Supabase."""
@@ -191,12 +275,101 @@ async def get_analytics():
 
 @app.get("/api/handoffs")
 async def get_handoffs():
-    """Fetch active handoff requests."""
+    """Fetch all handoff requests."""
     if not supabase:
         raise HTTPException(status_code=500, detail="Database not configured")
     try:
-        response = supabase.table("handoffs").select("*").eq("status", "active").order("created_at", desc=True).execute()
+        response = supabase.table("handoffs").select("*").order("created_at", desc=True).limit(100).execute()
         return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Settings Management ---
+from .auth import get_current_user
+from fastapi import Depends
+
+@app.get("/api/settings")
+async def get_bot_settings(current_user: dict = Depends(get_current_user)):
+    """Fetch bot settings for the current user."""
+    user_id = current_user["sub"]
+    try:
+        response = supabase.table("bot_settings").select("*").eq("user_id", user_id).limit(1).execute()
+        if not response.data:
+            # Create a default entry if not exists
+            new_settings = {
+                "user_id": user_id,
+                "page_access_token": "",
+                "gemini_api_key": "",
+                "page_id": ""
+            }
+            supabase.table("bot_settings").insert(new_settings).execute()
+            return new_settings
+        return response.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.post("/api/settings")
+async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = Depends(get_current_user)):
+    """Update bot settings for the current user using upsert."""
+    user_id = current_user["sub"]
+    try:
+        data = {
+            "user_id": user_id,
+            "page_access_token": settings.page_access_token,
+            "gemini_api_key": settings.gemini_api_key,
+            "page_id": settings.page_id,
+            "verify_token": settings.verify_token,
+            "updated_at": "now()"
+        }
+        # Use upsert to handle both insert and update
+        response = supabase.table("bot_settings").upsert(data, on_conflict="user_id").execute()
+        
+        if hasattr(response, 'error') and response.error:
+             raise HTTPException(status_code=500, detail=f"Supabase Error: {response.error.message}")
+             
+        print(f"Settings updated for user {user_id}")
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        print(f"Error updating settings: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@app.get("/api/handoffs/{handoff_id}/chat-link")
+async def get_chat_link(handoff_id: str):
+    """Fetch the direct Business Suite chat link for a conversation."""
+    if not supabase or not PAGE_ACCESS_TOKEN:
+        raise HTTPException(status_code=500, detail="Database or Token not configured")
+        
+    try:
+        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="Handoff not found")
+            
+        sender_id = response.data[0]["sender_id"]
+        
+        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={PAGE_ACCESS_TOKEN}"
+        r = requests.get(url)
+        r.raise_for_status()
+        data = r.json()
+        
+        if "data" in data and len(data["data"]) > 0:
+            link = data["data"][0].get("link")
+            if link:
+                return {"status": "success", "link": link}
+                
+        return {"status": "success", "link": f"https://business.facebook.com/latest/inbox/all?selected_item_id={sender_id}"}
+        
+    except Exception as e:
+        print(f"Error fetching chat link: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/handoffs/{handoff_id}/resolve")
+async def resolve_handoff(handoff_id: str):
+    """Mark a handoff as resolved."""
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).execute()
+        return {"status": "success", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -223,6 +396,32 @@ async def delete_faq(faq_id: int):
     try:
         data = delete_faq(faq_id)
         return {"status": "success", "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/settings/{key}")
+async def get_setting(key: str):
+    """Get a specific setting value."""
+    from .services.settings_service import SettingsService
+    value = SettingsService.get_setting(key)
+    if value is None:
+        return {"value": None}
+    return {"value": value}
+
+@app.post("/api/settings")
+async def update_setting(request: Request):
+    """Update a setting."""
+    from .services.settings_service import SettingsService, AppSetting
+    try:
+        body = await request.json()
+        setting_key = body.get("setting_key")
+        setting_value = body.get("setting_value")
+        if not setting_key or not setting_value:
+            raise HTTPException(status_code=400, detail="Missing key or value")
+            
+        setting = AppSetting(setting_key=setting_key, setting_value=setting_value)
+        value = SettingsService.set_setting(setting)
+        return {"status": "success", "value": value}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

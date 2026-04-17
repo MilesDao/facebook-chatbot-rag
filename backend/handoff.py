@@ -1,6 +1,6 @@
 from .database import supabase
 
-def trigger_handoff(sender_id: str, user_message: str, score: float):
+def trigger_handoff(sender_id: str, user_message: str, score: float, user_id=None):
     """
     Escalate the interaction based on low RAG score.
     """
@@ -13,7 +13,8 @@ def trigger_handoff(sender_id: str, user_message: str, score: float):
             "sender_id": sender_id,
             "user_message": user_message,
             "confidence_score": score,
-            "status": "active"
+            "status": "active",
+            "user_id": user_id
         }
         supabase.table("handoffs").insert(data).execute()
         print(f"Handoff triggered for {sender_id} (Score: {score})")

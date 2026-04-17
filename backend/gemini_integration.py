@@ -7,48 +7,22 @@ Responsibilities:
 """
 from openai import OpenAI
 import os
-import json
-import re
-from pydantic import BaseModel, Field
+import threading
+from google import genai
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
-print(f"DEBUG: Using API Key: {os.getenv('OPENROUTER_API_KEY')[:10] if os.getenv('OPENROUTER_API_KEY') else 'None'}...")
-
-# --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
-class BotResponse(BaseModel):
-    answer: str = Field(
-        description="Câu trả lời gửi cho khách hàng, tuân thủ nghiêm ngặt việc chia nhỏ bằng ký tự [SPLIT]."
-    )
-    confidence_score: float = Field(
-        description="Điểm tự tin của câu trả lời từ 0.0 đến 1.0 (1.0 là cực kỳ chắc chắn vì có dữ liệu trong Context)."
-    )
-    needs_human: bool = Field(
-        description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quá phức tạp mà Context không có, cần chuyển cho tư vấn viên là người thật."
-    )
-
-# Configure OpenRouter Client
-def get_llm_client():
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        print("CRITICAL: OPENROUTER_API_KEY is missing from environment variables!")
-        return None
-    try:
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=key
-        )
-    except Exception as e:
-        print(f"Error initializing Client: {e}")
-        return None
-
-client = get_llm_client()
-
-def generate_response(user_message: str, context: str, history: list) -> BotResponse:
+def generate_response(user_message: str, context: str, history: list, api_key: str = None) -> str:
     """
-    Call API with grounded context and return a Structured Output object.
+    Call Gemini API with grounded context.
+    
+    Args:
+        user_message: The latest message from the user
+        context: Context retrieved from vector database
+        history: Array of prior conversation messages (dicts with 'role' and 'content')
+        api_key: The Gemini API key to use (optional, falls back to env)
     """
     system_prompt = (
         "You are a friendly, polite, and professional student advisor/consultant at USTH "
@@ -86,28 +60,17 @@ def generate_response(user_message: str, context: str, history: list) -> BotResp
             
     full_prompt += f"\nUser: {user_message}"
     
-    global client
-    if not client:
-        client = get_llm_client()
-        
-    if not client:
-        # Fallback object if API fails
-        return BotResponse(
-            answer="Dạ hệ thống bên mình đang bảo trì một chút [SPLIT] Bạn vui lòng chờ trong giây lát nhé ạ.",
-            confidence_score=0.0,
-            needs_human=True
-        )
+    # Initialize client with provided key or fallback to env
+    gemini_key = api_key or os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        return "I'm having trouble connecting to my brain (Gemini API key missing). Please check settings."
 
     try:
-        # --- 2. ÉP TRẢ VỀ THEO SCHEMA BẰNG CÁCH YÊU CẦU JSON VÀ PARSE ---
-        response = client.chat.completions.create(
-            model='openai/gpt-oss-120b:free',
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": full_prompt}
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.7 # Tạo độ tự nhiên vừa phải
+        client = genai.Client(api_key=gemini_key)
+        # Using a stable model name
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=full_prompt,
         )
         
         content = response.choices[0].message.content

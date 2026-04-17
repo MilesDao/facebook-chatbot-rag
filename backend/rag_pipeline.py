@@ -7,63 +7,39 @@ Responsibilities:
 """
 
 import os
+import threading
 from dotenv import load_dotenv
 from openai import OpenAI
 from .database import supabase
 
 load_dotenv()
 
-# Initialize Client
-def get_llm_client():
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        return None
-    try:
-        return OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=key
-        )
-    except:
-        return None
-
-client = get_llm_client()
-
-
-def get_embedding(text: str) -> list[float]:
+def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
-    Generate 2048-dimension embeddings using OpenRouter API.
+    Generate 768-dimension embeddings via Gemini API.
     """
-    global client
-    if not client:
-        client = get_llm_client()
-        
-    if not client:
-        print("Error: Client is not initialized (API Key missing).")
-        return [0.0] * 2048
+    gemini_key = api_key or os.getenv("GEMINI_API_KEY")
+    if not gemini_key:
+        return [0.0] * 768
 
     try:
-        result = client.embeddings.create(
-            model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-            input=[text],
-            encoding_format="float",
-            extra_body={"input_type": "query"}
+        client = genai.Client(api_key=gemini_key)
+        # gemini-embedding-001 produces 768-dim vectors
+        result = client.models.embed_content(
+            model="gemini-embedding-001",
+            contents=text
         )
-        if not result.data:
-            raise ValueError("No embedding data received from API")
-            
-        embedding = result.data[0].embedding
-        # Fixed dimension to 2048
-        embedding = embedding[:2048]
-        if len(embedding) < 2048:
-            embedding += [0.0] * (2048 - len(embedding))
-            
+        raw_embed = result.embeddings[0].values
+        embedding = list(raw_embed[:768])
+        if len(embedding) < 768:
+            embedding += [0.0] * (768 - len(embedding))
         return embedding
         
     except Exception as e:
         print(f"Error generating API embedding: {e}")
         return [0.0] * 2048
 
-def retrieve_context(user_message: str, match_threshold: float = 0.3, match_count: int = 5):
+def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, gemini_key: str = None):
     """
     Retrieve documents from Supabase vector db.
     Returns:
@@ -75,18 +51,21 @@ def retrieve_context(user_message: str, match_threshold: float = 0.3, match_coun
         return "", 0.0
 
     # 1. Embed the user query
-    query_embedding = get_embedding(user_message)
+    query_embedding = get_embedding(user_message, api_key=gemini_key)
     
     # 2. Search Supabase via the match_documents RPC configured in SQL
     try:
-        response = supabase.rpc(
-            "match_documents",
-            {
-                "query_embedding": query_embedding,
-                "match_threshold": match_threshold,
-                "match_count": match_count
-            }
-        ).execute()
+        rpc_params = {
+            "query_embedding": query_embedding,
+            "match_threshold": match_threshold,
+            "match_count": match_count
+        }
+        
+        # If user_id is provided, use the multi-tenant RPC
+        if user_id:
+            rpc_params["p_user_id"] = user_id
+            
+        response = supabase.rpc("match_documents", rpc_params).execute()
     except Exception as e:
         print(f"Error communicating with Supabase RAG RPC: {e}")
         return "", 0.0
