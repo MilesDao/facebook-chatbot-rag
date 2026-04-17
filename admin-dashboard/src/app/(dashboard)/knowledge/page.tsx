@@ -15,7 +15,7 @@ import { apiFetch } from "@/lib/auth";
 
 export default function KnowledgeBase() {
   const { t } = useLanguage();
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export default function KnowledgeBase() {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      setFile(e.dataTransfer.files[0]);
+      setFiles(Array.from(e.dataTransfer.files));
     }
   };
 
@@ -71,17 +71,19 @@ export default function KnowledgeBase() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      setFile(e.target.files[0]);
+      setFiles(Array.from(e.target.files));
     }
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (files.length === 0) return;
     setUploading(true);
     setStatus(t("knowledge.uploading"));
 
     const formData = new FormData();
-    formData.append("file", file);
+    files.forEach(f => {
+      formData.append("files", f);
+    });
 
     try {
       const res = await apiFetch("/api/upload", {
@@ -91,7 +93,7 @@ export default function KnowledgeBase() {
 
       if (res.ok) {
         setStatus(t("knowledge.statusUploadSuccess"));
-        setFile(null);
+        setFiles([]);
         await fetchSources();
       } else {
         setStatus(t("knowledge.statusUploadFail"));
@@ -165,7 +167,9 @@ export default function KnowledgeBase() {
               fontWeight: isDragging ? 'bold' : 'normal',
               transition: 'all 0.2s ease'
             }}>
-              {isDragging ? t("knowledge.dropHere") : (file ? file.name : t("knowledge.selectFile"))}
+              {isDragging ? t("knowledge.dropHere") : (files.length > 0 ? (
+                files.length === 1 ? files[0].name : `${files.length} ${t("knowledge.filesSelected") || "files selected"}`
+              ) : t("knowledge.selectFile"))}
             </p>
             <input
               type="file"
@@ -173,6 +177,7 @@ export default function KnowledgeBase() {
               onChange={handleFileChange}
               style={{ display: 'none' }}
               accept=".txt,.pdf,.docx"
+              multiple
             />
             <label htmlFor="file-upload" className="btn btn-secondary" style={{ pointerEvents: 'none' }}>
               {t("knowledge.browse")}
@@ -183,7 +188,7 @@ export default function KnowledgeBase() {
             className="btn"
             style={{ width: '100%' }}
             onClick={handleUpload}
-            disabled={!file || uploading}
+            disabled={files.length === 0 || uploading}
           >
             {uploading ? t("knowledge.uploading") : t("knowledge.uploadBtn")}
           </button>
