@@ -220,11 +220,20 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     send_fb_action(sender_id, "typing_on", token)
     
     try:
-        # Fetch llm_model from settings
+        # Fetch llm_model and system_prompt from settings
         llm_model = settings.get("llm_model") or "openai/gpt-oss-120b:free"
+        system_prompt = settings.get("system_prompt")
         print(f"Generating AI response for: {user_message[:50]}... using model {llm_model}")
-        # Update handle_message to accept our parameters
-        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key, llm_model=llm_model) or ""
+        
+        # Update handle_message to accept the system_prompt
+        reply = handle_message(
+            sender_id, 
+            user_message, 
+            user_id=user_id, 
+            openrouter_key=openrouter_key, 
+            llm_model=llm_model,
+            system_prompt=system_prompt
+        ) or ""
         
         if not reply.strip():
             print("WARNING: AI returned empty reply. Using fail-safe.")

@@ -57,9 +57,9 @@ export default function LoginPage() {
     padding: "13px 14px 13px 44px",
     borderRadius: "10px",
     fontSize: "15px",
-    color: "white",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    color: "var(--foreground)",
+    background: "var(--nav-hover)",
+    border: "1px solid var(--card-border)",
     outline: "none",
     transition: "border-color 0.2s ease",
   };
@@ -100,7 +100,7 @@ export default function LoginPage() {
               AI Admin
             </span>
           </div>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "14px" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
             Multi-tenant Facebook RAG Platform
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
           </h1>
           <p
             style={{
-              color: "rgba(255,255,255,0.4)",
+              color: "var(--text-muted)",
               fontSize: "14px",
               marginBottom: "32px",
             }}
@@ -159,7 +159,7 @@ export default function LoginPage() {
                   display: "block",
                   marginBottom: "8px",
                   fontSize: "12px",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
@@ -174,7 +174,7 @@ export default function LoginPage() {
                     left: "14px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "rgba(255,255,255,0.3)",
+                    color: "var(--text-muted)",
                     pointerEvents: "none",
                   }}
                 />
@@ -202,7 +202,7 @@ export default function LoginPage() {
                   display: "block",
                   marginBottom: "8px",
                   fontSize: "12px",
-                  color: "rgba(255,255,255,0.45)",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
@@ -217,7 +217,7 @@ export default function LoginPage() {
                     left: "14px",
                     top: "50%",
                     transform: "translateY(-50%)",
-                    color: "rgba(255,255,255,0.3)",
+                    color: "var(--text-muted)",
                     pointerEvents: "none",
                   }}
                 />
@@ -245,7 +245,7 @@ export default function LoginPage() {
                     transform: "translateY(-50%)",
                     background: "none",
                     border: "none",
-                    color: "rgba(255,255,255,0.3)",
+                    color: "var(--text-muted)",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
@@ -260,7 +260,7 @@ export default function LoginPage() {
                   href="/forgot-password"
                   style={{
                     fontSize: '13px',
-                    color: 'rgba(255,255,255,0.4)',
+                    color: 'var(--text-muted)',
                     textDecoration: 'none'
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#3b82f6')}
@@ -310,9 +310,9 @@ export default function LoginPage() {
 
             {/* Divider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '8px 0' }}>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: '1px' }}>Or</span>
-              <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+              <div style={{ flex: 1, height: '1px', background: 'var(--card-border)' }}></div>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--card-border)' }}></div>
             </div>
 
             {/* Google Login */}
@@ -329,8 +329,8 @@ export default function LoginPage() {
                 gap: "12px",
                 fontSize: "15px",
                 fontWeight: "600",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.1)",
+                background: "var(--nav-hover)",
+                border: "1px solid var(--card-border)",
                 borderRadius: "12px",
                 cursor: "pointer",
                 transition: "all 0.2s ease"
@@ -353,7 +353,7 @@ export default function LoginPage() {
               textAlign: "center",
               marginTop: "28px",
               fontSize: "14px",
-              color: "rgba(255,255,255,0.35)",
+              color: "var(--text-muted)",
             }}
           >
             Don&apos;t have an account?{" "}
@@ -374,7 +374,8 @@ export default function LoginPage() {
           }
         }
         input::placeholder {
-          color: rgba(255, 255, 255, 0.2);
+          color: var(--text-muted);
+          opacity: 0.5;
         }
       `}</style>
     </div>

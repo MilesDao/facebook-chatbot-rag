@@ -39,28 +39,37 @@ def get_openrouter_client(api_key: str = None):
         return None
 
 
-def generate_response(user_message: str, context: str, history: list, openrouter_key: str = None, llm_model: str = "openai/gpt-oss-120b:free") -> BotResponse:
+def generate_response(user_message: str, context: str, history: list, openrouter_key: str = None, llm_model: str = "openai/gpt-oss-120b:free", custom_system_prompt: str = None) -> BotResponse:
     """
     Call OpenRouter API with grounded context and return a Structured Output object.
-    Supports multi-tenant API keys.
+    Supports multi-tenant API keys and custom system prompts.
     """
-    system_prompt = (
-        "You are a friendly, polite, and professional virtual assistant, "
-        "acting as a page admin answering messages on Facebook Messenger. "
-        "You chat like a real person: natural, approachable, concise, but always respectful. "
-        "Follow these STRICT guidelines:\n"
-        "1. TONE: Use the pronoun 'mình' for yourself and 'bạn' for the user. "
-        "Be polite but not robotic. Add soft Vietnamese particles like 'ạ', 'nhé', or 'nha' naturally. "
-        "AVOID cliché AI openings/closings like 'Chào bạn!', 'Rất vui được hỗ trợ'.\n"
-        "2. CONCISENESS: Keep answers extremely short. NEVER write long paragraphs. "
-        "Summarize lists into broad categories and ask a polite follow-up question.\n"
-        "3. MESSAGE SPLITTING: Break your response into 2 to 4 short, separate thoughts. "
-        "You MUST use the exact string '[SPLIT]' to separate each bubble. "
-        "Example format: 'Dạ trường có nhiều ngành lắm ạ [SPLIT] Phổ biến nhất là mảng ICT và Hàng không [SPLIT] Bạn đang quan tâm nhóm ngành nào ạ?'\n"
-        "4. ACCURACY & HANDOFF: Base your answers ONLY on the provided Background Context. "
-        "If you don't know the answer, politely say you will check. "
-        "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
-        "Evaluate your 'confidence_score' based on how well the context covers the question."
+    # Use custom prompt if provided, otherwise use the defaults
+    if custom_system_prompt and custom_system_prompt.strip():
+        system_prompt = custom_system_prompt.strip()
+    else:
+        system_prompt = (
+            "You are a friendly, polite, and professional virtual assistant, "
+            "acting as a page admin answering messages on Facebook Messenger. "
+            "You chat like a real person: natural, approachable, concise, but always respectful. "
+            "Follow these STRICT guidelines:\n"
+            "1. TONE: Use the pronoun 'mình' for yourself and 'bạn' for the user. "
+            "Be polite but not robotic. Add soft Vietnamese particles like 'ạ', 'nhé', or 'nha' naturally. "
+            "AVOID cliché AI openings/closings like 'Chào bạn!', 'Rất vui được hỗ trợ'.\n"
+            "2. CONCISENESS: Keep answers extremely short. NEVER write long paragraphs. "
+            "Summarize lists into broad categories and ask a polite follow-up question.\n"
+            "3. MESSAGE SPLITTING: Break your response into 2 to 4 short, separate thoughts. "
+            "You MUST use the exact string '[SPLIT]' to separate each bubble. "
+            "Example format: 'Dạ trường có nhiều ngành lắm ạ [SPLIT] Phổ biến nhất là mảng ICT và Hàng không [SPLIT] Bạn đang quan tâm nhóm ngành nào ạ?'\n"
+            "4. ACCURACY & HANDOFF: Base your answers ONLY on the provided Background Context. "
+            "If you don't know the answer, politely say you will check. "
+            "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
+            "Evaluate your 'confidence_score' based on how well the context covers the question."
+        )
+
+    # Always append JSON formatting rules to ensure the code can parse the output
+    system_prompt += (
+        "\n\nCRITICAL: You MUST return a valid JSON object with 'answer', 'confidence_score' (0.0-1.0), and 'needs_human' (boolean)."
     )
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -83,7 +92,7 @@ def generate_response(user_message: str, context: str, history: list, openrouter
     if not client:
         # Fallback object if API fails
         return BotResponse(
-            answer="Dạ hiện tại đường truyền đang hơi chậm [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
+            answer="Dạ hiện tại admin Page đang hơi bận [SPLIT] Bạn nhắn lại giúp mình sau ít phút nhé ạ.",
             confidence_score=0.0,
             needs_human=True,
         )

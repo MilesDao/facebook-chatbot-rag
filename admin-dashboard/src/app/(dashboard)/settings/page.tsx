@@ -31,6 +31,7 @@ interface BotSettings {
     verify_token: string;
     llm_model: string;
     app_secret: string;
+    system_prompt: string;
 }
 
 interface ValidationErrors {
@@ -49,7 +50,8 @@ export default function SettingsPage() {
         page_id: "",
         verify_token: "tuyensinh2026",
         llm_model: "openai/gpt-oss-120b:free",
-        app_secret: ""
+        app_secret: "",
+        system_prompt: ""
     });
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [loading, setLoading] = useState(true);
@@ -79,7 +81,8 @@ export default function SettingsPage() {
                     page_id: data.page_id || "",
                     verify_token: data.verify_token || "tuyensinh2026",
                     llm_model: data.llm_model || "openai/gpt-oss-120b:free",
-                    app_secret: data.app_secret || ""
+                    app_secret: data.app_secret || "",
+                    system_prompt: data.system_prompt || ""
                 });
             }
         } catch (err) {
@@ -452,41 +455,48 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Deployment Info */}
+                {/* AI Personality / System Prompt */}
                 <div className="card glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <Server color="var(--accent)" />
-                        <h2 style={{ margin: 0 }}>{t("settings.deployment")}</h2>
+                        <Cpu color="var(--accent)" />
+                        <h2 style={{ margin: 0 }}>AI Personality</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)' }}>
-                            <p style={{ margin: '0 0 4px 0', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Webhook Endpoint</p>
-                            <code style={{ fontSize: '12px', color: '#3b82f6' }}>{backendUrl}/webhook</code>
-                        </div>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                            Customize how your bot talks and behaves. Leave empty to use the default professional persona.
+                        </p>
 
-                        <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(255,255,255,0.05)' }}>
-                            <p style={{ margin: '0 0 4px 0', fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Environment</p>
-                            <p style={{ margin: 0, fontSize: '14px', color: 'var(--foreground)' }}>{process.env.NODE_ENV === 'production' ? 'Production' : 'Development'}</p>
-                        </div>
-
-                        <div style={{
-                            padding: '12px',
-                            borderRadius: '12px',
-                            background: 'rgba(59, 130, 246, 0.05)',
-                            border: '1px solid rgba(59, 130, 246, 0.2)',
-                            fontSize: '12px',
-                            color: 'var(--text-muted)',
-                            display: 'flex',
-                            gap: '10px'
-                        }}>
-                            <Info size={16} style={{ flexShrink: 0, color: '#3b82f6' }} />
-                            <span>
-                                Ensure you have added the <b>Service Role Key</b> to your .env file to enable persistence.
-                            </span>
+                        <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
+                                System Prompt / Instructions
+                            </label>
+                            <textarea
+                                className="glass-input"
+                                value={settings.system_prompt}
+                                onChange={e => setSettings({ ...settings, system_prompt: e.target.value })}
+                                placeholder="e.g. You are a helpful assistant for a coffee shop. Be very friendly and use lots of emojis! ☕✨"
+                                style={{
+                                    width: '100%',
+                                    minHeight: '150px',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    background: 'var(--nav-hover)',
+                                    border: '1px solid var(--card-border)',
+                                    color: 'var(--foreground)',
+                                    fontFamily: 'inherit',
+                                    fontSize: '14px',
+                                    lineHeight: '1.5',
+                                    resize: 'vertical'
+                                }}
+                            />
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                Use this to set the bot's name, role, tone, and specific rules (e.g. "Never mention competitors").
+                            </p>
                         </div>
                     </div>
                 </div>
+
 
                 {/* Account / Sign Out */}
                 <div className="card glass" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
@@ -523,25 +533,6 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-                {/* Appearance section */}
-                <div className="card glass">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <Settings color="var(--accent)" />
-                        <h2 style={{ margin: 0 }}>{t("settings.appearance") || "Appearance"}</h2>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            {t("settings.appearanceDesc") || "Customize the look and feel of your dashboard. Choose between dark and various light themes."}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', background: 'var(--nav-hover)', borderRadius: '12px' }}>
-                            <span style={{ fontSize: '15px', color: 'var(--foreground)', fontWeight: 500 }}>
-                                {t("settings.toggleTheme") || "Select Theme"}:
-                            </span>
-                            <ThemeToggle />
-                        </div>
-                    </div>
-                </div>
             </div>
         </form>
     );

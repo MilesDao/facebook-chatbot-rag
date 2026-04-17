@@ -46,9 +46,9 @@ export default function RegisterPage() {
     padding: "13px 14px 13px 44px",
     borderRadius: "10px",
     fontSize: "15px",
-    color: "white",
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.1)",
+    color: "var(--foreground)",
+    background: "var(--nav-hover)",
+    border: "1px solid var(--card-border)",
     outline: "none",
     transition: "border-color 0.2s ease",
   };
@@ -89,7 +89,7 @@ export default function RegisterPage() {
               AI Admin
             </span>
           </div>
-          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "14px" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
             Multi-tenant Facebook RAG Platform
           </p>
         </div>
@@ -114,7 +114,7 @@ export default function RegisterPage() {
               </h2>
               <p
                 style={{
-                  color: "rgba(255,255,255,0.5)",
+                  color: "var(--text-muted)",
                   fontSize: "14px",
                   lineHeight: "1.6",
                   marginBottom: "28px",
@@ -151,7 +151,7 @@ export default function RegisterPage() {
               </h1>
               <p
                 style={{
-                  color: "rgba(255,255,255,0.4)",
+                  color: "var(--text-muted)",
                   fontSize: "14px",
                   marginBottom: "32px",
                 }}
@@ -193,7 +193,7 @@ export default function RegisterPage() {
                       display: "block",
                       marginBottom: "8px",
                       fontSize: "12px",
-                      color: "rgba(255,255,255,0.45)",
+                      color: "var(--text-muted)",
                       textTransform: "uppercase",
                       letterSpacing: "1px",
                     }}
@@ -208,7 +208,7 @@ export default function RegisterPage() {
                         left: "14px",
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "rgba(255,255,255,0.3)",
+                        color: "var(--text-muted)",
                         pointerEvents: "none",
                       }}
                     />
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                       display: "block",
                       marginBottom: "8px",
                       fontSize: "12px",
-                      color: "rgba(255,255,255,0.45)",
+                      color: "var(--text-muted)",
                       textTransform: "uppercase",
                       letterSpacing: "1px",
                     }}
@@ -250,7 +250,7 @@ export default function RegisterPage() {
                         left: "14px",
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "rgba(255,255,255,0.3)",
+                        color: "var(--text-muted)",
                         pointerEvents: "none",
                       }}
                     />
@@ -278,7 +278,7 @@ export default function RegisterPage() {
                         transform: "translateY(-50%)",
                         background: "none",
                         border: "none",
-                        color: "rgba(255,255,255,0.3)",
+                        color: "var(--text-muted)",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
@@ -296,7 +296,7 @@ export default function RegisterPage() {
                       display: "block",
                       marginBottom: "8px",
                       fontSize: "12px",
-                      color: "rgba(255,255,255,0.45)",
+                      color: "var(--text-muted)",
                       textTransform: "uppercase",
                       letterSpacing: "1px",
                     }}
@@ -311,7 +311,7 @@ export default function RegisterPage() {
                         left: "14px",
                         top: "50%",
                         transform: "translateY(-50%)",
-                        color: "rgba(255,255,255,0.3)",
+                        color: "var(--text-muted)",
                         pointerEvents: "none",
                       }}
                     />
@@ -339,7 +339,7 @@ export default function RegisterPage() {
                         transform: "translateY(-50%)",
                         background: "none",
                         border: "none",
-                        color: "rgba(255,255,255,0.3)",
+                        color: "var(--text-muted)",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
@@ -393,7 +393,7 @@ export default function RegisterPage() {
                   textAlign: "center",
                   marginTop: "28px",
                   fontSize: "14px",
-                  color: "rgba(255,255,255,0.35)",
+                  color: "var(--text-muted)",
                 }}
               >
                 Already have an account?{" "}
@@ -420,7 +420,8 @@ export default function RegisterPage() {
           }
         }
         input::placeholder {
-          color: rgba(255, 255, 255, 0.2);
+          color: var(--text-muted);
+          opacity: 0.5;
         }
       `}</style>
     </div>
