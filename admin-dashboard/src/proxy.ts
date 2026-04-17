@@ -14,14 +14,20 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAuthRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/register");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/update-password");
+
+  // Skip middleware for auth callback
+  const isAuthCallback = pathname.startsWith("/auth");
 
   let supabaseResponse = NextResponse.next({ request });
 
   // Only run auth check on actual page routes, not API/assets
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
     {
       cookies: {
         getAll() {
@@ -47,12 +53,12 @@ export async function proxy(request: NextRequest) {
 
   const isLoggedIn = !!session?.user;
 
-  // Unauthenticated → send to login
-  if (!isLoggedIn && !isAuthRoute) {
+  // Unauthenticated → send to login (except for auth callback and login/register pages)
+  if (!isLoggedIn && !isAuthRoute && !isAuthCallback) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Already logged in → don't show login/register
+  // Already logged in → don't show login/register/forgot-password, redirect to home
   if (isLoggedIn && isAuthRoute) {
     return NextResponse.redirect(new URL("/", request.url));
   }
