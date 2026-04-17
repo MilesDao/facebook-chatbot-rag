@@ -66,9 +66,10 @@ class IngestionService:
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.embeddings.create(
-                model="google/text-embedding-004",
+                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
                 input=chunks,
-                encoding_format="float"
+                encoding_format="float",
+                extra_body={"input_type": "passage"}
             )
             if not result.data:
                 print("Error: No embedding data received from API")
