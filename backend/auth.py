@@ -65,7 +65,7 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
             raise HTTPException(status_code=401, detail=f"ES256 verification failed: {str(e)}")
 
     # Fallback to HS256 (Symmetric)
-    jwt_secret = os.getenv("SUPABASE_JWT_SECRET", "")
+    jwt_secret = os.getenv("SUPABASE_JWT_SECRET") or os.getenv("JWT_SECRET") or os.getenv("SUPABASE_AUTH_JWT_SECRET")
     if not jwt_secret:
         raise HTTPException(
             status_code=500,
