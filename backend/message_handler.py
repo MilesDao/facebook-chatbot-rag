@@ -6,7 +6,7 @@ Responsibilities:
 - Classify intent (Router)
 - Retrieve relevant context from RAG (Supabase)
 - Load & update conversation history (Redis)
-- Generate response using Gemini structured outputs
+- Generate response using OpenRouter structured outputs
 - Decide whether to trigger human handoff based on LLM flag
 - Log interaction for analytics
 """

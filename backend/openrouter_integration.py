@@ -127,13 +127,5 @@ def generate_response(user_message: str, context: str, history: list, openrouter
                 )
 
 
-# --- Embedding Model Consideration ---
-# we can switch to a different mode,
-# potentially one from OpenAI or another provider accessible via OpenRouter.
-# Placeholder for potential future embedding model integration:
-# def get_embedding_model():
-#     pass
-#
-# def get_embedding(text: str) -> list[float]:
-#     # Integrate with a new embedding model here
-#     pass
+# --- OpenAI / Non-Google Model Consideration ---
+# Supported models include Mistral, Llama, GPT, etc via OpenRouter.

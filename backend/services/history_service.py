@@ -26,7 +26,7 @@ def add_message(sender_id: str, role: str, content: str):
 
 def get_history(sender_id: str, limit: int = 10) -> list:
     """
-    Retrieve the last N messages for a specific user to provide context for Gemini.
+    Retrieve the last N messages for a specific user to provide context for OpenRouter.
     Replaces Redis lrange logic.
     """
     if not supabase:

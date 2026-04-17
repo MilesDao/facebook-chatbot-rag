@@ -102,7 +102,10 @@ def send_action(sender_id: str, action: str):
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
     except Exception as e:
-        print(f"Error sending action '{action}': {e}")
+        msg = f"Error sending action '{action}': {e}"
+        if hasattr(e, 'response') and e.response is not None:
+            msg += f" | Body: {e.response.text}"
+        print(msg)
 
 # --- Core Webhook Endpoints ---
 
@@ -195,12 +198,22 @@ def process_message(sender_id: str, user_message: str, page_id: str):
             res.raise_for_status()
             print(f"Successfully sent reply to {sender}")
         except Exception as e:
-            print(f"Error sending reply to {sender}: {e}")
+            msg = f"Error sending reply to {sender}: {e}"
+            if hasattr(e, 'response') and e.response is not None:
+                msg += f" | Body: {e.response.text}"
+            print(msg)
 
     # Helper function to send typing action
     def send_fb_action(sender: str, action: str, fb_token: str):
         url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
-        requests.post(url, json={"recipient": {"id": sender}, "sender_action": action})
+        try:
+            res = requests.post(url, json={"recipient": {"id": sender}, "sender_action": action})
+            res.raise_for_status()
+        except Exception as e:
+            msg = f"Error sending action '{action}' to {sender}: {e}"
+            if hasattr(e, 'response') and e.response is not None:
+                msg += f" | Body: {e.response.text}"
+            print(msg)
 
     print("Sending mark_seen and typing_on...")
     send_fb_action(sender_id, "mark_seen", token)

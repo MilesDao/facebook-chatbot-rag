@@ -40,7 +40,7 @@ def classify_intent(user_query: str, openrouter_key: str = None) -> str:
     for attempt in range(max_retries):
         try:
             completion = client.chat.completions.create(
-                model="google/gemini-2.0-flash-exp:free", # Use a cheap/fast model for routing
+                model="openai/gpt-oss-120b:free", # Use a cheap/fast model for routing
                 messages=[
                     {"role": "system", "content": system_instruction},
                     {"role": "user", "content": user_query}
@@ -57,4 +57,4 @@ def classify_intent(user_query: str, openrouter_key: str = None) -> str:
             if attempt < max_retries - 1:
                 time.sleep(base_delay * (2 ** attempt))
             else:
-                return "QA"
+                return "QA"
