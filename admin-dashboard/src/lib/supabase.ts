@@ -37,6 +37,10 @@ export function createClient() {
       auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
         getUser: async () => ({ data: { user: null }, error: null }),
+        signInWithPassword: async () => ({ data: { user: null, session: null }, error: new Error("Supabase credentials not configured.") }),
+        signUp: async () => ({ data: { user: null, session: null }, error: new Error("Supabase credentials not configured.") }),
+        signInWithOAuth: async () => ({ data: { provider: '', url: '' }, error: new Error("Supabase credentials not configured.") }),
+        signOut: async () => ({ error: null }),
         onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => { } } } }),
       },
     } as any;
@@ -61,6 +65,8 @@ export function createServerSupabaseClient(cookieStore: ReadonlyRequestCookies) 
       auth: {
         getSession: async () => ({ data: { session: null }, error: null }),
         getUser: async () => ({ data: { user: null }, error: null }),
+        signInWithPassword: async () => ({ data: { user: null, session: null }, error: new Error("Supabase credentials not configured.") }),
+        signOut: async () => ({ error: null }),
       },
     } as any;
   }

@@ -22,10 +22,12 @@ export default function DashboardLayout({
   useEffect(() => {
     async function checkAuth() {
       const { data: { session } } = await supabase.auth.getSession();
-      // If no session, middleware should have intercepted it. 
-      // This is a client-side fallback.
+
       if (session) {
         setLoading(false);
+      } else {
+        // Fallback: if no session, redirect to login
+        window.location.href = "/login";
       }
     }
     checkAuth();
