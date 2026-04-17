@@ -14,41 +14,18 @@ export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
 
   useEffect(() => {
     setMounted(true);
-    fetch("http://localhost:8000/api/settings/theme")
-      .then((res) => {
-        if (!res.ok) return null;
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data.value) {
-          setTheme(data.value);
-        }
-      })
-      .catch((err) => console.error("Error fetching theme setting:", err));
-  }, [setTheme]);
+  }, []);
 
   if (!mounted) return null;
 
-  const handleSubTheme = async (newTheme: string) => {
+  const handleSubTheme = (newTheme: string) => {
     setTheme(newTheme);
-    try {
-      await fetch("http://localhost:8000/api/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          setting_key: "theme",
-          setting_value: newTheme,
-        }),
-      });
-    } catch (err) {
-      console.error("Error saving theme setting:", err);
-    }
   };
 
-  const toggleTheme = async () => {
+  const toggleTheme = () => {
     // If currently dark, switch to light (default). If currently in *any* light mode, switch to dark.
-    const newTheme = theme === "dark" ? "light" : "dark";
-    handleSubTheme(newTheme);
+    const isDark = theme === "dark";
+    setTheme(isDark ? "light" : "dark");
   };
 
   if (variant === "nav-item") {
@@ -63,23 +40,23 @@ export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
             border: "none",
             cursor: "pointer",
             textAlign: "left",
-            fontSize: "16px",
+            fontSize: "14px",
             fontFamily: "inherit",
             display: "flex",
             alignItems: "center",
             gap: "12px",
-            padding: "12px 16px"
+            padding: "10px 16px"
           }}
           title="Toggle Theme"
         >
-          {theme === "dark" ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="#374151" />}
-          <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
+          {theme === "dark" ? <Sun size={18} color="#f59e0b" /> : <Moon size={18} color="var(--accent)" />}
+          <span style={{ fontWeight: 500, color: "var(--foreground)" }}>
             {theme === "dark" ? "Light Mode" : "Dark Mode"}
           </span>
         </button>
         {theme !== "dark" && (
-          <div style={{ display: "flex", gap: "12px", padding: "0 16px", marginBottom: "8px" }}>
-            <button title="Default" onClick={() => handleSubTheme("light")} style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#f3f4f6", border: theme === "light" ? "2px solid #2563eb" : "1px solid var(--card-border)", cursor: "pointer" }} />
+          <div style={{ display: "flex", gap: "10px", padding: "0 16px", marginBottom: "8px" }}>
+            <button title="Default" onClick={() => handleSubTheme("light")} style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#f3f4f6", border: theme === "light" ? "2px solid var(--accent)" : "1px solid var(--card-border)", cursor: "pointer" }} />
             <button title="Pink" onClick={() => handleSubTheme("light-pink")} style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#fbcfe8", border: theme === "light-pink" ? "2px solid #db2777" : "1px solid var(--card-border)", cursor: "pointer" }} />
             <button title="Green" onClick={() => handleSubTheme("light-green")} style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#bbf7d0", border: theme === "light-green" ? "2px solid #16a34a" : "1px solid var(--card-border)", cursor: "pointer" }} />
             <button title="Blue" onClick={() => handleSubTheme("light-blue")} style={{ width: "16px", height: "16px", borderRadius: "50%", background: "#bfdbfe", border: theme === "light-blue" ? "2px solid #2563eb" : "1px solid var(--card-border)", cursor: "pointer" }} />
@@ -93,19 +70,22 @@ export function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
   return (
     <button
       onClick={toggleTheme}
-      className="btn btn-secondary"
+      className="btn-secondary"
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "8px",
-        borderRadius: "50%",
+        borderRadius: "12px",
         width: "40px",
-        height: "40px"
+        height: "40px",
+        background: 'var(--nav-hover)',
+        border: '1px solid var(--card-border)',
+        cursor: 'pointer'
       }}
       title="Toggle Theme"
     >
-      {theme === "dark" ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="#374151" />}
+      {theme === "dark" ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="var(--accent)" />}
     </button>
   );
 }

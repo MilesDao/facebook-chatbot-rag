@@ -81,10 +81,10 @@ class IngestionService:
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Fixed dimension to 2048
-            embedding = raw_embed[:2048]
-            if len(embedding) < 2048:
-                embedding += [0.0] * (2048 - len(embedding))
+            # Truncate to 1536 dimensions to fit Supabase index limits (2000 max)
+            embedding = raw_embed[:1536]
+            if len(embedding) < 1536:
+                embedding += [0.0] * (1536 - len(embedding))
             
             try:
                 data = {

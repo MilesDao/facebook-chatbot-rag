@@ -19,7 +19,7 @@ from .services import faq_service
 from .handoff import trigger_handoff
 from .analytics import log_interaction
 
-def handle_message(sender_id: str, user_message: str, user_id: str = None, openrouter_key: str = None):
+def handle_message(sender_id: str, user_message: str, user_id: str = None, openrouter_key: str = None, llm_model: str = "openai/gpt-oss-120b:free"):
     """
     Orchestrate the AI message flow using OpenRouter and semantic routing.
     """
@@ -64,7 +64,8 @@ def handle_message(sender_id: str, user_message: str, user_id: str = None, openr
         user_message, 
         context_str, 
         history, 
-        openrouter_key=openrouter_key
+        openrouter_key=openrouter_key,
+        llm_model=llm_model
     )
     
     ai_reply = bot_res.answer

@@ -33,13 +33,13 @@ export default function FAQSetup() {
     e.preventDefault();
     if (!keyword || !answer) return;
     setLoading(true);
-    
+
     try {
       const res = await apiFetch("/api/faq", {
         method: "POST",
         body: JSON.stringify({ keyword, question, answer })
       });
-      
+
       if (res.ok) {
         setKeyword("");
         setQuestion("");
@@ -55,12 +55,12 @@ export default function FAQSetup() {
 
   const handleDelete = async (faqId: number) => {
     if (!confirm(t("faq.deleteConfirm"))) return;
-    
+
     try {
       const res = await apiFetch(`/api/faq/${faqId}`, {
         method: "DELETE"
       });
-      
+
       if (res.ok) {
         await fetchFaqs();
       }
@@ -72,7 +72,7 @@ export default function FAQSetup() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <h1 style={{ fontSize: '32px', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}>
           <HelpCircle size={32} /> {t("faq.title")}
         </h1>
         <p style={{ color: 'var(--text-muted)' }}>{t("faq.desc")}</p>
@@ -80,15 +80,15 @@ export default function FAQSetup() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
         <div className="card glass" style={{ height: 'fit-content' }}>
-          <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--foreground)' }}>
             <Plus size={20} /> {t("faq.addNew")}
           </h2>
           <form style={{ display: 'flex', flexDirection: 'column', gap: '16px' }} onSubmit={handleAddFaq}>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.keyword")}</label>
-              <input 
-                type="text" 
-                placeholder={t("faq.keywordPlaceholder")} 
+              <input
+                type="text"
+                placeholder={t("faq.keywordPlaceholder")}
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--nav-hover)', border: '1px solid var(--card-border)', color: 'var(--foreground)' }}
@@ -97,9 +97,9 @@ export default function FAQSetup() {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.question")}</label>
-              <input 
-                type="text" 
-                placeholder={t("faq.questionPlaceholder")} 
+              <input
+                type="text"
+                placeholder={t("faq.questionPlaceholder")}
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 style={{ width: '100%', padding: '12px', borderRadius: '8px', background: 'var(--nav-hover)', border: '1px solid var(--card-border)', color: 'var(--foreground)' }}
@@ -107,8 +107,8 @@ export default function FAQSetup() {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("faq.answer")}</label>
-              <textarea 
-                placeholder={t("faq.answerPlaceholder")} 
+              <textarea
+                placeholder={t("faq.answerPlaceholder")}
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 rows={4}
@@ -116,15 +116,15 @@ export default function FAQSetup() {
                 required
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={loading}
-              style={{ 
-                padding: '12px', 
-                background: loading ? 'var(--nav-hover)' : 'var(--accent)', 
-                color: loading ? 'var(--foreground)' : '#ffffff', 
-                border: 'none', 
-                borderRadius: '8px', 
+              style={{
+                padding: '12px',
+                background: loading ? 'var(--nav-hover)' : 'var(--accent)',
+                color: loading ? 'var(--foreground)' : '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 fontWeight: 'bold'
               }}
@@ -135,16 +135,16 @@ export default function FAQSetup() {
         </div>
 
         <div className="card glass">
-          <h2 style={{ marginBottom: '20px' }}>{t("faq.existing")}</h2>
+          <h2 style={{ marginBottom: '20px', color: 'var(--foreground)' }}>{t("faq.existing")}</h2>
           {faqs.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>{t("faq.empty")}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {faqs.map((faq) => (
-                <div key={faq.id} style={{ 
-                  background: 'var(--nav-hover)', 
-                  border: '1px solid var(--card-border)', 
-                  padding: '16px', 
+                <div key={faq.id} style={{
+                  background: 'var(--nav-hover)',
+                  border: '1px solid var(--card-border)',
+                  padding: '16px',
                   borderRadius: '12px',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -159,7 +159,7 @@ export default function FAQSetup() {
                     </div>
                     <p style={{ color: 'var(--foreground)', fontSize: '15px', lineHeight: '1.5' }}>{faq.answer}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleDelete(faq.id)}
                     style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
                     title={t("faq.deleteTitle")}

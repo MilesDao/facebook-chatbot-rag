@@ -3,10 +3,11 @@ import requests
 import shutil
 import time
 from typing import List, Optional
-from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, File, Form, UploadFile
+from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, File, Form, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+from .auth import get_current_user
 
 # Load environment variables early
 load_dotenv()
@@ -41,6 +42,8 @@ class BotSettingsUpdate(BaseModel):
     openrouter_api_key: str = Field(..., min_length=15)
     page_id: str = Field(..., min_length=10, pattern=r"^\d+$")
     verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
+    llm_model: Optional[str] = Field("openai/gpt-oss-120b:free")
+    app_secret: Optional[str] = Field(None, min_length=32, max_length=32)
 
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
@@ -198,9 +201,11 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     send_fb_action(sender_id, "typing_on", token)
     
     try:
-        print(f"Generating AI response for: {user_message[:50]}...")
+        # Fetch llm_model from settings
+        llm_model = settings.get("llm_model") or "openai/gpt-oss-120b:free"
+        print(f"Generating AI response for: {user_message[:50]}... using model {llm_model}")
         # Update handle_message to accept our parameters
-        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key)
+        reply = handle_message(sender_id, user_message, user_id=user_id, openrouter_key=openrouter_key, llm_model=llm_model)
         print(f"AI Response generated: {reply[:50]}...")
     except Exception as e:
         print(f"ERROR in handle_message flow: {e}")
@@ -296,8 +301,6 @@ async def get_handoffs(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- Settings Management ---
-from .auth import get_current_user
-from fastapi import Depends
 
 @app.get("/api/settings")
 async def get_bot_settings(current_user: dict = Depends(get_current_user)):
@@ -311,7 +314,9 @@ async def get_bot_settings(current_user: dict = Depends(get_current_user)):
                 "user_id": user_id,
                 "page_access_token": "",
                 "openrouter_api_key": "",
-                "page_id": ""
+                "page_id": "",
+                "llm_model": "openai/gpt-oss-120b:free",
+                "app_secret": ""
             }
             supabase.table("bot_settings").insert(new_settings).execute()
             return new_settings
@@ -330,6 +335,8 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
             "openrouter_api_key": settings.openrouter_api_key,
             "page_id": settings.page_id,
             "verify_token": settings.verify_token,
+            "llm_model": settings.llm_model or "openai/gpt-oss-120b:free",
+            "app_secret": settings.app_secret,
             "updated_at": "now()"
         }
         # Use upsert to handle both insert and update

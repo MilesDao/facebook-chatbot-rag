@@ -39,7 +39,7 @@ def get_openrouter_client(api_key: str = None):
         return None
 
 
-def generate_response(user_message: str, context: str, history: list, openrouter_key: str = None) -> BotResponse:
+def generate_response(user_message: str, context: str, history: list, openrouter_key: str = None, llm_model: str = "openai/gpt-oss-120b:free") -> BotResponse:
     """
     Call OpenRouter API with grounded context and return a Structured Output object.
     Supports multi-tenant API keys.
@@ -95,7 +95,7 @@ def generate_response(user_message: str, context: str, history: list, openrouter
         try:
             # --- Call OpenRouter API ---
             completion = client.chat.completions.create(
-                model="deepseek/deepseek-chat",  # Recommended model for cost/performance
+                model=llm_model,
                 messages=messages,
                 response_format={"type": "json_object"},  # Request JSON output
                 temperature=0.7,

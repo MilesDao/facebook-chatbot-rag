@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { BarChart3, Mail, Lock, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { BarChart3, Mail, Lock, UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase";
 
 export default function RegisterPage() {
@@ -12,6 +12,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,12 +255,12 @@ export default function RegisterPage() {
                       }}
                     />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Min. 6 characters"
                       required
-                      style={inputStyle}
+                      style={{ ...inputStyle, paddingRight: "44px" }}
                       onFocus={(e) =>
                         (e.target.style.borderColor = "rgba(59, 130, 246, 0.6)")
                       }
@@ -266,6 +268,25 @@ export default function RegisterPage() {
                         (e.target.style.borderColor = "rgba(255,255,255,0.1)")
                       }
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "rgba(255,255,255,0.3)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "4px",
+                      }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 
@@ -295,12 +316,12 @@ export default function RegisterPage() {
                       }}
                     />
                     <input
-                      type="password"
+                      type={showConfirm ? "text" : "password"}
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
                       placeholder="Same password again"
                       required
-                      style={inputStyle}
+                      style={{ ...inputStyle, paddingRight: "44px" }}
                       onFocus={(e) =>
                         (e.target.style.borderColor = "rgba(59, 130, 246, 0.6)")
                       }
@@ -308,6 +329,25 @@ export default function RegisterPage() {
                         (e.target.style.borderColor = "rgba(255,255,255,0.1)")
                       }
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "none",
+                        border: "none",
+                        color: "rgba(255,255,255,0.3)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: "4px",
+                      }}
+                    >
+                      {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
                 </div>
 

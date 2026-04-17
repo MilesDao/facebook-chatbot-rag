@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiFetch } from "@/lib/auth";
 
 type Language = "en" | "vi";
 
@@ -20,7 +21,7 @@ const translations: Record<Language, Record<string, string>> = {
     "theme.light": "Light Mode",
     "theme.dark": "Dark Mode",
     "lang.toggle": "English",
-    
+
     // Overview
     "overview.title": "System Overview",
     "overview.desc": "Real-time performance metrics and bot health.",
@@ -84,7 +85,7 @@ const translations: Record<Language, Record<string, string>> = {
     "faq.existing": "Existing FAQs",
     "faq.empty": "No FAQs added yet.",
     "faq.deleteConfirm": "Are you sure you want to delete this FAQ?",
-    
+
     // Handoffs
     "handoff.title": "Human Handoffs",
     "handoff.desc": "Manage situations where the AI requires human intervention.",
@@ -125,7 +126,7 @@ const translations: Record<Language, Record<string, string>> = {
     "theme.light": "Chế độ Sáng",
     "theme.dark": "Chế độ Tối",
     "lang.toggle": "Tiếng Việt",
-    
+
     // Overview
     "overview.title": "Tổng Quan Hệ Thống",
     "overview.desc": "Chỉ số hiệu suất thời gian thực & sức khỏe bot.",
@@ -231,7 +232,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    fetch("http://localhost:8000/api/settings/language")
+    apiFetch("/api/settings/language")
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && data.value && (data.value === "en" || data.value === "vi")) {
@@ -244,9 +245,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = async (newLang: Language) => {
     setLanguageState(newLang);
     try {
-      await fetch("http://localhost:8000/api/settings", {
+      await apiFetch("/api/settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ setting_key: "language", setting_value: newLang })
       });
     } catch (err) {

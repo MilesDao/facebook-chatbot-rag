@@ -37,7 +37,7 @@ export default function HandoffInbox() {
 
   const handleResolve = async (id: string) => {
     try {
-      const res = await apiFetch(`/api/handoffs/${id}/resolve`, { 
+      const res = await apiFetch(`/api/handoffs/${id}/resolve`, {
         method: "PUT"
       });
       if (res.ok) {
@@ -71,7 +71,7 @@ export default function HandoffInbox() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px' }}>{t("nav.handoffs")}</h1>
+        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("nav.handoffs")}</h1>
         <p style={{ color: 'var(--text-muted)' }}>{t("handoff.desc")}</p>
       </header>
 
@@ -79,7 +79,7 @@ export default function HandoffInbox() {
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
             <Inbox color="#f59e0b" />
-            <h2 style={{ margin: 0 }}>{t("handoff.active")}</h2>
+            <h2 style={{ margin: 0, color: 'var(--foreground)' }}>{t("handoff.active")}</h2>
           </div>
 
           {loading ? (
@@ -99,7 +99,7 @@ export default function HandoffInbox() {
 
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h3 style={{ margin: 0, fontSize: '16px' }}>{t("handoff.sender")}: {h.sender_id.substring(0, 12)}...</h3>
+                      <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--foreground)' }}>{t("handoff.sender")}: {h.sender_id.substring(0, 12)}...</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
                         <Clock size={14} /> {new Date(h.created_at).toLocaleString()}
                       </div>
@@ -150,7 +150,7 @@ export default function HandoffInbox() {
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
             <CheckCircle2 color="#22c55e" />
-            <h2 style={{ margin: 0, fontSize: '18px' }}>{t("handoff.resolved")}</h2>
+            <h2 style={{ margin: 0, fontSize: '18px', color: 'var(--foreground)' }}>{t("handoff.resolved")}</h2>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -163,7 +163,7 @@ export default function HandoffInbox() {
                 opacity: 0.8
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{h.sender_id.substring(0, 10)}...</span>
+                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--foreground)' }}>{h.sender_id.substring(0, 10)}...</span>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{new Date(h.created_at).toLocaleDateString()}</span>
                 </div>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '8px' }}>

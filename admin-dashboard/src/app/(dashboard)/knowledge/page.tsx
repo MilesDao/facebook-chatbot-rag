@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/components/LanguageContext";
-import { 
-  FileUp, 
-  Database, 
-  RefreshCw, 
+import {
+  FileUp,
+  Database,
+  RefreshCw,
   FileText,
   Search,
   CheckCircle2,
@@ -19,7 +19,7 @@ export default function KnowledgeBase() {
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [sources, setSources] = useState<{id: string, name: string}[]>([]);
+  const [sources, setSources] = useState<{ id: string, name: string }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -58,7 +58,7 @@ export default function KnowledgeBase() {
   const handleDeleteSource = async (filename: string) => {
     if (!confirm(t("knowledge.deleteConfirm"))) return;
     try {
-      const res = await apiFetch(`/api/sources/${filename}`, { 
+      const res = await apiFetch(`/api/sources/${filename}`, {
         method: "DELETE"
       });
       if (res.ok) {
@@ -129,7 +129,7 @@ export default function KnowledgeBase() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px' }}>{t("knowledge.title")}</h1>
+        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("knowledge.title")}</h1>
         <p style={{ color: 'var(--text-muted)' }}>{t("knowledge.desc")}</p>
       </header>
 
@@ -137,17 +137,17 @@ export default function KnowledgeBase() {
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
             <FileUp color="var(--accent)" />
-            <h2 style={{ margin: 0 }}>{t("knowledge.addSource")}</h2>
+            <h2 style={{ margin: 0, color: 'var(--foreground)' }}>{t("knowledge.addSource")}</h2>
           </div>
-          
-          <div 
+
+          <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            style={{ 
-              border: `2px ${isDragging ? 'solid' : 'dashed'} ${isDragging ? 'var(--accent)' : 'var(--card-border)'}`, 
-              borderRadius: '12px', 
-              padding: '40px', 
+            style={{
+              border: `2px ${isDragging ? 'solid' : 'dashed'} ${isDragging ? 'var(--accent)' : 'var(--card-border)'}`,
+              borderRadius: '12px',
+              padding: '40px',
               textAlign: 'center',
               marginBottom: '20px',
               background: isDragging ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
@@ -157,9 +157,9 @@ export default function KnowledgeBase() {
             onClick={() => document.getElementById('file-upload')?.click()}
           >
             <FileText size={48} color={isDragging ? 'var(--accent)' : 'var(--text-muted)'} style={{ marginBottom: '16px', transition: 'all 0.2s ease' }} />
-            <p style={{ 
-              marginBottom: '16px', 
-              fontSize: '14px', 
+            <p style={{
+              marginBottom: '16px',
+              fontSize: '14px',
               pointerEvents: 'none',
               color: isDragging ? 'var(--accent)' : 'inherit',
               fontWeight: isDragging ? 'bold' : 'normal',
@@ -167,11 +167,11 @@ export default function KnowledgeBase() {
             }}>
               {isDragging ? t("knowledge.dropHere") : (file ? file.name : t("knowledge.selectFile"))}
             </p>
-            <input 
-              type="file" 
-              id="file-upload" 
-              onChange={handleFileChange} 
-              style={{ display: 'none' }} 
+            <input
+              type="file"
+              id="file-upload"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
               accept=".txt,.pdf,.docx"
             />
             <label htmlFor="file-upload" className="btn btn-secondary" style={{ pointerEvents: 'none' }}>
@@ -179,9 +179,9 @@ export default function KnowledgeBase() {
             </label>
           </div>
 
-          <button 
-            className="btn" 
-            style={{ width: '100%' }} 
+          <button
+            className="btn"
+            style={{ width: '100%' }}
             onClick={handleUpload}
             disabled={!file || uploading}
           >
@@ -192,14 +192,14 @@ export default function KnowledgeBase() {
         <div className="card glass">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
             <Database color="#22c55e" />
-            <h2 style={{ margin: 0 }}>{t("knowledge.ragTitle") || "RAG Indexing"}</h2>
+            <h2 style={{ margin: 0, color: 'var(--foreground)' }}>{t("knowledge.ragTitle") || "RAG Indexing"}</h2>
           </div>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px' }}>
             {t("knowledge.ragDesc")}
           </p>
 
-          <button 
-            className="btn" 
+          <button
+            className="btn"
             style={{ width: '100%', marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             onClick={handleIndex}
             disabled={indexing}
@@ -212,11 +212,11 @@ export default function KnowledgeBase() {
           </button>
 
           {status && (
-            <div style={{ 
-              marginTop: '20px', 
-              padding: '12px', 
-              borderRadius: '8px', 
-              background: 'rgba(59, 130, 246, 0.1)', 
+            <div style={{
+              marginTop: '20px',
+              padding: '12px',
+              borderRadius: '8px',
+              background: 'rgba(59, 130, 246, 0.1)',
               color: 'var(--accent)',
               fontSize: '14px',
               display: 'flex',
@@ -230,16 +230,16 @@ export default function KnowledgeBase() {
       </div>
 
       <div className="card glass" style={{ marginTop: '24px' }}>
-        <h2 style={{ marginBottom: '20px' }}>{t("knowledge.existing")}</h2>
+        <h2 style={{ marginBottom: '20px', color: 'var(--foreground)' }}>{t("knowledge.existing")}</h2>
         {sources.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>{t("knowledge.emptySources")}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {sources.map(source => (
-              <div key={source.id} style={{ 
-                background: 'var(--nav-hover)', 
-                border: '1px solid var(--card-border)', 
-                padding: '16px', 
+              <div key={source.id} style={{
+                background: 'var(--nav-hover)',
+                border: '1px solid var(--card-border)',
+                padding: '16px',
                 borderRadius: '12px',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -249,7 +249,7 @@ export default function KnowledgeBase() {
                   <FileText color="var(--text-muted)" size={20} />
                   <span style={{ color: 'var(--foreground)', fontSize: '15px' }}>{source.name}</span>
                 </div>
-                <button 
+                <button
                   onClick={() => handleDeleteSource(source.id)}
                   style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
                   title="Delete Source"
@@ -259,7 +259,7 @@ export default function KnowledgeBase() {
               </div>
             ))}
           </div>
-        ) }
+        )}
       </div>
     </>
   );

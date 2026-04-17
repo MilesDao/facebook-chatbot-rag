@@ -12,7 +12,7 @@ export function Sidebar() {
   return (
     <aside className="sidebar glass">
       <div style={{ padding: '0 16px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}>
           <BarChart3 color="var(--accent)" /> AI Admin
         </h2>
       </div>
@@ -30,7 +30,7 @@ export function Sidebar() {
           <Inbox size={20} /> {t("nav.handoffs")}
         </Link>
       </nav>
-      
+
       <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <LanguageToggle />
         <ThemeToggle variant="nav-item" />

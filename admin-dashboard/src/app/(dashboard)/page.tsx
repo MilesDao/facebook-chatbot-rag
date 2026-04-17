@@ -2,10 +2,10 @@
 
 import React, { useEffect, useState, useMemo } from "react";
 import { useLanguage } from "@/components/LanguageContext";
-import { 
-  Users, 
-  MessageCircle, 
-  AlertCircle, 
+import {
+  Users,
+  MessageCircle,
+  AlertCircle,
   TrendingUp,
   Activity
 } from "lucide-react";
@@ -25,7 +25,7 @@ export default function Overview() {
 
   const groupedLogs = useMemo(() => {
     const groups: Record<string, { sender_id: string; totalScore: number; items: any[] }> = {};
-    
+
     logs.forEach(log => {
       const id = log.sender_id;
       if (!groups[id]) {
@@ -49,16 +49,16 @@ export default function Overview() {
     async function fetchData() {
       try {
         const res = await apiFetch("/api/analytics");
-        
+
         if (res.ok) {
           const data = await res.json();
           setLogs(data);
-          
+
           if (data.length > 0) {
             const users = new Set(data.map((l: any) => l.sender_id));
             const handoffs = data.filter((l: any) => l.handoff_triggered).length;
             const avgConf = data.reduce((acc: number, l: any) => acc + l.confidence_score, 0) / data.length;
-            
+
             setStats({
               totalMessages: data.length,
               uniqueUsers: users.size,
@@ -83,7 +83,7 @@ export default function Overview() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px' }}>{t("overview.title")}</h1>
+        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("overview.title")}</h1>
         <p style={{ color: 'var(--text-muted)' }}>{t("overview.desc")}</p>
       </header>
 
@@ -130,7 +130,7 @@ export default function Overview() {
       </div>
 
       <div className="card glass">
-        <h2>{t("overview.recent")}</h2>
+        <h2 style={{ color: 'var(--foreground)' }}>{t("overview.recent")}</h2>
         <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
@@ -143,12 +143,12 @@ export default function Overview() {
             {(groupedLogs.length > 0 ? groupedLogs.slice(0, 10) : []).map((group, i) => (
               <React.Fragment key={i}>
                 <tr onClick={() => toggleExpand(`group-${i}`)} style={{ cursor: 'pointer', background: expandedLogs[`group-${i}`] ? 'var(--nav-hover)' : 'transparent' }}>
-                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}>{group.sender_id.substring(0, 12)}...</td>
+                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', color: 'var(--foreground)' }}>{group.sender_id.substring(0, 12)}...</td>
                   <td style={{ textAlign: 'center' }}>{Math.round(group.avgScore * 100)}%</td>
                   <td style={{ textAlign: 'center' }}>
-                    <span style={{ 
-                      padding: '4px 8px', 
-                      borderRadius: '4px', 
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '4px',
                       fontSize: '12px',
                       background: group.status === 'handoff' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
                       color: group.status === 'handoff' ? '#ef4444' : '#22c55e'
@@ -174,13 +174,13 @@ export default function Overview() {
                           <tbody>
                             {group.items.map((log: any, idx: number) => (
                               <tr key={idx} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>{log.user_message}</td>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center' }}>{log.ai_reply}</td>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center', color: 'var(--foreground)' }}>{log.user_message}</td>
+                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center', color: 'var(--foreground)' }}>{log.ai_reply}</td>
                                 <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>{Math.round(log.confidence_score * 100)}%</td>
                                 <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>
-                                  <span style={{ 
-                                    padding: '2px 6px', 
-                                    borderRadius: '4px', 
+                                  <span style={{
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
                                     fontSize: '10px',
                                     background: log.handoff_triggered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
                                     color: log.handoff_triggered ? '#ef4444' : '#22c55e'
