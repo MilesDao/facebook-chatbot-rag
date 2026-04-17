@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
@@ -33,20 +35,20 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div style={{ 
-        height: '100vh', 
-        width: '100vw', 
-        display: 'flex', 
-        alignItems: 'center', 
+      <div style={{
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        alignItems: 'center',
         justifyContent: 'center',
         background: 'var(--background)'
       }}>
-        <div className="animate-spin" style={{ 
-          width: '40px', 
-          height: '40px', 
-          border: '4px solid var(--accent)', 
-          borderTopColor: 'transparent', 
-          borderRadius: '50%' 
+        <div className="animate-spin" style={{
+          width: '40px',
+          height: '40px',
+          border: '4px solid var(--accent)',
+          borderTopColor: 'transparent',
+          borderRadius: '50%'
         }} />
       </div>
     );
