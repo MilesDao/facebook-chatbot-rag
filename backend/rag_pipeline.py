@@ -16,12 +16,13 @@ load_dotenv()
 
 def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
-    Generate 2048-dimension embeddings via OpenRouter.
+    Generate 1536-dimension embeddings via OpenRouter (truncated from 2048).
+    Dimensions must match the Supabase table schema (1536).
     """
     openrouter_key = api_key or os.getenv("OPENROUTER_API_KEY")
     if not openrouter_key:
         print("Error: No OpenRouter API key found for embedding generation.")
-        return [0.0] * 2048
+        return [0.0] * 1536
 
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_key)
@@ -37,15 +38,15 @@ def get_embedding(text: str, api_key: str = None) -> list[float]:
             return [0.0] * 2048
             
         raw_embed = result.data[0].embedding
-        # Regularize to exactly 2048 dimensions
-        embedding = list(raw_embed[:2048])
-        if len(embedding) < 2048:
-            embedding += [0.0] * (2048 - len(embedding))
+        # Regularize to exactly 1536 dimensions (to fit Supabase index limits)
+        embedding = list(raw_embed[:1536])
+        if len(embedding) < 1536:
+            embedding += [0.0] * (1536 - len(embedding))
         return embedding
         
     except Exception as e:
         print(f"Error generating OpenRouter embedding: {e}")
-        return [0.0] * 2048
+        return [0.0] * 1536
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, api_key: str = None):
     """
@@ -59,7 +60,7 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
         return "", 0.0
 
     # 1. Embed the user query
-    query_embedding = get_embedding(user_message, api_key=gemini_key)
+    query_embedding = get_embedding(user_message, api_key=api_key)
     
     # 2. Search Supabase via the match_documents RPC configured in SQL
     try:
