@@ -1,67 +1,90 @@
 # Facebook Chatbot RAG (Multi-Tenant & OpenRouter)
 
-A powerful, multi-tenant AI chatbot system for Facebook Messenger, powered by OpenRouter LLMs and Retrieval-Augmented Generation (RAG) via Supabase.
+A powerful, multi-tenant AI chatbot system for Facebook Messenger, powered by OpenRouter LLMs and Retrieval-Augmented Generation (RAG) via Supabase and PostgreSQL.
 
 ## 🚀 Key Features
 
-- **Multi-Tenant Architecture**: Supports multiple Facebook Pages and Users with separate configurations and knowledge bases.
-- **OpenRouter Powered**: Integrated with OpenRouter API (OpenAI SDK) for high-performance LLM responses and semantic routing.
-- **Semantic Intent Routing**: Automatically classifies user messages into QA, FAQ, Handoff, or Chitchat to optimize response quality.
-- **Advanced RAG Pipeline**: Uses high-dimensional (2048-dim) embeddings and vector search via Supabase (pgvector) to provide grounded answers.
-- **Automated Human Handoff**: Triggers a handoff to a human agent when the AI confidence score is low or the user requests complex support.
-- **Admin Dashboard**: Next.js-based dashboard to manage configuration, knowledge sources, FAQs, and view analytics.
+- **Multi-Tenant Architecture**: Independent configurations, knowledge bases, and settings for each admin/page.
+- **OpenRouter LLM Integration**: Dynamically select from hundreds of models (GPT-4o, Claude 3.5, Llama 3) via the dashboard.
+- **Dynamic RAG Pipeline**: 
+  - **Optimized Embeddings**: Uses `nvidia/llama-nemotron-embed-vl-1b-v2:free` (or Google Gecko) with 1536-dimension vectors.
+  - **HNSW Vector Search**: High-performance approximate nearest neighbor indexing via `pgvector`.
+- **Bulk Knowledge Ingestion**: Upload multiple `.txt`, `.pdf`, or `.docx` files at once to build your chatbot's expertise.
+- **Facebook Messenger Integration**: Seamless webhook support with `app_secret` verification and `page_id` management.
+- **Premium Admin Dashboard**: Sleek Next.js 14 dashboard with:
+  - Real-time settings synchronization.
+  - Theme-aware design (Dark/Light mode).
+  - Knowledge source management & indexing controls.
+  - FAQ and Human Handoff monitoring.
 
 ## 🛠️ Technology Stack
 
-- **Backend**: FastAPI (Python)
-- **Frontend**: Next.js (React)
-- **Database**: Supabase (PostgreSQL + pgvector)
-- **LLM API**: OpenRouter (GPT, Claude, Llama models)
-- **Memory**: Redis / Upstash (Optional history tracking)
+- **Backend**: FastAPI (Python 3.10+)
+- **Frontend**: Next.js 14, TailwindCSS, Lucide Icons
+- **Database**: Supabase (PostgreSQL + `pgvector`)
+- **AI Backend**: OpenAI SDK (routed via OpenRouter.ai)
+- **Security**: Supabase JWT (HS256) & RLS Policies
+
+## ⚙️ Setup & Installation
+
+### 1. Supabase Preparation
+- Enable the **Vector** extension in your Supabase project.
+- Run the provided `backend/setup_supabase.sql` in your SQL Editor to initialize the schema, RLS policies, and HNSW indexes.
+
+### 2. Environment Variables
+Create a `.env` file in the root directory:
+```env
+# Supabase Configuration
+SUPABASE_URL=your-project-url
+SUPABASE_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key (Required for backend RLS bypass)
+SUPABASE_JWT_SECRET=your-jwt-secret (Required for API Authentication)
+
+# AI Configuration
+OPENROUTER_API_KEY=your-openrouter-key
+
+# Facebook Messenger (Initial defaults)
+VERIFY_TOKEN=your-messenger-verify-token
+PAGE_ACCESS_TOKEN=your-page-access-token
+APP_SECRET=your-facebook-app-secret
+```
+
+### 3. Backend Setup
+```bash
+# Create a virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the server
+python -m backend.main
+```
+
+### 4. Admin Dashboard
+```bash
+cd admin-dashboard
+npm install
+npm run dev
+```
 
 ## 📦 Project Structure
 
 ```text
 /
-├── admin-dashboard/     # Next.js frontend for bot management
-├── backend/             # FastAPI backend logic
-│   ├── services/        # Business logic: ingestion, faqs, etc.
-│   ├── main.py          # API endpoints & webhooks
-│   ├── message_handler.py # Bot orchestration logic
-│   ├── openrouter_integration.py # LLM interface
-│   └── rag_pipeline.py  # Vector search & RAG logic
-├── raw_data/            # Source documents (.txt, .pdf) for ingestion
-└── requirements.txt     # Python dependencies
+├── admin-dashboard/     # Next.js frontend (App Router)
+│   └── src/app/(dashboard)/ # Dashboard views & UI
+├── backend/             # FastAPI backend
+│   ├── services/         # Ingestion, FAQs, Analytics
+│   ├── auth.py           # Supabase JWT verification
+│   └── main.py           # API controller & Webhooks
+├── raw_data/            # Staging area for uploaded documents
+└── .env                  # Environment configuration
 ```
 
-## ⚙️ Setup & Installation
-
-1. **Environment Variables**:
-   Create a `.env` file in the root with:
-   ```env
-   SUPABASE_URL=...
-   SUPABASE_KEY=...
-   OPENROUTER_API_KEY=...
-   VERIFY_TOKEN=...
-   PAGE_ACCESS_TOKEN=...
-   ```
-
-2. **Backend**:
-   ```bash
-   pip install -r requirements.txt
-   uvicorn backend.main:app --reload
-   ```
-
-3. **Database**:
-   Run the SQL scripts in `backend/setup_supabase.sql` in your Supabase SQL Editor to initialize tables and the vector-search RPC.
-
-4. **Frontend**:
-   ```bash
-   cd admin-dashboard
-   npm install
-   npm run dev
-   ```
+## 🔒 Security Note
+This project uses **Row Level Security (RLS)** in Supabase. The backend requires the `SUPABASE_SERVICE_ROLE_KEY` to perform administrative tasks (like indexing documents for specific users), while the frontend uses JWTs for secure user access.
 
 ## 📝 License
-
 Internal project / Proprietary.
