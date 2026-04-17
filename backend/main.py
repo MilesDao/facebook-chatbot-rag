@@ -251,30 +251,48 @@ async def trigger_indexing(background_tasks: BackgroundTasks, current_user: dict
     return {"status": "indexing_started"}
 
 @app.get("/api/sources")
-async def get_sources():
-    """Fetch list of uploaded raw source files."""
+async def get_sources(current_user: dict = Depends(get_current_user)):
+    """Fetch list of successfully indexed sources from Supabase + local raw files."""
+    user_id = current_user["sub"]
+    sources_dict = {}
+    
+    # 1. Fetch unique sources from indexed documents in Supabase
     try:
-        files = []
+        if supabase:
+            # Fetch metadata for this user's documents
+            res = supabase.table("documents").select("metadata").eq("user_id", user_id).execute()
+            for doc in res.data:
+                src = doc.get("metadata", {}).get("source")
+                if src:
+                    sources_dict[src] = {"id": src, "name": src}
+    except Exception as e:
+        print(f"Error fetching indexed sources: {e}")
+
+    # 2. Add local files that are still present
+    try:
         if os.path.exists(RAW_DATA_DIR):
             for filename in os.listdir(RAW_DATA_DIR):
                 if os.path.isfile(os.path.join(RAW_DATA_DIR, filename)):
-                    files.append({"id": filename, "name": filename})
-        return files
+                    if filename not in sources_dict:
+                        sources_dict[filename] = {"id": filename, "name": filename}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error listing local sources: {e}")
+        
+    return list(sources_dict.values())
 
 @app.delete("/api/sources/{filename}")
-async def delete_source(filename: str):
+async def delete_source(filename: str, current_user: dict = Depends(get_current_user)):
     """Delete a raw source file and its embeddings from the database."""
+    user_id = current_user["sub"]
     try:
-        # Delete from disk
+        # Delete from disk (if exists)
         file_path = os.path.join(RAW_DATA_DIR, filename)
         if os.path.exists(file_path):
             os.remove(file_path)
             
-        # Delete from DB
+        # Delete from DB for this user
         if supabase:
-            supabase.table("documents").delete().contains("metadata", {"source": filename}).execute()
+            supabase.table("documents").delete().eq("user_id", user_id).contains("metadata", {"source": filename}).execute()
             
         return {"status": "success"}
     except Exception as e:

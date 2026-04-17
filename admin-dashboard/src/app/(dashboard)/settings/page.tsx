@@ -522,6 +522,26 @@ export default function SettingsPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Appearance section */}
+                <div className="card glass">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <Settings color="var(--accent)" />
+                        <h2 style={{ margin: 0 }}>{t("settings.appearance") || "Appearance"}</h2>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                            {t("settings.appearanceDesc") || "Customize the look and feel of your dashboard. Choose between dark and various light themes."}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', background: 'var(--nav-hover)', borderRadius: '12px' }}>
+                            <span style={{ fontSize: '15px', color: 'var(--foreground)', fontWeight: 500 }}>
+                                {t("settings.toggleTheme") || "Select Theme"}:
+                            </span>
+                            <ThemeToggle />
+                        </div>
+                    </div>
+                </div>
             </div>
         </form>
     );
