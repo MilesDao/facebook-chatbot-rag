@@ -45,7 +45,7 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
         # Handle Asymmetric ES256 (Standard for many Supabase projects)
         global _jwks_client
         if _jwks_client is None:
-            supabase_url = os.getenv("SUPABASE_URL", "").rstrip("/")
+            supabase_url = (os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL") or "").rstrip("/")
             if not supabase_url:
                 raise HTTPException(status_code=500, detail="SUPABASE_URL not configured")
             jwks_url = f"{supabase_url}/auth/v1/.well-known/jwks.json"
