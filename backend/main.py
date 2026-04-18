@@ -44,6 +44,7 @@ class BotSettingsUpdate(BaseModel):
     verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
     llm_model: Optional[str] = Field("openai/gpt-oss-120b:free")
     app_secret: Optional[str] = Field(None, min_length=32, max_length=32)
+    system_prompt: Optional[str] = Field(None)
 
 app = FastAPI(title="AI Messenger Bot - Backend API")
 
@@ -189,6 +190,15 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         print(f"WARNING: No OpenRouter API Key available for page {page_id}. Using free models if model name allows.")
     else:
         print(f"DEBUG: Using user-provided OpenRouter Key (Redacted: {openrouter_key[:6]}...)")
+
+    # Check if this sender is paused (admin took over)
+    try:
+        pause_check = supabase.table("paused_senders").select("id").eq("user_id", user_id).eq("sender_id", sender_id).limit(1).execute()
+        if pause_check.data:
+            print(f"PAUSED: Sender {sender_id} is paused for user {user_id}. Skipping AI response.")
+            return
+    except Exception as e:
+        print(f"Error checking pause status: {e}")
 
     # Helper function to send message using specific token
     def send_fb(sender: str, text: str, fb_token: str):
@@ -385,7 +395,8 @@ async def get_bot_settings(current_user: dict = Depends(get_current_user)):
                 "openrouter_api_key": "",
                 "page_id": "",
                 "llm_model": "openai/gpt-oss-120b:free",
-                "app_secret": ""
+                "app_secret": "",
+                "system_prompt": ""
             }
             supabase.table("bot_settings").insert(new_settings).execute()
             return new_settings
@@ -406,6 +417,7 @@ async def update_bot_settings(settings: BotSettingsUpdate, current_user: dict = 
             "verify_token": settings.verify_token,
             "llm_model": settings.llm_model or "openai/gpt-oss-120b:free",
             "app_secret": settings.app_secret,
+            "system_prompt": settings.system_prompt or "",
             "updated_at": "now()"
         }
         # Use upsert to handle both insert and update
@@ -467,6 +479,101 @@ async def resolve_handoff(handoff_id: str, current_user: dict = Depends(get_curr
     try:
         response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).eq("user_id", user_id).execute()
         return {"status": "success", "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/api/handoffs/{handoff_id}/restore")
+async def restore_handoff(handoff_id: str, current_user: dict = Depends(get_current_user)):
+    """Restore a resolved handoff back to active status."""
+    user_id = current_user["sub"]
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        response = supabase.table("handoffs").update({"status": "active"}).eq("id", handoff_id).eq("user_id", user_id).execute()
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/handoffs/{handoff_id}")
+async def delete_handoff(handoff_id: str, current_user: dict = Depends(get_current_user)):
+    """Permanently delete a handoff from the database."""
+    user_id = current_user["sub"]
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        response = supabase.table("handoffs").delete().eq("id", handoff_id).eq("user_id", user_id).execute()
+        return {"status": "success", "data": response.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/facebook/resolve-names")
+async def resolve_facebook_names(request: Request, current_user: dict = Depends(get_current_user)):
+    """Resolve Facebook PSIDs to real names using Graph API."""
+    user_id = current_user["sub"]
+    body = await request.json()
+    sender_ids = body.get("sender_ids", [])
+
+    if not sender_ids:
+        return {"names": {}}
+
+    # Fetch user's Page Access Token
+    settings_res = supabase.table("bot_settings").select("page_access_token").eq("user_id", user_id).limit(1).execute()
+    if not settings_res.data or not settings_res.data[0].get("page_access_token"):
+        return {"names": {}}
+
+    token = settings_res.data[0]["page_access_token"]
+    names = {}
+
+    for psid in sender_ids[:50]:  # Limit to 50 to avoid abuse
+        try:
+            url = f"https://graph.facebook.com/v21.0/{psid}?fields=first_name,last_name,profile_pic&access_token={token}"
+            r = requests.get(url, timeout=5)
+            if r.ok:
+                data = r.json()
+                first = data.get("first_name", "")
+                last = data.get("last_name", "")
+                names[psid] = {
+                    "name": f"{first} {last}".strip() or psid,
+                    "profile_pic": data.get("profile_pic", "")
+                }
+            else:
+                names[psid] = {"name": psid, "profile_pic": ""}
+        except Exception as e:
+            print(f"Error resolving PSID {psid}: {e}")
+            names[psid] = {"name": psid, "profile_pic": ""}
+
+    return {"names": names}
+
+@app.get("/api/senders/paused")
+async def get_paused_senders(current_user: dict = Depends(get_current_user)):
+    """Get list of paused sender IDs."""
+    user_id = current_user["sub"]
+    try:
+        response = supabase.table("paused_senders").select("sender_id, paused_at").eq("user_id", user_id).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/senders/{sender_id}/pause")
+async def pause_sender(sender_id: str, current_user: dict = Depends(get_current_user)):
+    """Pause AI responses for a specific sender."""
+    user_id = current_user["sub"]
+    try:
+        supabase.table("paused_senders").upsert(
+            {"user_id": user_id, "sender_id": sender_id},
+            on_conflict="user_id,sender_id"
+        ).execute()
+        return {"status": "success", "paused": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/senders/{sender_id}/pause")
+async def resume_sender(sender_id: str, current_user: dict = Depends(get_current_user)):
+    """Resume AI responses for a specific sender."""
+    user_id = current_user["sub"]
+    try:
+        supabase.table("paused_senders").delete().eq("user_id", user_id).eq("sender_id", sender_id).execute()
+        return {"status": "success", "paused": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

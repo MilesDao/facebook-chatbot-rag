@@ -100,6 +100,13 @@ const translations: Record<Language, Record<string, string>> = {
     "handoff.sender": "Sender",
     "handoff.openChat": "Open Chat",
     "handoff.score": "SCORE",
+    "handoff.restore": "Restore",
+    "handoff.delete": "Delete",
+    "handoff.deleteConfirm": "Are you sure you want to permanently delete this handoff?",
+    "handoff.messages": "messages",
+    "handoff.pauseAI": "Pause AI",
+    "handoff.resumeAI": "Resume AI",
+    "handoff.paused": "AI Paused",
     "faq.deleteTitle": "Delete FAQ",
 
     // Settings
@@ -205,6 +212,13 @@ const translations: Record<Language, Record<string, string>> = {
     "handoff.sender": "Khách hàng",
     "handoff.openChat": "Mở chat",
     "handoff.score": "MỨC ĐỘ",
+    "handoff.restore": "Khôi phục",
+    "handoff.delete": "Xóa",
+    "handoff.deleteConfirm": "Bạn có chắc chắn muốn xóa vĩnh viễn yêu cầu này không?",
+    "handoff.messages": "tin nhắn",
+    "handoff.pauseAI": "Tạm dừng AI",
+    "handoff.resumeAI": "Bật lại AI",
+    "handoff.paused": "AI đã tạm dừng",
     "faq.deleteTitle": "Xóa FAQ",
 
     // Settings

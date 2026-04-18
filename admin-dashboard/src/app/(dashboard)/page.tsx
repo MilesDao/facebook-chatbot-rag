@@ -9,7 +9,9 @@ import {
   MessageCircle,
   AlertCircle,
   TrendingUp,
-  Activity
+  Activity,
+  Pause,
+  Play
 } from "lucide-react";
 import { apiFetch } from "@/lib/auth";
 
@@ -17,6 +19,8 @@ export default function Overview() {
   const { t } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
   const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
+  const [senderNames, setSenderNames] = useState<Record<string, { name: string; profile_pic: string }>>({});
+  const [pausedSenders, setPausedSenders] = useState<Set<string>>(new Set());
   const [stats, setStats] = useState({
     totalMessages: 0,
     uniqueUsers: 0,
@@ -24,6 +28,15 @@ export default function Overview() {
     handoffRate: 0
   });
   const [loading, setLoading] = useState(true);
+
+  // Helper: get display name for a sender ID
+  const displayName = (psid: string) => {
+    const info = senderNames[psid];
+    if (info?.name && info.name !== psid) {
+      return `${info.name} (${psid.substring(0, 8)}...)`;
+    }
+    return `${psid.substring(0, 14)}...`;
+  };
 
   const groupedLogs = useMemo(() => {
     const groups: Record<string, { sender_id: string; totalScore: number; items: any[] }> = {};
@@ -67,6 +80,21 @@ export default function Overview() {
               avgConfidence: Math.round(avgConf * 100),
               handoffRate: Math.round((handoffs / data.length) * 100)
             });
+
+            // Resolve sender names
+            const uniqueIds = [...users] as string[];
+            try {
+              const nameRes = await apiFetch("/api/facebook/resolve-names", {
+                method: "POST",
+                body: JSON.stringify({ sender_ids: uniqueIds })
+              });
+              if (nameRes.ok) {
+                const nameData = await nameRes.json();
+                setSenderNames(nameData.names || {});
+              }
+            } catch (err) {
+              console.error("Failed to resolve sender names:", err);
+            }
           }
         }
       } catch (err) {
@@ -76,7 +104,28 @@ export default function Overview() {
       }
     }
     fetchData();
+    // Fetch paused senders
+    apiFetch("/api/senders/paused")
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
+      .catch(err => console.error("Failed to fetch paused senders:", err));
   }, []);
+
+  const togglePause = async (senderId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't expand/collapse the row
+    const isPaused = pausedSenders.has(senderId);
+    try {
+      if (isPaused) {
+        await apiFetch(`/api/senders/${senderId}/pause`, { method: "DELETE" });
+        setPausedSenders(prev => { const next = new Set(prev); next.delete(senderId); return next; });
+      } else {
+        await apiFetch(`/api/senders/${senderId}/pause`, { method: "POST" });
+        setPausedSenders(prev => new Set(prev).add(senderId));
+      }
+    } catch (err) {
+      console.error("Failed to toggle pause:", err);
+    }
+  };
 
   const toggleExpand = (key: string) => {
     setExpandedLogs(prev => ({ ...prev, [key]: !prev[key] }));
@@ -136,16 +185,17 @@ export default function Overview() {
         <table style={{ tableLayout: 'fixed', width: '100%' }}>
           <thead>
             <tr>
-              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.sender")}</th>
-              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.score")} (Avg)</th>
-              <th style={{ width: '33%', textAlign: 'center' }}>{t("table.status")}</th>
+              <th style={{ width: '30%', textAlign: 'center' }}>{t("table.sender")}</th>
+              <th style={{ width: '20%', textAlign: 'center' }}>{t("table.score")} (Avg)</th>
+              <th style={{ width: '20%', textAlign: 'center' }}>{t("table.status")}</th>
+              <th style={{ width: '30%', textAlign: 'center' }}>AI</th>
             </tr>
           </thead>
           <tbody>
             {(groupedLogs.length > 0 ? groupedLogs.slice(0, 10) : []).map((group, i) => (
               <React.Fragment key={i}>
                 <tr onClick={() => toggleExpand(`group-${i}`)} style={{ cursor: 'pointer', background: expandedLogs[`group-${i}`] ? 'var(--nav-hover)' : 'transparent' }}>
-                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', color: 'var(--foreground)' }}>{group.sender_id.substring(0, 12)}...</td>
+                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', color: 'var(--foreground)' }}>{displayName(group.sender_id)}</td>
                   <td style={{ textAlign: 'center' }}>{Math.round(group.avgScore * 100)}%</td>
                   <td style={{ textAlign: 'center' }}>
                     <span style={{
@@ -158,10 +208,51 @@ export default function Overview() {
                       {group.status === 'handoff' ? t("table.handoff") : t("table.auto")}
                     </span>
                   </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {pausedSenders.has(group.sender_id) ? (
+                      <button
+                        onClick={(e) => togglePause(group.sender_id, e)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: 'rgba(239, 68, 68, 0.15)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: 600
+                        }}
+                      >
+                        <Play size={12} /> {t("handoff.resumeAI")}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => togglePause(group.sender_id, e)}
+                        style={{
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          background: 'rgba(34, 197, 94, 0.1)',
+                          color: '#22c55e',
+                          border: '1px solid rgba(34, 197, 94, 0.25)',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: 600
+                        }}
+                      >
+                        <Pause size={12} /> {t("handoff.pauseAI")}
+                      </button>
+                    )}
+                  </td>
                 </tr>
                 {expandedLogs[`group-${i}`] && (
                   <tr>
-                    <td colSpan={3} style={{ padding: '0', borderBottom: 'none' }}>
+                    <td colSpan={4} style={{ padding: '0', borderBottom: 'none' }}>
                       <div style={{ background: 'var(--nav-hover)', padding: '16px', borderBottom: '1px solid var(--card-border)' }}>
                         <h4 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-muted)' }}>{t("table.interactionDetails")}</h4>
                         <table style={{ width: '100%', tableLayout: 'fixed', background: 'var(--background)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -202,7 +293,7 @@ export default function Overview() {
             ))}
             {groupedLogs.length === 0 && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t("table.empty")}</td>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t("table.empty")}</td>
               </tr>
             )}
           </tbody>
@@ -211,3 +302,4 @@ export default function Overview() {
     </>
   );
 }
+

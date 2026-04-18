@@ -20,6 +20,7 @@ create table if not exists bot_settings (
   verify_token text,
   llm_model text default 'openai/gpt-oss-120b:free',
   app_secret text,
+  system_prompt text,
   updated_at timestamptz default now()
 );
 
@@ -30,6 +31,7 @@ create policy "Users can manage their own bot settings"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+drop policy if exists "Allow internal lookup by verify_token" on bot_settings;
 create policy "Allow internal lookup by verify_token"
   on bot_settings for select
   using (true); -- We only expose non-sensitive fields in select if needed, but here we need it for lookup.
@@ -121,7 +123,23 @@ create policy "Users can manage their own app settings"
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
--- 7. SIMILARITY SEARCH FUNCTION
+-- 7. PAUSED SENDERS (LLM Interruption)
+create table if not exists paused_senders (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  sender_id text not null,
+  paused_at timestamptz default now(),
+  unique(user_id, sender_id)
+);
+
+alter table paused_senders enable row level security;
+drop policy if exists "Users can manage their own paused senders" on paused_senders;
+create policy "Users can manage their own paused senders"
+  on paused_senders for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+-- 8. SIMILARITY SEARCH FUNCTION
 create or replace function match_documents (
   query_embedding vector(1536),
   match_threshold float,
