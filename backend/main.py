@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import shutil
 import time
@@ -213,6 +214,39 @@ def process_message(sender_id: str, user_message: str, page_id: str):
                 msg += f" | Body: {e.response.text}"
             print(msg)
 
+    # Helper function to send file/image attachments
+    def send_fb_attachment(sender: str, file_url: str, fb_token: str):
+        # Detect type from extension
+        ext = file_url.rsplit('.', 1)[-1].lower() if '.' in file_url else ''
+        if ext in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+            att_type = 'image'
+        elif ext in ('mp4', 'mov', 'avi'):
+            att_type = 'video'
+        elif ext in ('mp3', 'wav', 'ogg'):
+            att_type = 'audio'
+        else:
+            att_type = 'file'
+        
+        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+        payload = {
+            "recipient": {"id": sender},
+            "message": {
+                "attachment": {
+                    "type": att_type,
+                    "payload": {"url": file_url, "is_reusable": True}
+                }
+            }
+        }
+        try:
+            res = requests.post(url, json=payload)
+            res.raise_for_status()
+            print(f"Successfully sent {att_type} attachment to {sender}: {file_url[:60]}")
+        except Exception as e:
+            msg = f"Error sending attachment to {sender}: {e}"
+            if hasattr(e, 'response') and e.response is not None:
+                msg += f" | Body: {e.response.text}"
+            print(msg)
+
     # Helper function to send typing action
     def send_fb_action(sender: str, action: str, fb_token: str):
         url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
@@ -260,11 +294,24 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         parts = ["Dạ mình đã nhận được thông tin, mình sẽ phản hồi bạn sớm nhé ạ."]
 
     for part in parts:
-        # Send each part as a separate message
-        print(f"Sending bubble to {sender_id}: {part[:50]}...")
-        send_fb(sender_id, part, token)
-        # Small delay between bubbles to preserve order and look natural
-        time.sleep(0.8)
+        # Extract [FILE:url] tags from this part
+        file_urls = re.findall(r'\[FILE:(https?://[^\]]+)\]', part)
+        clean_text = re.sub(r'\s*\[FILE:https?://[^\]]+\]\s*', ' ', part).strip()
+        
+        # Send the text portion (if any remains after removing tags)
+        if clean_text:
+            print(f"Sending bubble to {sender_id}: {clean_text[:50]}...")
+            send_fb(sender_id, clean_text, token)
+            time.sleep(0.5)
+        
+        # Send each file attachment
+        for file_url in file_urls:
+            print(f"Sending attachment to {sender_id}: {file_url[:60]}")
+            send_fb_attachment(sender_id, file_url, token)
+            time.sleep(0.5)
+        
+        # Small delay between bubbles to preserve order
+        time.sleep(0.3)
     
     # 5. Turn off typing indicator
     send_fb_action(sender_id, "typing_off", token)
@@ -353,6 +400,20 @@ async def delete_source(filename: str, current_user: dict = Depends(get_current_
             
         return {"status": "success"}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/sources/{filename}/content")
+async def get_source_content(filename: str, current_user: dict = Depends(get_current_user)):
+    """Return the content of a raw knowledge source file."""
+    try:
+        file_path = os.path.join(RAW_DATA_DIR, filename)
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+            
+        from fastapi.responses import FileResponse
+        return FileResponse(file_path)
+    except Exception as e:
+        print(f"Error serving file {filename}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/analytics")
@@ -575,6 +636,79 @@ async def resume_sender(sender_id: str, current_user: dict = Depends(get_current
         supabase.table("paused_senders").delete().eq("user_id", user_id).eq("sender_id", sender_id).execute()
         return {"status": "success", "paused": False}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- MEDIA LIBRARY ENDPOINTS (Supabase Storage) ---
+
+@app.post("/api/media/upload")
+async def upload_media(
+    file: UploadFile = File(...), 
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a file to Supabase Storage and return the public URL."""
+    user_id = current_user["sub"]
+    try:
+        # 1. Read file content
+        content = await file.read()
+        file_ext = file.filename.split('.')[-1] if '.' in file.filename else ''
+        # Sanitize filename: remove spaces/special chars, keep prefix unique or use timestamp
+        safe_name = re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename)
+        timestamp = int(time.time())
+        unique_name = f"{timestamp}_{safe_name}"
+        
+        path = f"{user_id}/{unique_name}"
+        
+        # 2. Upload to 'media' bucket
+        supabase.storage.from_("media").upload(
+            path=path,
+            file=content,
+            file_options={"content-type": file.content_type}
+        )
+        
+        # 3. Get Public URL
+        res = supabase.storage.from_("media").get_public_url(path)
+        return {"url": res, "filename": unique_name}
+    except Exception as e:
+        print(f"Upload error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/media")
+async def list_media(current_user: dict = Depends(get_current_user)):
+    """List all media files for the current user."""
+    user_id = current_user["sub"]
+    try:
+        # List files in the user's directory
+        files = supabase.storage.from_("media").list(user_id)
+        
+        # Add public URLs to each file
+        result = []
+        for f in files:
+            path = f"{user_id}/{f['name']}"
+            url = supabase.storage.from_("media").get_public_url(path)
+            result.append({
+                "name": f["name"],
+                "url": url,
+                "created_at": f.get("created_at"),
+                "metadata": f.get("metadata")
+            })
+        
+        # Sort by creation date descending
+        result.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+        return result
+    except Exception as e:
+        print(f"List media error: {e}")
+        return []
+
+@app.delete("/api/media/{filename}")
+async def delete_media(filename: str, current_user: dict = Depends(get_current_user)):
+    """Delete a media file."""
+    user_id = current_user["sub"]
+    try:
+        path = f"{user_id}/{filename}"
+        supabase.storage.from_("media").remove([path])
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Delete media error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/faq")

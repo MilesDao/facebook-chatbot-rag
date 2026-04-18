@@ -107,7 +107,17 @@ const translations: Record<Language, Record<string, string>> = {
     "handoff.pauseAI": "Pause AI",
     "handoff.resumeAI": "Resume AI",
     "handoff.paused": "AI Paused",
+    "media.title": "Media Library",
+    "media.desc": "Upload images and files to embed in your AI instructions or FAQs.",
+    "media.upload": "Upload Media",
+    "media.copyUrl": "Copy URL",
+    "media.delete": "Delete",
+    "media.empty": "No media files yet.",
+    "media.copied": "URL copied to clipboard!",
+    "media.confirmDelete": "Are you sure you want to delete this file?",
+    "media.dragHere": "Drop files here to upload",
     "faq.deleteTitle": "Delete FAQ",
+    "knowledge.viewSource": "View Content",
 
     // Settings
     "settings.title": "Settings",
@@ -218,8 +228,11 @@ const translations: Record<Language, Record<string, string>> = {
     "handoff.messages": "tin nhắn",
     "handoff.pauseAI": "Tạm dừng AI",
     "handoff.resumeAI": "Bật lại AI",
-    "handoff.paused": "AI đã tạm dừng",
+    "media.confirmDelete": "Bạn có chắc chắn muốn xóa tệp này không?",
+    "media.dragHere": "Thả tệp vào đây để tải lên",
     "faq.deleteTitle": "Xóa FAQ",
+    "knowledge.viewSource": "Xem nội dung",
+    "handoff.paused": "AI đã tạm dừng",
 
     // Settings
     "settings.title": "Cài Đặt",
