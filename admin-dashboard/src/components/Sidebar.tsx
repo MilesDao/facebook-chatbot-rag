@@ -1,43 +1,116 @@
 "use client";
 
 import Link from "next/link";
-import { ThemeToggle } from "./ThemeToggle";
-import { LanguageToggle } from "./LanguageToggle";
-import { useLanguage } from "./LanguageContext";
-import { BarChart3, Database, Inbox, MessageSquare, Settings, HelpCircle } from "lucide-react";
+import { useWorkspace } from "./WorkspaceContext";
+import { Layout, Users, Settings, MessageSquare, Database, Inbox } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export function Sidebar() {
-  const { t } = useLanguage();
+  const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspace();
+  const pathname = usePathname();
+
+  // Determine if we are "Inside" a bot's building sections
+  const isInsideBot = pathname.includes('/flows') ||
+    pathname.includes('/knowledge') ||
+    pathname.includes('/analytics') ||
+    pathname.includes('/handoffs');
+
+  const wsId = currentWorkspace?.id;
 
   return (
-    <aside className="sidebar glass">
-      <div style={{ padding: '0 16px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}>
-          <BarChart3 color="var(--accent)" /> AI Admin
-        </h2>
+    <aside className="sidebar glass" style={{ width: '260px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* 1. Logo */}
+      <div style={{ padding: '0 8px' }}>
+        <div style={{
+          width: '40px',
+          height: '40px',
+          background: 'linear-gradient(135deg, var(--accent), #6366f1)',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '20px'
+        }}>
+          A
+        </div>
       </div>
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <Link href="/" className="nav-item">
-          <BarChart3 size={20} /> {t("nav.overview")}
-        </Link>
-        <Link href="/knowledge" className="nav-item">
-          <Database size={20} /> {t("nav.knowledge")}
-        </Link>
-        <Link href="/faq" className="nav-item">
-          <HelpCircle size={20} /> {t("nav.faq")}
-        </Link>
-        <Link href="/handoffs" className="nav-item">
-          <Inbox size={20} /> {t("nav.handoffs")}
+
+      {/* 2. Workspace Gallery */}
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <Link
+          href="/"
+          onClick={() => setCurrentWorkspace(null)}
+          className="nav-item"
+          style={{
+            background: pathname === '/' ? 'var(--accent-alpha)' : 'transparent',
+            fontWeight: 600,
+            fontSize: '15px',
+            padding: '10px 12px'
+          }}
+        >
+          <Layout size={18} /> Workspace Gallery
         </Link>
       </nav>
 
-      <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <LanguageToggle />
-        <ThemeToggle variant="nav-item" />
-        <Link href="/settings" className="nav-item">
-          <Settings size={20} /> {t("nav.settings")}
-        </Link>
-      </div>
+      {/* Workspace Context - Hide if on root gallery or new workspace page */}
+      {currentWorkspace && pathname !== '/' && pathname !== '/workspace/new' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+          <Link
+            href={`/w/${wsId}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              background: pathname === `/w/${wsId}` ? 'var(--accent-alpha)' : 'var(--nav-hover)',
+              color: 'var(--foreground)',
+              fontWeight: 700,
+              fontSize: '14px',
+              textDecoration: 'none',
+              marginBottom: '4px',
+              border: '1px solid var(--card-border)'
+            }}
+          >
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '4px',
+              background: 'var(--accent)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px'
+            }}>
+              {currentWorkspace.name.charAt(0).toUpperCase()}
+            </div>
+            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentWorkspace.name}</span>
+          </Link>
+
+          {/* Navigation Items (Visible when in workspace) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <Link href={`/w/${wsId}/flows`} className={`nav-item ${pathname.includes('/flows') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+              <MessageSquare size={16} /> Flows
+            </Link>
+            <Link href={`/w/${wsId}/knowledge`} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+              <Database size={16} /> Knowledge
+            </Link>
+            <Link href={`/w/${wsId}/handoffs`} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+              <Inbox size={16} /> Handoff Inbox
+            </Link>
+            <Link href={`/w/${wsId}/team`} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+              <Users size={16} /> Members
+            </Link>
+            <Link href={`/w/${wsId}/settings`} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+              <Settings size={16} /> Settings
+            </Link>
+          </div>
+        </div>
+      )}
+
     </aside>
   );
 }

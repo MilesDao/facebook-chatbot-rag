@@ -5,6 +5,8 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { Header } from "@/components/Header";
+import { WorkspaceProvider } from "@/components/WorkspaceContext";
 import { createClient } from "@/lib/supabase";
 import { apiFetch } from "@/lib/auth";
 
@@ -78,7 +80,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <>
+    <WorkspaceProvider>
       {backendStatus === "error" && (
         <div style={{
           position: 'fixed',
@@ -98,11 +100,19 @@ export default function DashboardLayout({
           ⚠ Backend is unreachable. Some features may not work.
         </div>
       )}
-      <Sidebar />
-      <main className="main-content" style={backendStatus === "error" ? { paddingTop: '56px' } : undefined}>
-        {children}
-      </main>
-    </>
+      <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
+        <Sidebar />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <Header />
+          <main className="main-content" style={{
+            flex: 1,
+            overflowY: 'auto',
+            paddingTop: backendStatus === "error" ? '24px' : '0'
+          }}>
+            {children}
+          </main>
+        </div>
+      </div>
+    </WorkspaceProvider>
   );
 }
-

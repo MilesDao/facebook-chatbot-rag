@@ -18,10 +18,12 @@ import {
   Pause,
   Play
 } from "lucide-react";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { apiFetch } from "@/lib/auth";
 
 export default function HandoffInbox() {
   const { t } = useLanguage();
+  const { currentWorkspace } = useWorkspace();
   const [handoffs, setHandoffs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSenders, setExpandedSenders] = useState<Record<string, boolean>>({});
@@ -71,13 +73,15 @@ export default function HandoffInbox() {
   };
 
   useEffect(() => {
-    fetchHandoffs();
-    // Fetch paused senders
-    apiFetch("/api/senders/paused")
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
-      .catch(err => console.error("Failed to fetch paused senders:", err));
-  }, []);
+    if (currentWorkspace) {
+      fetchHandoffs();
+      // Fetch paused senders
+      apiFetch("/api/senders/paused")
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
+        .catch(err => console.error("Failed to fetch paused senders:", err));
+    }
+  }, [currentWorkspace?.id]);
 
   const togglePause = async (senderId: string) => {
     const isPaused = pausedSenders.has(senderId);

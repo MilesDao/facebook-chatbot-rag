@@ -23,10 +23,12 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { apiFetch } from "@/lib/auth";
 
 export default function KnowledgeBase() {
   const { t } = useLanguage();
+  const { currentWorkspace } = useWorkspace();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
@@ -81,9 +83,11 @@ export default function KnowledgeBase() {
   };
 
   useEffect(() => {
-    fetchSources();
-    fetchMedia();
-  }, []);
+    if (currentWorkspace) {
+      fetchSources();
+      fetchMedia();
+    }
+  }, [currentWorkspace?.id]);
 
   const handleDeleteSource = async (filename: string) => {
     if (!confirm(t("knowledge.deleteConfirm"))) return;

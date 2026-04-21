@@ -22,7 +22,7 @@ class IngestionService:
             separators=["\n\n", "\n", " ", ""]
         )
 
-    def ingest_file(self, filepath: str, user_id: str = None):
+    def ingest_file(self, filepath: str, workspace_id: str = None):
         if not self.client or not supabase:    
             print("Error: Client or Supabase not initialized.")
             return
@@ -32,8 +32,6 @@ class IngestionService:
         
         content = ""
         if filepath.lower().endswith(".txt"):
-            # FIX: Stream file in chunks instead of f.read() which loads
-            # the entire file into RAM before processing. Safe for large files.
             chunks_io: list[str] = []
             with open(filepath, "r", encoding="utf-8") as f:
                 while True:
@@ -83,7 +81,7 @@ class IngestionService:
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Truncate to 1536 dimensions to fit Supabase index limits (2000 max)
+            # Truncate to 1536 dimensions to fit Supabase index limits
             embedding = raw_embed[:1536]
             if len(embedding) < 1536:
                 embedding += [0.0] * (1536 - len(embedding))
@@ -94,15 +92,15 @@ class IngestionService:
                     "metadata": {"source": filename, "chunk_id": i},
                     "embedding": embedding 
                 }
-                if user_id:
-                    data["user_id"] = user_id
+                if workspace_id:
+                    data["workspace_id"] = workspace_id
                     
                 supabase.table("documents").insert(data).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:
                 print(f"  > Failed to insert chunk {i+1}: {e}")
 
-    def ingest_directory(self, data_dir: str, user_id: str = None):
+    def ingest_directory(self, data_dir: str, workspace_id: str = None):
         if not os.path.exists(data_dir):
             print(f"Data directory not found at {data_dir}")
             return
@@ -114,4 +112,4 @@ class IngestionService:
             return
 
         for filepath in files:
-            self.ingest_file(filepath, user_id=user_id)
+            self.ingest_file(filepath, workspace_id=workspace_id)
