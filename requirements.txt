@@ -3,7 +3,6 @@ fastapi
 uvicorn
 python-multipart
 requests
-flask
 
 # AI & LLM (OpenRouter via OpenAI SDK)
 openai
@@ -14,8 +13,7 @@ python-dotenv
 # Database & Storage
 supabase
 
-# Environment & Schema
+# Environment, Schema & Security
 pydantic
-
-redis
-
+PyJWT
+cryptography

@@ -52,9 +52,11 @@ function FlowEditorContent() {
     const { screenToFlowPosition } = useReactFlow();
 
     const [name, setName] = useState("");
+    const [triggerKeywords, setTriggerKeywords] = useState("");
     const [nodes, setNodes] = useState<Node[]>([]);
     const [edges, setEdges] = useState<Edge[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isReady, setIsReady] = useState(false);
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -124,6 +126,7 @@ function FlowEditorContent() {
                 if (res.ok) {
                     const data = await res.json();
                     setName(data.name);
+                    setTriggerKeywords(data.trigger_keywords?.join(", ") || "");
                     const enrichedNodes = (data.nodes || []).map((n: any) => ({
                         ...n,
                         data: {
@@ -146,22 +149,32 @@ function FlowEditorContent() {
         fetchFlow();
     }, [id, onDeleteNode, onNodeDataChange, setUnsavedChanges]);
 
+    useEffect(() => {
+        if (!loading) {
+            // Wait for React Flow to finish its initial dimension calculations
+            const timer = setTimeout(() => setIsReady(true), 1200);
+            return () => clearTimeout(timer);
+        }
+    }, [loading]);
+
     const onNodesChange: OnNodesChange = useCallback(
         (changes) => {
             setNodes((nds) => applyNodeChanges(changes, nds));
+            if (!isReady) return;
             // Only set dirty if changes are meaningful (not just selection)
             const hasRealChanges = changes.some(c => c.type === 'position' || c.type === 'dimensions' || c.type === 'remove');
             if (hasRealChanges) setUnsavedChanges(true);
         },
-        [setUnsavedChanges]
+        [isReady, setUnsavedChanges]
     );
 
     const onEdgesChange: OnEdgesChange = useCallback(
         (changes) => {
             setEdges((eds) => applyEdgeChanges(changes, eds));
+            if (!isReady) return;
             if (changes.some(c => c.type === 'remove')) setUnsavedChanges(true);
         },
-        [setUnsavedChanges]
+        [isReady, setUnsavedChanges]
     );
 
     const onConnect: OnConnect = useCallback(
@@ -219,6 +232,7 @@ function FlowEditorContent() {
         try {
             const payload = {
                 name: name || "Untitled Flow",
+                trigger_keywords: triggerKeywords.split(",").map(k => k.trim()).filter(Boolean),
                 nodes: nodes.map(n => ({
                     ...n,
                     data: Object.fromEntries(Object.entries(n.data).filter(([k]) => k !== 'onDelete' && k !== 'onChange'))
@@ -292,9 +306,33 @@ function FlowEditorContent() {
                             border: 'none',
                             color: 'var(--foreground)',
                             outline: 'none',
-                            width: '300px'
+                            width: '250px'
                         }}
                     />
+                    <div style={{ height: '24px', width: '1px', background: 'var(--card-border)' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Zap size={14} color="var(--accent)" />
+                        <input
+                            type="text"
+                            value={triggerKeywords}
+                            onChange={(e) => {
+                                setTriggerKeywords(e.target.value);
+                                setUnsavedChanges(true);
+                            }}
+                            placeholder="Triggers (comma-separated)..."
+                            style={{
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                background: 'var(--nav-hover)',
+                                border: '1px solid var(--card-border)',
+                                borderRadius: '6px',
+                                padding: '4px 10px',
+                                color: 'var(--foreground)',
+                                outline: 'none',
+                                width: '300px'
+                            }}
+                        />
+                    </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>

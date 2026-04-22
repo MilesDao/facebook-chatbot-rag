@@ -189,7 +189,7 @@ export default function LoginPage() {
                     (e.target.style.borderColor = "rgba(59, 130, 246, 0.6)")
                   }
                   onBlur={(e) =>
-                    (e.target.style.borderColor = "rgba(255,255,255,0.1)")
+                    (e.target.style.borderColor = "var(--card-border)")
                   }
                 />
               </div>
@@ -232,7 +232,7 @@ export default function LoginPage() {
                     (e.target.style.borderColor = "rgba(59, 130, 246, 0.6)")
                   }
                   onBlur={(e) =>
-                    (e.target.style.borderColor = "rgba(255,255,255,0.1)")
+                    (e.target.style.borderColor = "var(--card-border)")
                   }
                 />
                 <button
@@ -264,7 +264,7 @@ export default function LoginPage() {
                     textDecoration: 'none'
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#3b82f6')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
                   Forgot password?
                 </Link>
