@@ -19,6 +19,8 @@ interface WorkspaceContextType {
     setCurrentWorkspace: (ws: Workspace | null) => void;
     loading: boolean;
     refreshWorkspaces: () => Promise<void>;
+    unsavedChanges: boolean;
+    setUnsavedChanges: (val: boolean) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
@@ -27,6 +29,8 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
     setCurrentWorkspace: () => { },
     loading: true,
     refreshWorkspaces: async () => { },
+    unsavedChanges: false,
+    setUnsavedChanges: () => { },
 });
 
 export function useWorkspace() {
@@ -39,6 +43,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [currentWorkspace, setCurrentWorkspaceState] = useState<Workspace | null>(null);
     const [loading, setLoading] = useState(true);
+    const [unsavedChanges, setUnsavedChanges] = useState(false);
 
     const setCurrentWorkspace = useCallback((ws: Workspace | null) => {
         setCurrentWorkspaceState(ws);
@@ -83,7 +88,7 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <WorkspaceContext.Provider
-            value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading, refreshWorkspaces }}
+            value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading, refreshWorkspaces, unsavedChanges, setUnsavedChanges }}
         >
             {children}
         </WorkspaceContext.Provider>

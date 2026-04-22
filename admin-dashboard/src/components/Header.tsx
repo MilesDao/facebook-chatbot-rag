@@ -8,10 +8,21 @@ import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 
 export function Header() {
-    const { currentWorkspace } = useWorkspace();
+    const { currentWorkspace, unsavedChanges, setUnsavedChanges } = useWorkspace();
     const pathname = usePathname();
 
     const isNewWorkspace = pathname === "/workspace/new";
+
+    const handleNavClick = (e: React.MouseEvent) => {
+        if (unsavedChanges) {
+            const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+            if (!confirmed) {
+                e.preventDefault();
+            } else {
+                setUnsavedChanges(false);
+            }
+        }
+    };
 
     return (
         <header
@@ -28,6 +39,7 @@ export function Header() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Link
                     href="/"
+                    onClick={handleNavClick}
                     style={{
                         fontSize: '14px',
                         fontWeight: 500,
@@ -45,6 +57,7 @@ export function Header() {
                 {currentWorkspace ? (
                     <Link
                         href={`/w/${currentWorkspace.id}`}
+                        onClick={handleNavClick}
                         style={{
                             fontSize: '14px',
                             fontWeight: 600,
@@ -60,6 +73,7 @@ export function Header() {
                 ) : isNewWorkspace ? (
                     <Link
                         href="/workspace/new"
+                        onClick={handleNavClick}
                         style={{
                             fontSize: '14px',
                             fontWeight: 600,
@@ -72,6 +86,7 @@ export function Header() {
                 ) : (
                     <Link
                         href="/"
+                        onClick={handleNavClick}
                         style={{
                             fontSize: '14px',
                             fontWeight: 600,

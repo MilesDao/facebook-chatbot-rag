@@ -6,8 +6,19 @@ import { Layout, Users, Settings, MessageSquare, Database, Inbox } from "lucide-
 import { usePathname } from "next/navigation";
 
 export function Sidebar() {
-  const { workspaces, currentWorkspace, setCurrentWorkspace } = useWorkspace();
+  const { workspaces, currentWorkspace, setCurrentWorkspace, unsavedChanges, setUnsavedChanges } = useWorkspace();
   const pathname = usePathname();
+
+  const handleNavClick = (e: React.MouseEvent) => {
+    if (unsavedChanges) {
+      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+      if (!confirmed) {
+        e.preventDefault();
+      } else {
+        setUnsavedChanges(false);
+      }
+    }
+  };
 
   // Determine if we are "Inside" a bot's building sections
   const isInsideBot = pathname.includes('/flows') ||
@@ -41,7 +52,10 @@ export function Sidebar() {
       <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <Link
           href="/"
-          onClick={() => setCurrentWorkspace(null)}
+          onClick={(e) => {
+            handleNavClick(e);
+            if (!e.defaultPrevented) setCurrentWorkspace(null);
+          }}
           className="nav-item"
           style={{
             background: pathname === '/' ? 'var(--accent-alpha)' : 'transparent',
@@ -59,6 +73,7 @@ export function Sidebar() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
           <Link
             href={`/w/${wsId}`}
+            onClick={handleNavClick}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -92,19 +107,19 @@ export function Sidebar() {
 
           {/* Navigation Items (Visible when in workspace) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <Link href={`/w/${wsId}/flows`} className={`nav-item ${pathname.includes('/flows') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+            <Link href={`/w/${wsId}/flows`} onClick={handleNavClick} className={`nav-item ${pathname.includes('/flows') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
               <MessageSquare size={16} /> Flows
             </Link>
-            <Link href={`/w/${wsId}/knowledge`} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+            <Link href={`/w/${wsId}/knowledge`} onClick={handleNavClick} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
               <Database size={16} /> Knowledge
             </Link>
-            <Link href={`/w/${wsId}/handoffs`} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+            <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
               <Inbox size={16} /> Handoff Inbox
             </Link>
-            <Link href={`/w/${wsId}/team`} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+            <Link href={`/w/${wsId}/team`} onClick={handleNavClick} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
               <Users size={16} /> Members
             </Link>
-            <Link href={`/w/${wsId}/settings`} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
+            <Link href={`/w/${wsId}/settings`} onClick={handleNavClick} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px' }}>
               <Settings size={16} /> Settings
             </Link>
           </div>

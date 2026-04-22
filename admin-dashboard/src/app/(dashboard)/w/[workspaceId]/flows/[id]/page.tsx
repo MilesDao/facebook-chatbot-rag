@@ -48,7 +48,7 @@ const nodeTypes = {
 function FlowEditorContent() {
     const { id } = useParams();
     const router = useRouter();
-    const { currentWorkspace } = useWorkspace();
+    const { currentWorkspace, setUnsavedChanges, unsavedChanges } = useWorkspace();
     const { screenToFlowPosition } = useReactFlow();
 
     const [name, setName] = useState("");
@@ -58,10 +58,29 @@ function FlowEditorContent() {
     const [saving, setSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
+    // Browser-level protection (Tab close, Refresh)
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (unsavedChanges) {
+                e.preventDefault();
+                e.returnValue = "";
+                return "";
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [unsavedChanges]);
+
+    // Clear dirty state on unmount
+    useEffect(() => {
+        return () => setUnsavedChanges(false);
+    }, [setUnsavedChanges]);
+
     const onDeleteNode = useCallback((nodeId: string) => {
         setNodes((nds) => nds.filter((n) => n.id !== nodeId));
         setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
-    }, []);
+        setUnsavedChanges(true);
+    }, [setUnsavedChanges]);
 
     const onNodeDataChange = useCallback((nodeId: string, field: string, value: any) => {
         setNodes((nds) =>
@@ -78,7 +97,8 @@ function FlowEditorContent() {
                 return node;
             })
         );
-    }, []);
+        setUnsavedChanges(true);
+    }, [setUnsavedChanges]);
 
     useEffect(() => {
         if (id === "new") {
@@ -114,6 +134,8 @@ function FlowEditorContent() {
                     }));
                     setNodes(enrichedNodes);
                     setEdges(data.edges || []);
+                    // Reset dirty state after initial load
+                    setUnsavedChanges(false);
                 }
             } catch (err) {
                 console.error("Failed to fetch flow:", err);
@@ -122,21 +144,32 @@ function FlowEditorContent() {
             }
         }
         fetchFlow();
-    }, [id, onDeleteNode, onNodeDataChange]);
+    }, [id, onDeleteNode, onNodeDataChange, setUnsavedChanges]);
 
     const onNodesChange: OnNodesChange = useCallback(
-        (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-        []
+        (changes) => {
+            setNodes((nds) => applyNodeChanges(changes, nds));
+            // Only set dirty if changes are meaningful (not just selection)
+            const hasRealChanges = changes.some(c => c.type === 'position' || c.type === 'dimensions' || c.type === 'remove');
+            if (hasRealChanges) setUnsavedChanges(true);
+        },
+        [setUnsavedChanges]
     );
 
     const onEdgesChange: OnEdgesChange = useCallback(
-        (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-        []
+        (changes) => {
+            setEdges((eds) => applyEdgeChanges(changes, eds));
+            if (changes.some(c => c.type === 'remove')) setUnsavedChanges(true);
+        },
+        [setUnsavedChanges]
     );
 
     const onConnect: OnConnect = useCallback(
-        (params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--accent)', strokeWidth: 3 } }, eds)),
-        []
+        (params) => {
+            setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--accent)', strokeWidth: 3 } }, eds));
+            setUnsavedChanges(true);
+        },
+        [setUnsavedChanges]
     );
 
     // Drag and Drop Logic
@@ -175,8 +208,9 @@ function FlowEditorContent() {
             };
 
             setNodes((nds) => nds.concat(newNode));
+            setUnsavedChanges(true);
         },
-        [screenToFlowPosition, onDeleteNode, onNodeDataChange]
+        [screenToFlowPosition, onDeleteNode, onNodeDataChange, setUnsavedChanges]
     );
 
     const handleSave = async () => {
@@ -202,6 +236,7 @@ function FlowEditorContent() {
 
             if (res.ok) {
                 setSaveSuccess(true);
+                setUnsavedChanges(false); // SUCCESS! Clear dirty flag
                 setTimeout(() => setSaveSuccess(false), 3000);
                 if (id === "new") {
                     const result = await res.json();
@@ -231,7 +266,13 @@ function FlowEditorContent() {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <button
-                        onClick={() => router.push(`/w/${currentWorkspace?.id}/flows`)}
+                        onClick={() => {
+                            if (unsavedChanges) {
+                                if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) return;
+                                setUnsavedChanges(false);
+                            }
+                            router.push(`/w/${currentWorkspace?.id}/flows`);
+                        }}
                         style={{ background: 'var(--nav-hover)', border: 'none', color: 'var(--foreground)', cursor: 'pointer', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         <ArrowLeft size={18} />
@@ -239,7 +280,10 @@ function FlowEditorContent() {
                     <input
                         type="text"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => {
+                            setName(e.target.value);
+                            setUnsavedChanges(true);
+                        }}
                         placeholder="Name your flow..."
                         style={{
                             fontSize: '16px',
