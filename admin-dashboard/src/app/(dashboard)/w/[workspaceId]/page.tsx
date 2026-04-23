@@ -169,31 +169,23 @@ export default function WorkspaceOverview() {
             </div>
 
             <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '40px' }}>
-<<<<<<< HEAD
                 <h2 style={{ marginBottom: '24px' }}>{t('overview.analyticsPreview')}</h2>
-                <div className="stats-grid">
-                    <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.totalMessages')}</p>
-                        <h2 style={{ fontSize: '24px', margin: '8px 0' }}>{stats.totalMessages}</h2>
-                    </div>
-=======
-                <h2 style={{ marginBottom: '24px' }}>Analytics & Activity Overview</h2>
 
                 <div className="stats-grid" style={{ marginBottom: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Messages</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.totalMessages')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.totalMessages}</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Unique Users (Customers)</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.uniqueUsers')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.uniqueUsers}</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Avg Confidence</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.avgConfidence')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.avgConfidence}%</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Handoff Rate</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.handoffRate')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: '#ef4444' }}>{stats.handoffRate}%</h2>
                     </div>
                 </div>
@@ -276,7 +268,7 @@ export default function WorkspaceOverview() {
                             </tbody>
                         </table>
                     )}
->>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
+
                 </div>
             </div>
         </div>
