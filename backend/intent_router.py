@@ -35,7 +35,7 @@ def classify_intent(user_query: str, google_key: str = None) -> str:
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3.1-flash-lite-preview",
                 contents=f"{system_instruction}\n\nUser Message: {user_query}",
                 config=genai.types.GenerateContentConfig(
                     response_mime_type="application/json",

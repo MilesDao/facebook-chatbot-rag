@@ -277,7 +277,7 @@
   "settings.appSecretLabel": "App Secret",
   "settings.appSecretHint": "Found in Settings > Basic in your Facebook App",
   "settings.modelLabel": "Gemini Model",
-  "settings.modelPlaceholder": "e.g. gemini-1.5-flash",
+  "settings.modelPlaceholder": "e.g. gemini-3.1-flash-lite-preview",
   "settings.modelHint": "Choose the Gemini model that suits your needs (Flash for speed, Pro for reasoning)",
   "settings.personalityLabel": "AI Personality",
   "settings.personalityHint": "Customize how your bot talks and behaves. Leave empty to use default.",

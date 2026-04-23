@@ -16,13 +16,13 @@ load_dotenv()
 
 def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
-    Generate 768-dimension embeddings via Google GenAI (Gemini Embedding 1).
-    Dimensions must match the Supabase table schema (768).
+    Generate 1536-dimension embeddings via Google GenAI (Gemini Embedding 1).
+    Dimensions must match the Supabase table schema (1536).
     """
     google_key = api_key or os.getenv("GOOGLE_API_KEY")
     if not google_key:
         print("Error: No Google API key found for embedding generation.")
-        return [0.0] * 768
+        return [0.0] * 1536
 
     try:
         client = genai.Client(api_key=google_key)
@@ -30,23 +30,21 @@ def get_embedding(text: str, api_key: str = None) -> list[float]:
         # or stick to models/embedding-001 for consistency if already used.
         # The user was using embedding-001.
         result = client.models.embed_content(
-            model="models/embedding-001",
+            model="gemini-embedding-001",
             contents=text,
-            config=genai.types.EmbedContentConfig(
-                task_type="RETRIEVAL_QUERY"
-            )
+            config=genai.types.EmbedContentConfig(output_dimensionality=1536)
         )
         
         raw_embed = result.embeddings[0].values
-        # Regularize to exactly 768 dimensions
-        embedding = list(raw_embed[:768])
-        if len(embedding) < 768:
-            embedding += [0.0] * (768 - len(embedding))
+        # Regularize to exactly 1536 dimensions
+        embedding = list(raw_embed[:1536])
+        if len(embedding) < 1536:
+            embedding += [0.0] * (1536 - len(embedding))
         return embedding
         
     except Exception as e:
         print(f"Error generating Google embedding: {e}")
-        return [0.0] * 768
+        return [0.0] * 1536
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, workspace_id: str = None, api_key: str = None):
     """

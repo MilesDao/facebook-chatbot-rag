@@ -20,7 +20,7 @@ class BotResponse(BaseModel):
         description="True nếu cần hỗ trợ từ người thật."
     )
 
-def generate_response(user_message: str, context: str, history: list, google_key: str = None, llm_model: str = "gemini-1.5-flash", custom_system_prompt: str = None) -> BotResponse:
+def generate_response(user_message: str, context: str, history: list, google_key: str = None, llm_model: str = "gemini-3.1-flash-lite-preview", custom_system_prompt: str = None) -> BotResponse:
     """
     Call Google Gemini API directly with grounded context.
     """
@@ -50,7 +50,7 @@ def generate_response(user_message: str, context: str, history: list, google_key
     )
 
     try:
-        model_name = llm_model if "gemini" in llm_model else "gemini-1.5-flash"
+        model_name = llm_model if "gemini" in llm_model else "gemini-3.1-flash-lite-preview"
         
         response = client.models.generate_content(
             model=model_name,

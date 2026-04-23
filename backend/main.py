@@ -463,7 +463,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
 
     token = settings.get("page_access_token")
     google_key = settings.get("google_api_key")
-    llm_model = settings.get("llm_model", "gemini-1.5-flash")
+    llm_model = settings.get("llm_model", "gemini-3.1-flash-lite-preview")
     
     # Fallback to env if setting is empty
     if not google_key:
@@ -595,6 +595,7 @@ async def upload_files(file: List[UploadFile] = File(...)):
             uploaded_files.append(f.filename)
         return {"filenames": uploaded_files, "status": "uploaded"}
     except Exception as e:
+        print(f"ERROR during file upload: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/index")
@@ -817,7 +818,7 @@ async def get_bot_settings(request: Request, current_user: dict = Depends(get_cu
                 "page_access_token": "",
                 "google_api_key": "",
                 "page_id": "",
-                "llm_model": "google/gemini-1.5-flash",
+                "llm_model": "gemini-3.1-flash-lite-preview",
                 "system_prompt": "",
                 "slot_definitions": "[]"
             }
@@ -840,7 +841,7 @@ async def update_bot_settings(settings: BotSettingsUpdate, request: Request, cur
             "google_api_key": settings.google_api_key,
             "page_id": settings.page_id,
             "verify_token": settings.verify_token,
-            "llm_model": settings.llm_model or "openai/gpt-oss-120b:free",
+            "llm_model": settings.llm_model or "gemini-3.1-flash-lite-preview",
             "app_secret": settings.app_secret,
             "system_prompt": settings.system_prompt or "",
             "slot_definitions": settings.slot_definitions or "[]",

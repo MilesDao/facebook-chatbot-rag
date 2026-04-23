@@ -443,7 +443,7 @@ export default function SettingsPage() {
                                 }}
                             >
                                 <option value="google/gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite (Default)</option>
-                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
+                                <option value="gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite Preview</option>
                                 <option value="gemini-1.5-pro">Gemini 1.5 Pro (Powerful)</option>
                                 <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
                             </select>

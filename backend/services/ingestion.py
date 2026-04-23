@@ -14,6 +14,8 @@ class IngestionService:
         if not self.api_key:
             print("CRITICAL: GOOGLE_API_KEY missing in IngestionService")
         
+        if not self.api_key:
+            print("CRITICAL: No Google API Key provided and GOOGLE_API_KEY env var not set.")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
 
         
@@ -65,11 +67,9 @@ class IngestionService:
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.models.embed_content(
-                model="models/embedding-001",
+                model="gemini-embedding-001",
                 contents=chunks,
-                config=genai.types.EmbedContentConfig(
-                    task_type="RETRIEVAL_PASSAGE"
-                )
+                config=genai.types.EmbedContentConfig(output_dimensionality=1536)
             )
             
             if not result.embeddings:
@@ -81,11 +81,10 @@ class IngestionService:
             return
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
-            
-            # Truncate to 768 dimensions to fit Supabase index limits
-            embedding = raw_embed[:768]
-            if len(embedding) < 768:
-                embedding += [0.0] * (768 - len(embedding))
+            # Truncate to 1536 dimensions to fit Supabase index limits
+            embedding = raw_embed[:1536]
+            if len(embedding) < 1536:
+                embedding += [0.0] * (1536 - len(embedding))
             
             try:
                 data = {
