@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useWorkspace } from "./WorkspaceContext";
-import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, Bot, FileText } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./UserMenu";
+import { useLanguage } from "./LanguageContext";
 
 export function Sidebar() {
+  const { t } = useLanguage();
   const { currentWorkspace, setCurrentWorkspace, unsavedChanges, setUnsavedChanges, isSidebarCollapsed, toggleSidebar } = useWorkspace();
   const pathname = usePathname();
 
@@ -37,7 +39,7 @@ export function Sidebar() {
       flexDirection: 'column',
       gap: '24px',
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      overflow: 'hidden'
+      zIndex: 40
     }}>
       {/* 1. Logo & Toggle */}
       <div style={{
@@ -45,7 +47,8 @@ export function Sidebar() {
         alignItems: 'center',
         justifyContent: isSidebarCollapsed ? 'center' : 'space-between',
         padding: '0 8px',
-        position: 'relative'
+        position: 'relative',
+        whiteSpace: 'nowrap'
       }}>
         <div style={{
           width: '40px',
@@ -60,7 +63,7 @@ export function Sidebar() {
           fontSize: '20px',
           flexShrink: 0
         }}>
-          A
+          <Bot size={24} color="white" />
         </div>
 
         {!isSidebarCollapsed && (
@@ -124,7 +127,7 @@ export function Sidebar() {
             justifyContent: isSidebarCollapsed ? 'center' : 'flex-start'
           }}
         >
-          <Layout size={18} /> {!isSidebarCollapsed && "Workspace Gallery"}
+          <Layout size={18} /> {!isSidebarCollapsed && t("nav.gallery")}
         </Link>
       </nav>
 
@@ -175,27 +178,27 @@ export function Sidebar() {
             {!isSidebarCollapsed && <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{currentWorkspace.name}</span>}
           </Link>
 
-          {/* Navigation Items (Visible when in workspace) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <Link href={`/w/${wsId}/flows`} onClick={handleNavClick} title={isSidebarCollapsed ? "Flows" : ""} className={`nav-item ${pathname.includes('/flows') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <MessageSquare size={16} /> {!isSidebarCollapsed && "Flows"}
+          {/* Navigation Links */}
+          <nav className="custom-scrollbar" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', overflowX: 'hidden' }}>
+            <Link href={`/w/${wsId}/flows`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.flows") : ""} className={`nav-item ${pathname.includes('/flows') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <MessageSquare size={16} /> {!isSidebarCollapsed && t("nav.flows")}
             </Link>
-            <Link href={`/w/${wsId}/knowledge`} onClick={handleNavClick} title={isSidebarCollapsed ? "Knowledge" : ""} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <Database size={16} /> {!isSidebarCollapsed && "Knowledge"}
+            <Link href={`/w/${wsId}/knowledge`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.knowledge") : ""} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <Database size={16} /> {!isSidebarCollapsed && t("nav.knowledge")}
             </Link>
-            <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? "Handoff Inbox" : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <Inbox size={16} /> {!isSidebarCollapsed && "Handoff Inbox"}
+            <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.handoffs") : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <Inbox size={16} /> {!isSidebarCollapsed && t("nav.handoffs")}
             </Link>
-            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? "User Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <FileText size={16} /> {!isSidebarCollapsed && "User Documents"}
+            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.documents") || "Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <FileText size={16} /> {!isSidebarCollapsed && (t("nav.documents") || "Documents")}
             </Link>
-            <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? "Members" : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <Users size={16} /> {!isSidebarCollapsed && "Members"}
+            <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.team") : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <Users size={16} /> {!isSidebarCollapsed && t("nav.team")}
             </Link>
-            <Link href={`/w/${wsId}/settings`} onClick={handleNavClick} title={isSidebarCollapsed ? "Settings" : ""} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <Settings size={16} /> {!isSidebarCollapsed && "Settings"}
+            <Link href={`/w/${wsId}/settings`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.settings") : ""} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <Settings size={16} /> {!isSidebarCollapsed && t("nav.settings")}
             </Link>
-          </div>
+          </nav>
         </div>
       )}
 
@@ -214,3 +217,4 @@ export function Sidebar() {
     </aside>
   );
 }
+ 

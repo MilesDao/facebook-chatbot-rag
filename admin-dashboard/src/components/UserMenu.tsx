@@ -89,8 +89,8 @@ export function UserMenu() {
                     className="glass"
                     style={{
                         position: 'absolute',
-                        bottom: 'calc(100% + 8px)',
-                        left: 0,
+                        bottom: isSidebarCollapsed ? 0 : 'calc(100% + 8px)',
+                        left: isSidebarCollapsed ? 'calc(100% + 16px)' : 0,
                         width: '220px',
                         padding: '12px',
                         borderRadius: '16px',
@@ -111,49 +111,6 @@ export function UserMenu() {
                         </p>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', padding: '0 8px', marginBottom: '12px' }}>
-                        {wsId && (
-                            <>
-                                <button
-                                    onClick={() => { router.push(`/w/${wsId}/knowledge`); setIsOpen(false); }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px',
-                                        borderRadius: '8px', background: 'transparent', border: 'none',
-                                        color: 'var(--foreground)', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--nav-hover)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <Database size={14} color="var(--text-muted)" /> {t('nav.knowledge')}
-                                </button>
-                                <button
-                                    onClick={() => { router.push(`/w/${wsId}/handoffs`); setIsOpen(false); }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px',
-                                        borderRadius: '8px', background: 'transparent', border: 'none',
-                                        color: 'var(--foreground)', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--nav-hover)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <Inbox size={14} color="var(--text-muted)" /> {t('nav.handoffs')}
-                                </button>
-                                <button
-                                    onClick={() => { router.push(`/w/${wsId}/settings`); setIsOpen(false); }}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px',
-                                        borderRadius: '8px', background: 'transparent', border: 'none',
-                                        color: 'var(--foreground)', fontSize: '12px', cursor: 'pointer', textAlign: 'left'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--nav-hover)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                                >
-                                    <Settings size={14} color="var(--text-muted)" /> {t('nav.settings')}
-                                </button>
-                                <div style={{ height: '1px', background: 'var(--card-border)', margin: '4px 0' }} />
-                            </>
-                        )}
-                    </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '0 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>

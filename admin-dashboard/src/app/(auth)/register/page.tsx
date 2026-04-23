@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { BarChart3, Mail, Lock, UserPlus, AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageContext";
 
 export default function RegisterPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -20,11 +22,13 @@ export default function RegisterPage() {
     setError(null);
 
     if (password !== confirm) {
-      setError("Passwords do not match.");
+      // Đã bọc hàm t()
+      setError(t("auth.errorPasswordMatch"));
       return;
     }
     if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+      // Đã bọc hàm t()
+      setError(t("auth.errorPasswordLength"));
       return;
     }
 
@@ -33,6 +37,8 @@ export default function RegisterPage() {
     const { error: authError } = await supabase.auth.signUp({ email, password });
 
     if (authError) {
+      // Lưu ý nhỏ: Cái authError.message này trả về từ server của Supabase nên nó luôn là tiếng Anh. 
+      // Muốn dịch cái này thì phải làm 1 cái Map riêng, nhưng với project môn học thì để tạm vậy cũng ok rồi chị ạ.
       setError(authError.message);
       setLoading(false);
     } else {
@@ -90,7 +96,7 @@ export default function RegisterPage() {
             </span>
           </div>
           <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
-            Multi-tenant Facebook RAG Platform
+            {t("auth.multiTenant")}
           </p>
         </div>
 
@@ -110,7 +116,7 @@ export default function RegisterPage() {
                   marginBottom: "12px",
                 }}
               >
-                Account Created!
+                {t("auth.accountCreated")}
               </h2>
               <p
                 style={{
@@ -120,8 +126,7 @@ export default function RegisterPage() {
                   marginBottom: "28px",
                 }}
               >
-                Check your email for a confirmation link, then come back to sign
-                in. Your dashboard will be ready and waiting.
+                {t("auth.accountCreatedDesc")}
               </p>
               <Link
                 href="/login"
@@ -134,7 +139,7 @@ export default function RegisterPage() {
                   textDecoration: "none",
                 }}
               >
-                Go to Login
+                {t("auth.goToLogin")}
               </Link>
             </div>
           ) : (
@@ -147,7 +152,7 @@ export default function RegisterPage() {
                   letterSpacing: "-0.03em",
                 }}
               >
-                Create an account
+                {t("auth.registerTitle")}
               </h1>
               <p
                 style={{
@@ -156,7 +161,7 @@ export default function RegisterPage() {
                   marginBottom: "32px",
                 }}
               >
-                Set up your own isolated bot workspace.
+                {t("auth.registerDesc")}
               </p>
 
               {error && (
@@ -198,7 +203,7 @@ export default function RegisterPage() {
                       letterSpacing: "1px",
                     }}
                   >
-                    Email
+                    {t("auth.emailLabel")}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Mail
@@ -216,7 +221,7 @@ export default function RegisterPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={t("auth.emailPlaceholder")}
                       required
                       style={inputStyle}
                       onFocus={(e) =>
@@ -240,7 +245,7 @@ export default function RegisterPage() {
                       letterSpacing: "1px",
                     }}
                   >
-                    Password
+                    {t("auth.passwordLabel")}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Lock
@@ -258,7 +263,7 @@ export default function RegisterPage() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Min. 6 characters"
+                      placeholder={t("auth.passwordMin")}
                       required
                       style={{ ...inputStyle, paddingRight: "44px" }}
                       onFocus={(e) =>
@@ -301,7 +306,7 @@ export default function RegisterPage() {
                       letterSpacing: "1px",
                     }}
                   >
-                    Confirm Password
+                    {t("auth.confirmPassword")}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Lock
@@ -319,7 +324,7 @@ export default function RegisterPage() {
                       type={showConfirm ? "text" : "password"}
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
-                      placeholder="Same password again"
+                      placeholder={t("auth.confirmPlaceholder")}
                       required
                       style={{ ...inputStyle, paddingRight: "44px" }}
                       onFocus={(e) =>
@@ -384,7 +389,7 @@ export default function RegisterPage() {
                   ) : (
                     <UserPlus size={18} />
                   )}
-                  {loading ? "Creating account…" : "Create Account"}
+                  {loading ? t("auth.creatingAccount") : t("auth.createAccount")}
                 </button>
               </form>
 
@@ -396,7 +401,7 @@ export default function RegisterPage() {
                   color: "var(--text-muted)",
                 }}
               >
-                Already have an account?{" "}
+                {t("auth.alreadyAccount")}{" "}
                 <Link
                   href="/login"
                   style={{
@@ -405,7 +410,7 @@ export default function RegisterPage() {
                     fontWeight: "500",
                   }}
                 >
-                  Sign in
+                  {t("auth.signIn")}
                 </Link>
               </p>
             </>

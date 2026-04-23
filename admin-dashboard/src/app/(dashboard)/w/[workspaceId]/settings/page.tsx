@@ -189,7 +189,7 @@ export default function SettingsPage() {
                     }}
                 >
                     {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                    {saving ? t("settings.saving") || "Saving..." : "Save"}
+                    {saving ? t("settings.saving") : t("common.save")}
                 </button>
             </header>
 
@@ -467,17 +467,17 @@ export default function SettingsPage() {
                 <div className="card glass">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                         <Cpu color="var(--accent)" />
-                        <h2 style={{ margin: 0 }}>AI Personality</h2>
+                        <h2 style={{ margin: 0 }}>{t("settings.aiPersonality")}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            Customize how your bot talks and behaves. Leave empty to use the default professional persona.
+                            {t("settings.aiPersonalityDesc")}
                         </p>
 
                         <div className="form-group">
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
-                                System Prompt / Instructions
+                                {t("settings.systemPrompt")}
                             </label>
                             <textarea
                                 className="glass-input"
@@ -509,13 +509,12 @@ export default function SettingsPage() {
                 <div className="card glass" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', borderStyle: 'dashed' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                         <AlertCircle color="#ef4444" />
-                        <h2 style={{ margin: 0, color: '#ef4444' }}>Danger Zone</h2>
+                        <h2 style={{ margin: 0, color: '#ef4444' }}>{t("settings.deleteWorkspaceTitle")}</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            Once you delete a workspace, there is no going back. Please be certain.
-                            All bots, flows, logs, and knowledge base files will be permanently erased.
+                            {t("settings.deleteWorkspaceDesc")}
                         </p>
 
                         <button
@@ -548,7 +547,7 @@ export default function SettingsPage() {
                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                            Delete this workspace
+                            {t("settings.deleteWorkspaceBtn")}
                         </button>
                     </div>
                 </div>

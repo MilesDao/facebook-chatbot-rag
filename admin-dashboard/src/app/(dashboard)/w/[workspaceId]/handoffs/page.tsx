@@ -369,7 +369,7 @@ export default function HandoffInbox() {
                       {/* Action buttons for this sender */}
                       <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
                         <button onClick={() => handleOpenChat(group.items[0].id, group.senderId)} className="btn" style={{ fontSize: '13px' }}>
-                          {t("handoff.openChat")}
+                          {t("handoffs.openInInbox")}
                         </button>
                         <button
                           onClick={() => togglePause(group.senderId)}
@@ -392,7 +392,7 @@ export default function HandoffInbox() {
                           className="btn btn-secondary"
                           style={{ fontSize: '13px' }}
                         >
-                          {t("handoff.markResolved")}
+                          {t("handoffs.resolve")}
                         </button>
                       </div>
 
@@ -571,7 +571,7 @@ export default function HandoffInbox() {
                     <div style={{ borderTop: '1px solid var(--card-border)', padding: '10px 12px 12px' }}>
                       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
                         <button onClick={() => handleOpenChat(group.items[0].id, group.senderId)} className="btn" style={{ fontSize: '11px', padding: '4px 10px', height: '26px' }}>
-                          {t("handoff.openChat")}
+                          {t("handoffs.openInInbox")}
                         </button>
                         <button
                           onClick={async () => {
@@ -581,7 +581,7 @@ export default function HandoffInbox() {
                           className="btn btn-secondary"
                           style={{ fontSize: '11px', padding: '4px 10px', height: '26px', display: 'flex', alignItems: 'center', gap: '4px' }}
                         >
-                          <RotateCcw size={12} /> {t("handoff.restore")}
+                          <RotateCcw size={12} /> {t("handoffs.restore")}
                         </button>
                         <button
                           onClick={async () => {
@@ -597,7 +597,7 @@ export default function HandoffInbox() {
                           className="btn btn-secondary"
                           style={{ fontSize: '11px', padding: '4px 10px', height: '26px', display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                         >
-                          <Trash2 size={12} /> {t("handoff.delete")}
+                          <Trash2 size={12} /> {t("common.delete")}
                         </button>
                       </div>
                       <div style={{ display: 'grid', gap: '6px' }}>

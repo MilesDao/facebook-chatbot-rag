@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/auth";
 import { useWorkspace } from "@/components/WorkspaceContext";
+// Import thêm hook ngôn ngữ
+import { useLanguage } from "@/components/LanguageContext";
 import {
     GraduationCap,
     ShoppingBag,
@@ -14,50 +16,53 @@ import {
     Loader2
 } from "lucide-react";
 
-const TEMPLATES = [
-    {
-        id: "admissions",
-        name: "Admissions & University",
-        description: "Perfect for schools, universities, and training centers.",
-        icon: <GraduationCap size={32} />,
-        color: "#4f46e5"
-    },
-    {
-        id: "ecommerce",
-        name: "E-commerce & Sales",
-        description: "Optimized for product catalogs, pricing, and orders.",
-        icon: <ShoppingBag size={32} />,
-        color: "#db2777"
-    },
-    {
-        id: "customer_service",
-        name: "Customer Support",
-        description: "Focus on FAQs, troubleshooting, and handoffs.",
-        icon: <Headphones size={32} />,
-        color: "#059669"
-    },
-    {
-        id: "booking",
-        name: "Appointment & Booking",
-        description: "Ideal for spas, clinics, and service providers.",
-        icon: <Calendar size={32} />,
-        color: "#d97706"
-    },
-    {
-        id: "general",
-        name: "Blank Canvas",
-        description: "Start from scratch with a clean, generic bot.",
-        icon: <Settings size={32} />,
-        color: "#6b7280"
-    }
-];
-
 export default function NewWorkspacePage() {
     const router = useRouter();
     const { refreshWorkspaces, setCurrentWorkspace } = useWorkspace();
+    // Gọi hàm t ra
+    const { t } = useLanguage();
     const [name, setName] = useState("");
     const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
     const [creating, setCreating] = useState(false);
+
+    // Đưa mảng TEMPLATES vào trong để gọi được hàm t()
+    const TEMPLATES = [
+        {
+            id: "admissions",
+            name: t("template.admissionsName"),
+            description: t("template.admissionsDesc"),
+            icon: <GraduationCap size={32} />,
+            color: "#4f46e5"
+        },
+        {
+            id: "ecommerce",
+            name: t("template.ecommerceName"),
+            description: t("template.ecommerceDesc"),
+            icon: <ShoppingBag size={32} />,
+            color: "#db2777"
+        },
+        {
+            id: "customer_service",
+            name: t("template.supportName"),
+            description: t("template.supportDesc"),
+            icon: <Headphones size={32} />,
+            color: "#059669"
+        },
+        {
+            id: "booking",
+            name: t("template.bookingName"),
+            description: t("template.bookingDesc"),
+            icon: <Calendar size={32} />,
+            color: "#d97706"
+        },
+        {
+            id: "general",
+            name: t("template.blankName"),
+            description: t("template.blankDesc"),
+            icon: <Settings size={32} />,
+            color: "#6b7280"
+        }
+    ];
 
     useEffect(() => {
         setCurrentWorkspace(null);
@@ -77,16 +82,17 @@ export default function NewWorkspacePage() {
             if (res.ok) {
                 const responseData = await res.json();
                 await refreshWorkspaces();
-                // Response format is { status: "success", data: { id, ... } }
                 const newId = responseData.data?.id || responseData.id;
                 router.push(`/w/${newId}`);
             } else {
                 const err = await res.json();
-                alert(err.detail || "Failed to create workspace");
+                // Đã bọc thông báo lỗi
+                alert(err.detail || t("workspace.errorFailed"));
             }
         } catch (error) {
             console.error("Create workspace failed:", error);
-            alert("An error occurred. Please try again.");
+            // Đã bọc thông báo lỗi
+            alert(t("workspace.errorOccurred"));
         } finally {
             setCreating(false);
         }
@@ -95,17 +101,20 @@ export default function NewWorkspacePage() {
     return (
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 20px' }}>
             <div style={{ marginBottom: '48px', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px' }}>Create New Workspace</h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>Launch a new chatbot project in seconds with industry-specific templates.</p>
+                {/* Đã bọc text cứng */}
+                <h1 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '16px' }}>{t("workspace.createTitle")}</h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '18px' }}>{t("workspace.createSubtitle")}</p>
             </div>
 
             <div style={{ maxWidth: 500, margin: '0 auto 60px' }}>
-                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-muted)' }}>WORKSPACE NAME</label>
+                {/* Đã bọc text cứng */}
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-muted)' }}>{t("workspace.nameLabel")}</label>
                 <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. My Chatbot Project"
+                    // Đã bọc Placeholder
+                    placeholder={t("workspace.namePlaceholder")}
                     className="glass"
                     style={{
                         width: '100%',
@@ -121,7 +130,8 @@ export default function NewWorkspacePage() {
             </div>
 
             <div style={{ marginBottom: '40px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px' }}>Choose a Template</h2>
+                {/* Đã bọc text cứng */}
+                <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '24px' }}>{t("workspace.chooseTemplate")}</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                     {TEMPLATES.map((tmpl) => (
                         <div
@@ -180,11 +190,13 @@ export default function NewWorkspacePage() {
                     {creating ? (
                         <>
                             <Loader2 className="animate-spin" size={20} />
-                            Creating...
+                            {/* Đã bọc text cứng */}
+                            {t("workspace.creatingBtn")}
                         </>
                     ) : (
                         <>
-                            Create Workspace <ArrowRight size={20} />
+                            {/* Đã bọc text cứng */}
+                            {t("workspace.createBtn")} <ArrowRight size={20} />
                         </>
                     )}
                 </button>
