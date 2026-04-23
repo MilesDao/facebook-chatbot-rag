@@ -291,15 +291,23 @@ export default function HandoffInbox() {
                       transition: 'background 0.15s',
                     }}
                   >
-                    <div style={{
-                      background: 'rgba(245, 158, 11, 0.1)',
-                      padding: '10px',
-                      borderRadius: '12px',
-                      color: '#f59e0b',
-                      flexShrink: 0
-                    }}>
-                      <User size={22} />
-                    </div>
+                    {senderNames[group.senderId]?.profile_pic ? (
+                      <img
+                        src={senderNames[group.senderId].profile_pic}
+                        alt="Profile"
+                        style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
+                      />
+                    ) : (
+                      <div style={{
+                        background: 'rgba(245, 158, 11, 0.1)',
+                        padding: '10px',
+                        borderRadius: '12px',
+                        color: '#f59e0b',
+                        flexShrink: 0
+                      }}>
+                        <User size={22} />
+                      </div>
+                    )}
 
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>

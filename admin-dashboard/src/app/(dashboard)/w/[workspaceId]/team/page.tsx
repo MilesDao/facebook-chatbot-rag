@@ -117,6 +117,10 @@ export default function TeamPage() {
             {/* Members List */}
             {loading ? (
                 <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading...</div>
+            ) : members.length === 0 ? (
+                <div className="card" style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
+                    No team members found.
+                </div>
             ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {members.map((member) => (
@@ -142,13 +146,16 @@ export default function TeamPage() {
                                 fontSize: 14,
                                 color: "var(--accent)",
                             }}>
-                                {member.user_id.substring(0, 2).toUpperCase()}
+                                {member.role === 'owner' ? 'O' : 'M'}
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 500, color: "var(--foreground)", fontSize: 14 }}>
-                                    {member.user_id}
+                                <div style={{ fontWeight: 600, color: "var(--foreground)", fontSize: 14 }}>
+                                    {member.role === 'owner' ? 'Workspace Owner' : `Team Member`}
                                 </div>
-                                <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
+                                <div style={{ color: "var(--text-muted)", fontSize: 12, fontFamily: "monospace" }}>
+                                    ID: {member.user_id.substring(0, 16)}...
+                                </div>
+                                <div style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 2 }}>
                                     Joined {new Date(member.invited_at).toLocaleDateString()}
                                 </div>
                             </div>

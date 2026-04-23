@@ -1,9 +1,13 @@
 import os
 import re
-import requests
-import shutil
 import time
+import asyncio
+from datetime import datetime, timezone
 from typing import List, Optional
+from io import BytesIO
+import uuid
+import requests
+from PIL import Image
 from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, File, Form, UploadFile, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -227,12 +231,172 @@ async def webhook_endpoint(request: Request, background_tasks: BackgroundTasks):
                 for msg in entry.get("messaging", []):
                     sender_id = msg.get("sender", {}).get("id")
                     message = msg.get("message", {})
-                    user_text = message.get("text")
-                    if sender_id and user_text:
-                        background_tasks.add_task(process_message, sender_id, user_text, page_id)
+                    user_text = message.get("text", "")
+                    
+                    attachments = message.get("attachments", [])
+                    image_urls = [a.get("payload", {}).get("url") for a in attachments if a.get("type") == "image" and a.get("payload", {}).get("url")]
+                    
+                    if sender_id and (user_text or image_urls):
+                        # Use debouncing to combine multiple messages/images
+                        background_tasks.add_task(buffer_message, sender_id, user_text, image_urls, page_id, background_tasks)
     except Exception as e:
         print(f"Error processing webhook: {e}")
     return {"status": "ok"}
+
+async def buffer_message(sender_id: str, user_text: str, image_urls: list, page_id: str, background_tasks: BackgroundTasks):
+    """
+    Buffers the message and any images in Supabase and schedules a debounced processing task.
+    """
+    try:
+        # Upsert logic: using select then insert/update for compatibility without complex UPSERT SQL
+        res = supabase.table("chat_message_buffer").select("*").eq("sender_id", sender_id).execute()
+        
+        now_ts = datetime.now(timezone.utc).isoformat()
+        
+        if res.data:
+            buffer = res.data[0]
+            # Accumulate text
+            combined_text = (buffer.get("accumulated_text", "") + " " + user_text).strip()
+            
+            # Accumulate images (JSON array)
+            existing_images = buffer.get("accumulated_images", [])
+            # Some old rows might have had a string if JSONB default was misapplied, assure it's list
+            if not isinstance(existing_images, list): existing_images = []
+            combined_images = existing_images + image_urls
+            
+            supabase.table("chat_message_buffer").update({
+                "accumulated_text": combined_text,
+                "accumulated_images": combined_images,
+                "last_received_at": now_ts,
+                "page_id": page_id,
+                "processed": False
+            }).eq("sender_id", sender_id).execute()
+        else:
+            supabase.table("chat_message_buffer").insert({
+                "sender_id": sender_id,
+                "accumulated_text": user_text,
+                "accumulated_images": image_urls,
+                "page_id": page_id,
+                "last_received_at": now_ts,
+                "processed": False
+            }).execute()
+            
+        # Schedule the check
+        background_tasks.add_task(debounced_process, sender_id, page_id)
+        
+    except Exception as e:
+        print(f"Error in buffer_message: {e}")
+        # Fallback to immediate processing if buffer fails
+        if user_text:
+            background_tasks.add_task(process_message, sender_id, user_text, page_id)
+
+async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) -> str:
+    """Download images, combine to PDF via Pillow, and upload to Supabase bucket."""
+    images = []
+    for url in image_urls:
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                img = Image.open(BytesIO(r.content)).convert("RGB")
+                images.append(img)
+        except Exception as e:
+            print(f"Failed to fetch image {url}: {e}")
+            
+    if not images:
+        return None
+        
+    pdf_bytes = BytesIO()
+    # Save the first image, appending the rest
+    if len(images) > 1:
+        images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=images[1:], resolution=100.0)
+    else:
+        images[0].save(pdf_bytes, format="PDF", resolution=100.0)
+        
+    # Upload to Supabase Storage
+    pdf_bytes.seek(0)
+    filename = f"{sender_id}_{int(time.time())}_{uuid.uuid4().hex[:6]}.pdf"
+    res = supabase.storage.from_("user_documents").upload(
+        filename, 
+        pdf_bytes.read(), 
+        {"content-type": "application/pdf"}
+    )
+    
+    # Get public URL
+    public_url = supabase.storage.from_("user_documents").get_public_url(filename)
+    
+    # Get workspace_id from page_id
+    from .services.workspace_service import get_workspace_id_for_page
+    workspace_id = get_workspace_id_for_page(page_id)
+    
+    if public_url and workspace_id:
+        supabase.table("user_generated_pdfs").insert({
+            "workspace_id": workspace_id,
+            "sender_id": sender_id,
+            "pdf_url": public_url
+        }).execute()
+        return public_url
+    return None
+
+async def debounced_process(sender_id: str, page_id: str):
+    """
+    Wait 4 seconds, then check if we are the latest message in the buffer.
+    If so, process the whole accumulated text and any accumulated images.
+    """
+    await asyncio.sleep(4)
+    
+    try:
+        res = supabase.table("chat_message_buffer").select("*").eq("sender_id", sender_id).execute()
+        if not res.data:
+            return
+            
+        buffer = res.data[0]
+        if buffer.get("processed"):
+            return
+            
+        # Check timing: only process if the last message was at least 3.8s ago
+        last_at = datetime.fromisoformat(buffer["last_received_at"].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        
+        if (now - last_at).total_seconds() >= 3.8:
+            combined_text = buffer.get("accumulated_text", "")
+            combined_images = buffer.get("accumulated_images", [])
+            
+            if not isinstance(combined_images, list):
+                combined_images = []
+            
+            # Atomically mark as processed to prevent race conditions
+            supabase.table("chat_message_buffer").update({"processed": True}).eq("sender_id", sender_id).execute()
+            
+            # Process Images
+            if combined_images:
+                try:
+                    pdf_url = await process_images_to_pdf(sender_id, combined_images, page_id)
+                    if pdf_url:
+                        # Fetch token to notify user
+                        settings_res = supabase.table("bot_settings").select("page_access_token").eq("page_id", page_id).limit(1).execute()
+                        token = os.getenv("PAGE_ACCESS_TOKEN")
+                        if settings_res.data and settings_res.data[0].get("page_access_token"):
+                            token = settings_res.data[0]["page_access_token"]
+                            
+                        import requests
+                        msg_text = f"Đã nhận {len(combined_images)} ảnh và gộp thành PDF thành công. Xem tại: {pdf_url}"
+                        requests.post(
+                            f"https://graph.facebook.com/v21.0/me/messages?access_token={token}",
+                            json={"recipient": {"id": sender_id}, "message": {"text": msg_text}}
+                        )
+                except Exception as e:
+                    print(f"Error processing images to PDF: {e}")
+
+            
+            # Pass original combined text to process_message
+            if combined_text and combined_text.strip():
+                process_message(sender_id, combined_text, page_id)
+            
+            # Clean up
+            supabase.table("chat_message_buffer").delete().eq("sender_id", sender_id).execute()
+            
+    except Exception as e:
+        print(f"Error in debounced_process for {sender_id}: {e}")
 
 def process_message(sender_id: str, user_message: str, page_id: str):
     """
@@ -490,6 +654,20 @@ async def get_analytics(request: Request, current_user: dict = Depends(get_curre
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/user-documents")
+async def get_user_documents(request: Request, current_user: dict = Depends(get_current_user)):
+    """Fetch user generated PDFs from Supabase for the current workspace."""
+    workspace_id = request.headers.get("x-workspace-id")
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    try:
+        response = supabase.table("user_generated_pdfs").select("*").eq("workspace_id", workspace_id).order("created_at", desc=True).execute()
+        return response.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/handoffs")
 async def get_handoffs(request: Request, current_user: dict = Depends(get_current_user)):
     """Fetch all handoff requests for the current workspace."""
@@ -689,10 +867,15 @@ async def resume_sender(sender_id: str, request: Request, current_user: dict = D
 async def resolve_facebook_names(request: Request, current_user: dict = Depends(get_current_user)):
     """Resolve Facebook PSIDs to real names using Graph API."""
     workspace_id = request.headers.get("x-workspace-id")
+    
     if not workspace_id:
         return {"names": {}}
     
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception as e:
+        return {"names": {}}
+
     sender_ids = body.get("sender_ids", [])
     if not sender_ids:
         return {"names": {}}
@@ -702,6 +885,7 @@ async def resolve_facebook_names(request: Request, current_user: dict = Depends(
         return {"names": {}}
 
     token = settings_res.data[0]["page_access_token"]
+    import requests # Local import to ensure it's available
     names = {}
 
     for psid in sender_ids[:50]:
@@ -712,8 +896,9 @@ async def resolve_facebook_names(request: Request, current_user: dict = Depends(
                 data = r.json()
                 first = data.get("first_name", "")
                 last = data.get("last_name", "")
+                fullName = f"{first} {last}".strip()
                 names[psid] = {
-                    "name": f"{first} {last}".strip() or psid,
+                    "name": fullName or psid,
                     "profile_pic": data.get("profile_pic", "")
                 }
             else:

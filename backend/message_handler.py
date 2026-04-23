@@ -45,7 +45,7 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
     # 2. Load History
     history = []
     try:
-        history = get_history(sender_id, limit=6, workspace_id=workspace_id)
+        history = get_history(sender_id, limit=20, workspace_id=workspace_id)
     except Exception as e:
         print(f"Error loading history: {e}")
 

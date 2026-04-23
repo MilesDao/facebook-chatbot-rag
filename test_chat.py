@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from backend.rag_pipeline import retrieve_context
-from backend.gemini_integration import generate_response
+from backend.openrouter_integration import generate_response
 from backend.intent_router import classify_intent # Import hàm mới / Import the new function
 
 def chat_loop():
@@ -23,7 +23,7 @@ def chat_loop():
                 break
             if not user_msg.strip():
                 continue
-                
+            
             # --- ROUTING ---
             print("\n  [🚦 Routing query...]")
             intent = classify_intent(user_msg)
