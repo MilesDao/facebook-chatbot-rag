@@ -2,6 +2,8 @@ import os
 import re
 import time
 import asyncio
+import json
+import shutil
 from datetime import datetime, timezone
 from typing import List, Optional
 from io import BytesIO
@@ -292,6 +294,7 @@ async def buffer_message(sender_id: str, user_text: str, image_urls: list, page_
 
 async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) -> str:
     """Download images, combine to PDF via Pillow, and upload to Supabase bucket."""
+    print(f"DEBUG: Starting PDF generation for sender {sender_id} with {len(image_urls)} images")
     images = []
     for url in image_urls:
         try:
@@ -299,43 +302,74 @@ async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) 
             if r.status_code == 200:
                 img = Image.open(BytesIO(r.content)).convert("RGB")
                 images.append(img)
+            else:
+                print(f"ERROR: Failed to fetch image from {url}, status code: {r.status_code}")
         except Exception as e:
-            print(f"Failed to fetch image {url}: {e}")
+            print(f"ERROR: Exception fetching image {url}: {e}")
             
     if not images:
+        print(f"WARNING: No images successfully fetched for sender {sender_id}")
         return None
         
-    pdf_bytes = BytesIO()
-    # Save the first image, appending the rest
-    if len(images) > 1:
-        images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=images[1:], resolution=100.0)
-    else:
-        images[0].save(pdf_bytes, format="PDF", resolution=100.0)
+    try:
+        pdf_bytes = BytesIO()
+        # Save the first image, appending the rest
+        if len(images) > 1:
+            images[0].save(pdf_bytes, format="PDF", save_all=True, append_images=images[1:], resolution=100.0)
+        else:
+            images[0].save(pdf_bytes, format="PDF", resolution=100.0)
+            
+        # Upload to Supabase Storage
+        pdf_bytes.seek(0)
+        file_content = pdf_bytes.read()
+        filename = f"{sender_id}_{int(time.time())}_{uuid.uuid4().hex[:6]}.pdf"
         
-    # Upload to Supabase Storage
-    pdf_bytes.seek(0)
-    filename = f"{sender_id}_{int(time.time())}_{uuid.uuid4().hex[:6]}.pdf"
-    res = supabase.storage.from_("user_documents").upload(
-        filename, 
-        pdf_bytes.read(), 
-        {"content-type": "application/pdf"}
-    )
-    
-    # Get public URL
-    public_url = supabase.storage.from_("user_documents").get_public_url(filename)
-    
-    # Get workspace_id from page_id
-    from .services.workspace_service import get_workspace_id_for_page
-    workspace_id = get_workspace_id_for_page(page_id)
-    
-    if public_url and workspace_id:
-        supabase.table("user_generated_pdfs").insert({
+        print(f"DEBUG: Uploading {len(file_content)} bytes to user_documents bucket as {filename}")
+        
+        # Check if bucket exists/is accessible (upload will fail otherwise)
+        res = supabase.storage.from_("user_documents").upload(
+            filename, 
+            file_content, 
+            {"content-type": "application/pdf"}
+        )
+        
+        # storage-py upload returns response or raises exception
+        # We should check if res indicates success
+        if hasattr(res, 'error') and res.error:
+            print(f"ERROR: Storage upload failed: {res.error}")
+            return None
+        
+        # Get public URL
+        public_url = supabase.storage.from_("user_documents").get_public_url(filename)
+        print(f"DEBUG: Generated public URL: {public_url}")
+        
+        # Get workspace_id from page_id
+        from .services.workspace_service import get_workspace_id_for_page
+        workspace_id = get_workspace_id_for_page(page_id)
+        
+        if not workspace_id:
+            print(f"ERROR: Could not resolve workspace_id for page_id {page_id}")
+            return None
+
+        print(f"DEBUG: Inserting PDF record into DB for workspace {workspace_id}")
+        db_res = supabase.table("user_generated_pdfs").insert({
             "workspace_id": workspace_id,
             "sender_id": sender_id,
             "pdf_url": public_url
         }).execute()
-        return public_url
-    return None
+        
+        if db_res.data:
+            print(f"SUCCESS: PDF generated and recorded: {public_url}")
+            return public_url
+        else:
+            print(f"ERROR: DB insert failed for PDF record. Result: {db_res}")
+            return None
+            
+    except Exception as e:
+        print(f"ERROR: Exception in process_images_to_pdf: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 async def debounced_process(sender_id: str, page_id: str):
     """
@@ -360,6 +394,14 @@ async def debounced_process(sender_id: str, page_id: str):
         if (now - last_at).total_seconds() >= 3.8:
             combined_text = buffer.get("accumulated_text", "")
             combined_images = buffer.get("accumulated_images", [])
+            
+            # Robust JSON handling
+            if isinstance(combined_images, str):
+                try:
+                    import json
+                    combined_images = json.loads(combined_images)
+                except:
+                    combined_images = []
             
             if not isinstance(combined_images, list):
                 combined_images = []
