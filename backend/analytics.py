@@ -1,6 +1,6 @@
 from .database import supabase
 
-def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered, user_id=None):
+def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered, workspace_id=None):
     """
     Log to database for performance monitoring.
     """
@@ -15,7 +15,7 @@ def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff
             "ai_reply": ai_reply,
             "confidence_score": confidence_score,
             "handoff_triggered": handoff_triggered,
-            "user_id": user_id
+            "workspace_id": workspace_id
         }
         supabase.table("logs").insert(data).execute()
         print(f"Logged interaction for {sender_id}")

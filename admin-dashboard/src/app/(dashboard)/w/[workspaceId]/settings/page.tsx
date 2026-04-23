@@ -42,8 +42,11 @@ interface ValidationErrors {
     app_secret?: string;
 }
 
+import { useWorkspace } from "@/components/WorkspaceContext";
+
 export default function SettingsPage() {
     const { t } = useLanguage();
+    const { currentWorkspace } = useWorkspace();
     const [settings, setSettings] = useState<BotSettings>({
         page_access_token: "",
         openrouter_api_key: "",
@@ -66,8 +69,10 @@ export default function SettingsPage() {
     const backendUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
 
     useEffect(() => {
-        fetchSettings();
-    }, []);
+        if (currentWorkspace) {
+            fetchSettings();
+        }
+    }, [currentWorkspace?.id]);
 
     const fetchSettings = async () => {
         try {
@@ -165,7 +170,10 @@ export default function SettingsPage() {
         <form onSubmit={handleSave} noValidate>
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("settings.title")}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <Settings size={32} color="#a855f7" />
+                        <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{t("settings.title")}</h1>
+                    </div>
                     <p style={{ color: 'var(--text-muted)' }}>{t("settings.desc")}</p>
                 </div>
                 <button
@@ -497,43 +505,57 @@ export default function SettingsPage() {
                     </div>
                 </div>
 
-
-                {/* Account / Sign Out */}
-                <div className="card glass" style={{ border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <LogOut color="#ef4444" />
-                        <h2 style={{ margin: 0 }}>{t("settings.account") || "Account"}</h2>
+                {/* Danger Zone: Delete Workspace */}
+                <div className="card glass" style={{ borderColor: 'rgba(239, 68, 68, 0.3)', borderStyle: 'dashed' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                        <AlertCircle color="#ef4444" />
+                        <h2 style={{ margin: 0, color: '#ef4444' }}>Danger Zone</h2>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            Sign out of your account. You will need to log back in to access the dashboard.
+                            Once you delete a workspace, there is no going back. Please be certain.
+                            All bots, flows, logs, and knowledge base files will be permanently erased.
                         </p>
 
                         <button
                             type="button"
-                            onClick={() => {
-                                if (confirm("Are you sure you want to sign out?")) {
-                                    signOut();
+                            onClick={async () => {
+                                if (confirm(`Are you absolutely sure you want to delete "${currentWorkspace?.name}"? This action cannot be undone.`)) {
+                                    try {
+                                        const res = await apiFetch(`/api/workspaces/${currentWorkspace?.id}`, {
+                                            method: 'DELETE'
+                                        });
+                                        if (res.ok) {
+                                            window.location.href = "/";
+                                        } else {
+                                            const err = await res.json();
+                                            alert(err.detail || "Failed to delete workspace");
+                                        }
+                                    } catch (err) {
+                                        alert("An error occurred while deleting the workspace");
+                                    }
                                 }
                             }}
-                            className="btn btn-secondary"
+                            className="btn"
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
+                                width: 'fit-content',
+                                background: 'transparent',
+                                border: '1px solid #ef4444',
                                 color: '#ef4444',
-                                borderColor: 'rgba(239, 68, 68, 0.3)',
-                                width: 'fit-content'
+                                fontWeight: 600
                             }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                         >
-                            <LogOut size={18} />
-                            Sign Out
+                            Delete this workspace
                         </button>
                     </div>
                 </div>
+
 
             </div>
         </form>
     );
 }
+

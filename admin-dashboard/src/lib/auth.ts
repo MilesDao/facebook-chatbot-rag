@@ -37,12 +37,16 @@ export async function apiFetch(
   const authHeaders = await getAuthHeaders();
   const isFormData = options.body instanceof FormData;
 
+  // Inject workspace context
+  const workspaceId = typeof window !== "undefined" ? localStorage.getItem("active_workspace_id") : null;
+
   return fetch(url, {
     ...options,
     headers: {
       // Only set Content-Type for JSON; let the browser handle FormData boundary
       ...(!isFormData ? { "Content-Type": "application/json" } : {}),
       ...authHeaders,
+      ...(workspaceId ? { "x-workspace-id": workspaceId } : {}),
       ...(options.headers as Record<string, string>),
     },
   });

@@ -1,305 +1,121 @@
 "use client";
 
-export const dynamic = "force-dynamic";
+import React from "react";
+import Link from "next/link";
+import { Activity, Plus } from "lucide-react";
+import { useWorkspace } from "@/components/WorkspaceContext";
 
-import React, { useEffect, useState, useMemo } from "react";
-import { useLanguage } from "@/components/LanguageContext";
-import {
-  Users,
-  MessageCircle,
-  AlertCircle,
-  TrendingUp,
-  Activity,
-  Pause,
-  Play
-} from "lucide-react";
-import { apiFetch } from "@/lib/auth";
+export default function RootPage() {
+  const { workspaces, setCurrentWorkspace } = useWorkspace();
 
-export default function Overview() {
-  const { t } = useLanguage();
-  const [logs, setLogs] = useState<any[]>([]);
-  const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
-  const [senderNames, setSenderNames] = useState<Record<string, { name: string; profile_pic: string }>>({});
-  const [pausedSenders, setPausedSenders] = useState<Set<string>>(new Set());
-  const [stats, setStats] = useState({
-    totalMessages: 0,
-    uniqueUsers: 0,
-    avgConfidence: 0,
-    handoffRate: 0
-  });
-  const [loading, setLoading] = useState(true);
-
-  // Helper: get display name for a sender ID
-  const displayName = (psid: string) => {
-    const info = senderNames[psid];
-    if (info?.name && info.name !== psid) {
-      return `${info.name} (${psid.substring(0, 8)}...)`;
-    }
-    return `${psid.substring(0, 14)}...`;
-  };
-
-  const groupedLogs = useMemo(() => {
-    const groups: Record<string, { sender_id: string; totalScore: number; items: any[] }> = {};
-
-    logs.forEach(log => {
-      const id = log.sender_id;
-      if (!groups[id]) {
-        groups[id] = { sender_id: id, totalScore: 0, items: [] };
-      }
-      groups[id].items.push(log);
-      groups[id].totalScore += log.confidence_score;
-    });
-
-    return Object.values(groups).map(g => {
-      const avgScore = g.items.length > 0 ? g.totalScore / g.items.length : 0;
-      return {
-        ...g,
-        avgScore,
-        status: avgScore >= 0.5 ? 'auto' : 'handoff'
-      };
-    });
-  }, [logs]);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await apiFetch("/api/analytics");
-
-        if (res.ok) {
-          const data = await res.json();
-          setLogs(data);
-
-          if (data.length > 0) {
-            const users = new Set(data.map((l: any) => l.sender_id));
-            const handoffs = data.filter((l: any) => l.handoff_triggered).length;
-            const avgConf = data.reduce((acc: number, l: any) => acc + l.confidence_score, 0) / data.length;
-
-            setStats({
-              totalMessages: data.length,
-              uniqueUsers: users.size,
-              avgConfidence: Math.round(avgConf * 100),
-              handoffRate: Math.round((handoffs / data.length) * 100)
-            });
-
-            // Resolve sender names
-            const uniqueIds = [...users] as string[];
-            try {
-              const nameRes = await apiFetch("/api/facebook/resolve-names", {
-                method: "POST",
-                body: JSON.stringify({ sender_ids: uniqueIds })
-              });
-              if (nameRes.ok) {
-                const nameData = await nameRes.json();
-                setSenderNames(nameData.names || {});
-              }
-            } catch (err) {
-              console.error("Failed to resolve sender names:", err);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-    // Fetch paused senders
-    apiFetch("/api/senders/paused")
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
-      .catch(err => console.error("Failed to fetch paused senders:", err));
-  }, []);
-
-  const togglePause = async (senderId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Don't expand/collapse the row
-    const isPaused = pausedSenders.has(senderId);
-    try {
-      if (isPaused) {
-        await apiFetch(`/api/senders/${senderId}/pause`, { method: "DELETE" });
-        setPausedSenders(prev => { const next = new Set(prev); next.delete(senderId); return next; });
-      } else {
-        await apiFetch(`/api/senders/${senderId}/pause`, { method: "POST" });
-        setPausedSenders(prev => new Set(prev).add(senderId));
-      }
-    } catch (err) {
-      console.error("Failed to toggle pause:", err);
-    }
-  };
-
-  const toggleExpand = (key: string) => {
-    setExpandedLogs(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  React.useEffect(() => {
+    setCurrentWorkspace(null);
+  }, [setCurrentWorkspace]);
 
   return (
-    <>
-      <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("overview.title")}</h1>
-        <p style={{ color: 'var(--text-muted)' }}>{t("overview.desc")}</p>
-      </header>
+    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 20px' }}>
+      <h1 style={{ fontSize: '32px', marginBottom: '32px', fontWeight: 700 }}>Workspace Gallery</h1>
 
-      <div className="stats-grid">
-        <div className="card glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.total")}</p>
-              <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.totalMessages}</h2>
-            </div>
-            <MessageCircle color="var(--accent)" />
-          </div>
-        </div>
-
-        <div className="card glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.active")}</p>
-              <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.uniqueUsers}</h2>
-            </div>
-            <Users color="#a855f7" />
-          </div>
-        </div>
-
-        <div className="card glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.confidence")}</p>
-              <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.avgConfidence}%</h2>
-            </div>
-            <Activity color="#22c55e" />
-          </div>
-        </div>
-
-        <div className="card glass">
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t("overview.handoffRate")}</p>
-              <h2 style={{ fontSize: '28px', marginTop: '8px' }}>{stats.handoffRate}%</h2>
-            </div>
-            <AlertCircle color="#ef4444" />
-          </div>
+      <div style={{ marginBottom: '48px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={20} /> Recently viewed
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
+          {workspaces.slice(0, 4).map(ws => (
+            <Link
+              key={ws.id}
+              href={`/w/${ws.id}`}
+              onClick={() => setCurrentWorkspace(ws)}
+              style={{
+                height: '120px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #0079bf, #50a1d4)',
+                padding: '16px',
+                color: 'white',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '18px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                transition: 'transform 0.2s',
+                textDecoration: 'none'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {ws.name}
+            </Link>
+          ))}
         </div>
       </div>
 
-      <div className="card glass">
-        <h2 style={{ color: 'var(--foreground)' }}>{t("overview.recent")}</h2>
-        <table style={{ tableLayout: 'fixed', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={{ width: '30%', textAlign: 'center' }}>{t("table.sender")}</th>
-              <th style={{ width: '20%', textAlign: 'center' }}>{t("table.score")} (Avg)</th>
-              <th style={{ width: '20%', textAlign: 'center' }}>{t("table.status")}</th>
-              <th style={{ width: '30%', textAlign: 'center' }}>AI</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(groupedLogs.length > 0 ? groupedLogs.slice(0, 10) : []).map((group, i) => (
-              <React.Fragment key={i}>
-                <tr onClick={() => toggleExpand(`group-${i}`)} style={{ cursor: 'pointer', background: expandedLogs[`group-${i}`] ? 'var(--nav-hover)' : 'transparent' }}>
-                  <td style={{ fontSize: '14px', fontWeight: 'bold', textAlign: 'center', color: 'var(--foreground)' }}>{displayName(group.sender_id)}</td>
-                  <td style={{ textAlign: 'center' }}>{Math.round(group.avgScore * 100)}%</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      background: group.status === 'handoff' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                      color: group.status === 'handoff' ? '#ef4444' : '#22c55e'
-                    }}>
-                      {group.status === 'handoff' ? t("table.handoff") : t("table.auto")}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    {pausedSenders.has(group.sender_id) ? (
-                      <button
-                        onClick={(e) => togglePause(group.sender_id, e)}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          color: '#ef4444',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: 600
-                        }}
-                      >
-                        <Play size={12} /> {t("handoff.resumeAI")}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => togglePause(group.sender_id, e)}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          background: 'rgba(34, 197, 94, 0.1)',
-                          color: '#22c55e',
-                          border: '1px solid rgba(34, 197, 94, 0.25)',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          fontWeight: 600
-                        }}
-                      >
-                        <Pause size={12} /> {t("handoff.pauseAI")}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-                {expandedLogs[`group-${i}`] && (
-                  <tr>
-                    <td colSpan={4} style={{ padding: '0', borderBottom: 'none' }}>
-                      <div style={{ background: 'var(--nav-hover)', padding: '16px', borderBottom: '1px solid var(--card-border)' }}>
-                        <h4 style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-muted)' }}>{t("table.interactionDetails")}</h4>
-                        <table style={{ width: '100%', tableLayout: 'fixed', background: 'var(--background)', borderRadius: '8px', overflow: 'hidden' }}>
-                          <thead style={{ background: 'rgba(0,0,0,0.1)' }}>
-                            <tr>
-                              <th style={{ width: '35%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.message")}</th>
-                              <th style={{ width: '35%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.reply")}</th>
-                              <th style={{ width: '15%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.score")}</th>
-                              <th style={{ width: '15%', padding: '10px 8px', fontSize: '13px', textAlign: 'center' }}>{t("table.status")}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {group.items.map((log: any, idx: number) => (
-                              <tr key={idx} style={{ borderBottom: '1px solid var(--card-border)' }}>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center', color: 'var(--foreground)' }}>{log.user_message}</td>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', whiteSpace: 'normal', wordBreak: 'break-word', textAlign: 'center', color: 'var(--foreground)' }}>{log.ai_reply}</td>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>{Math.round(log.confidence_score * 100)}%</td>
-                                <td style={{ padding: '12px 8px', fontSize: '14px', textAlign: 'center' }}>
-                                  <span style={{
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '10px',
-                                    background: log.handoff_triggered ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)',
-                                    color: log.handoff_triggered ? '#ef4444' : '#22c55e'
-                                  }}>
-                                    {log.handoff_triggered ? t("table.handoff") : t("table.auto")}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-            {groupedLogs.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t("table.empty")}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      <div>
+        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)' }}>YOUR WORKSPACES</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
+          {workspaces.map(ws => (
+            <Link
+              key={ws.id}
+              href={`/w/${ws.id}`}
+              onClick={() => setCurrentWorkspace(ws)}
+              style={{
+                height: '100px',
+                borderRadius: '12px',
+                background: 'var(--card-bg)',
+                border: '1px solid var(--card-border)',
+                padding: '16px',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                textDecoration: 'none'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--accent-alpha)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'var(--card-bg)'}
+            >
+              <div style={{ width: '32px', height: '32px', background: 'var(--accent)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                {ws.name.charAt(0).toUpperCase()}
+              </div>
+              {ws.name}
+            </Link>
+          ))}
+          <Link
+            href="/workspace/new"
+            style={{
+              height: '100px',
+              borderRadius: '12px',
+              background: 'var(--card-bg)',
+              border: '1px dashed var(--card-border)',
+              padding: '16px',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontWeight: 500,
+              fontSize: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent)';
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.background = 'var(--accent-alpha)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--card-border)';
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'var(--card-bg)';
+            }}
+          >
+            <Plus size={24} />
+            <span>Create new workspace</span>
+          </Link>
+        </div>
       </div>
-    </>
+    </div>
   );
 }
-

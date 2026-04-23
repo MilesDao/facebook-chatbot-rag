@@ -132,7 +132,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.apiKeys": "API Keys",
     "settings.save": "Save Configuration",
     "settings.aiIntegration": "AI Integration",
-    "settings.publicSettings": "Public Settings"
+    "settings.publicSettings": "Public Settings",
+
+    // User Menu
+    "user.signedInAs": "Signed in as",
+    "user.language": "Language",
+    "user.appearance": "Appearance",
+    "user.signOut": "Sign out"
   },
   vi: {
     "nav.overview": "Tổng quan",
@@ -247,7 +253,13 @@ const translations: Record<Language, Record<string, string>> = {
     "settings.apiKeys": "Khóa Bảo Mật API",
     "settings.save": "Lưu Thay Đổi (Chưa Kích Hoạt)",
     "settings.aiIntegration": "Tích Hợp AI",
-    "settings.publicSettings": "Cài Đặt Chung"
+    "settings.publicSettings": "Cài Đặt Chung",
+
+    // User Menu
+    "user.signedInAs": "Tài khoản:",
+    "user.language": "Ngôn ngữ",
+    "user.appearance": "Giao diện",
+    "user.signOut": "Đăng xuất"
   }
 };
 

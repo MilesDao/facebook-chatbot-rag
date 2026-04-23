@@ -1,7 +1,13 @@
+-- ============================================================
+-- MULTI-TENANT CHATBOT PLATFORM - DATABASE SCHEMA
+-- ============================================================
+-- Architecture: Workspace-scoped with RLS isolation
+-- ============================================================
+
 create extension if not exists vector;
 create extension if not exists "uuid-ossp";
 
--- Ensure schema permissions are correct
+-- Ensure schema permissions
 grant usage on schema public to postgres, anon, authenticated, service_role;
 grant all privileges on all tables in schema public to postgres, anon, authenticated, service_role;
 grant all privileges on all functions in schema public to postgres, anon, authenticated, service_role;
@@ -11,9 +17,44 @@ alter default privileges in schema public grant all on tables to postgres, anon,
 alter default privileges in schema public grant all on functions to postgres, anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to postgres, anon, authenticated, service_role;
 
--- 1. BOT SETTINGS (API Keys & Config)
+
+-- ============================================================
+-- 1. TABLE DEFINITIONS
+-- ============================================================
+
+create table if not exists workspaces (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  industry text not null default 'general',
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  settings jsonb default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists workspace_members (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid not null references workspaces(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'viewer',
+  invited_at timestamptz default now(),
+  unique(workspace_id, user_id)
+);
+
+create table if not exists industry_templates (
+  id uuid primary key default gen_random_uuid(),
+  industry_code text unique not null,
+  display_name text not null,
+  default_system_prompt text,
+  default_slot_definitions jsonb default '[]',
+  default_flow_templates jsonb default '[]',
+  icon text,
+  created_at timestamptz default now()
+);
+
 create table if not exists bot_settings (
-  user_id uuid primary key references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid references workspaces(id) on delete cascade,
   page_access_token text,
   openrouter_api_key text,
   page_id text,
@@ -21,55 +62,19 @@ create table if not exists bot_settings (
   llm_model text default 'openai/gpt-oss-120b:free',
   app_secret text,
   system_prompt text,
-  updated_at timestamptz default now()
+  slot_definitions jsonb default '[]',
+  updated_at timestamptz default now(),
+  unique(workspace_id)
 );
 
-alter table bot_settings enable row level security;
-drop policy if exists "Users can manage their own bot settings" on bot_settings;
-create policy "Users can manage their own bot settings"
-  on bot_settings for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
-drop policy if exists "Allow internal lookup by verify_token" on bot_settings;
-create policy "Allow internal lookup by verify_token"
-  on bot_settings for select
-  using (true); -- We only expose non-sensitive fields in select if needed, but here we need it for lookup.
-
--- 2. DOCUMENTS (Vector Data)
 create table if not exists documents (
   id bigserial primary key,
   content text not null,
   metadata jsonb,
   embedding vector(1536),
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade
+  workspace_id uuid references workspaces(id) on delete cascade
 );
 
-alter table documents enable row level security;
-drop policy if exists "Users can manage their own documents" on documents;
-create policy "Users can manage their own documents"
-  on documents for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 3. FAQS
-create table if not exists faqs (
-  id bigint primary key generated always as identity,
-  keyword text not null,
-  question text,
-  answer text not null,
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  created_at timestamptz default now()
-);
-
-alter table faqs enable row level security;
-drop policy if exists "Users can manage their own faqs" on faqs;
-create policy "Users can manage their own faqs"
-  on faqs for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 4. LOGS
 create table if not exists logs (
   id uuid primary key default gen_random_uuid(),
   sender_id text,
@@ -77,124 +82,262 @@ create table if not exists logs (
   ai_reply text,
   confidence_score float,
   handoff_triggered boolean,
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  workspace_id uuid references workspaces(id) on delete cascade,
   created_at timestamptz default now()
 );
 
-alter table logs enable row level security;
-drop policy if exists "Users can manage their own logs" on logs;
-create policy "Users can manage their own logs"
-  on logs for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 5. HANDOFFS
 create table if not exists handoffs (
   id uuid primary key default gen_random_uuid(),
   sender_id text,
   user_message text,
   confidence_score float,
   status text default 'active',
-  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  workspace_id uuid references workspaces(id) on delete cascade,
   created_at timestamptz default now()
 );
 
-alter table handoffs enable row level security;
-drop policy if exists "Users can manage their own handoffs" on handoffs;
-create policy "Users can manage their own handoffs"
-  on handoffs for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 6. APP SETTINGS (Shared/Internal)
-create table if not exists app_settings (
-  id bigint primary key generated always as identity,
-  setting_key text unique not null,
-  setting_value text not null,
-  user_id uuid default auth.uid() references auth.users(id) on delete cascade,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table app_settings enable row level security;
-drop policy if exists "Users can manage their own app settings" on app_settings;
-create policy "Users can manage their own app settings"
-  on app_settings for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 7. PAUSED SENDERS (LLM Interruption)
 create table if not exists paused_senders (
-  id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references auth.users(id) on delete cascade,
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid references workspaces(id) on delete cascade,
   sender_id text not null,
   paused_at timestamptz default now(),
-  unique(user_id, sender_id)
+  unique(workspace_id, sender_id)
 );
 
-alter table paused_senders enable row level security;
-drop policy if exists "Users can manage their own paused senders" on paused_senders;
-create policy "Users can manage their own paused senders"
-  on paused_senders for all
-  using (auth.uid() = user_id)
-  with check (auth.uid() = user_id);
-
--- 8. SIMILARITY SEARCH FUNCTION
-create or replace function match_documents (
-  query_embedding vector(1536),
-  match_threshold float,
-  match_count int,
-  p_user_id uuid -- Pass auth.uid() from the client/backend
-)
-returns table (
-  id bigint,
-  content text,
-  metadata jsonb,
-  similarity float
-)
-language sql stable
-as $$
-  select
-    documents.id,
-    documents.content,
-    documents.metadata,
-    1 - (documents.embedding <=> query_embedding) as similarity
-  from documents
-  where (documents.user_id = p_user_id) -- Filter by user
-    and 1 - (documents.embedding <=> query_embedding) > match_threshold
-  order by similarity desc
-  limit match_count;
-$$;
-
--- 8. INDEXING
--- Use HNSW for 1536-dimensional embeddings (Safe for index limits)
-create index if not exists documents_embedding_idx 
-on documents 
-using hnsw (embedding vector_cosine_ops);
-
--- 9. CHAT HISTORY
 create table if not exists chat_history (
   id uuid primary key default gen_random_uuid(),
+  workspace_id uuid references workspaces(id) on delete cascade,
   sender_id text not null,
   role text not null,
   content text not null,
   created_at timestamptz default now()
 );
 
--- Note: In multi-tenant setups, if history is tied to a specific bot (user_id),
--- ensure you add the user_id column with CASCADE as well:
--- alter table chat_history add column user_id uuid references auth.users(id) on delete cascade;
+create table if not exists conversation_flows (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid references workspaces(id) on delete cascade,
+  name text not null,
+  trigger_keywords text[],
+  is_default boolean default false,
+  is_active boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists flow_nodes (
+  id uuid primary key default gen_random_uuid(),
+  flow_id uuid not null references conversation_flows(id) on delete cascade,
+  node_type text not null,
+  label text,
+  position_x float default 0,
+  position_y float default 0,
+  config jsonb not null default '{}',
+  created_at timestamptz default now()
+);
+
+create table if not exists flow_edges (
+  id uuid primary key default gen_random_uuid(),
+  flow_id uuid not null references conversation_flows(id) on delete cascade,
+  source_node_id uuid not null references flow_nodes(id) on delete cascade,
+  target_node_id uuid not null references flow_nodes(id) on delete cascade,
+  condition jsonb default '{}',
+  label text,
+  sort_order int default 0
+);
+
+create table if not exists conversation_context (
+  id uuid primary key default gen_random_uuid(),
+  workspace_id uuid references workspaces(id) on delete cascade,
+  sender_id text not null,
+  extracted_slots jsonb default '{}',
+  current_flow_id uuid references conversation_flows(id) on delete set null,
+  current_node_id uuid references flow_nodes(id) on delete set null,
+  updated_at timestamptz default now(),
+  unique(workspace_id, sender_id)
+);
 
 
--- --- MAINTENANCE: FIX FOR DELETION ERRORS ---
--- If you experience "Database error deleting user", run these to ensure all constraints are properly cascaded:
--- 
--- ALTER TABLE bot_settings 
---   DROP CONSTRAINT IF EXISTS bot_settings_user_id_fkey,
---   ADD CONSTRAINT bot_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
---
--- ALTER TABLE documents 
---   DROP CONSTRAINT IF EXISTS documents_user_id_fkey,
---   ADD CONSTRAINT documents_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
---
--- ... (repeat for faqs, logs, handoffs, app_settings)
+-- ============================================================
+-- 2. MANDATORY SCHEMA MIGRATIONS
+-- ============================================================
+
+-- Ensure workspace_id and new config columns exist
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS slot_definitions jsonb DEFAULT '[]';
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS llm_model text DEFAULT 'openai/gpt-oss-120b:free';
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS system_prompt text;
+
+-- Remove legacy components (dependencies)
+DROP POLICY IF EXISTS "Users can manage their own bot settings" ON bot_settings;
+ALTER TABLE bot_settings DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE bot_settings DROP CONSTRAINT IF EXISTS bot_settings_workspace_id_unique;
+ALTER TABLE bot_settings ADD CONSTRAINT bot_settings_workspace_id_unique UNIQUE (workspace_id);
+
+
+
+ALTER TABLE documents DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE logs DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE handoffs DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE paused_senders DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE chat_history DROP COLUMN IF EXISTS user_id CASCADE;
+ALTER TABLE conversation_context DROP COLUMN IF EXISTS user_id CASCADE;
+
+
+-- Ensure sender_id column exists (Just in case legacy tables named it differently)
+ALTER TABLE logs ADD COLUMN IF NOT EXISTS sender_id text;
+ALTER TABLE handoffs ADD COLUMN IF NOT EXISTS sender_id text;
+ALTER TABLE paused_senders ADD COLUMN IF NOT EXISTS sender_id text;
+ALTER TABLE chat_history ADD COLUMN IF NOT EXISTS sender_id text;
+ALTER TABLE conversation_context ADD COLUMN IF NOT EXISTS sender_id text;
+
+
+-- ============================================================
+-- 3. ENABLE RLS
+-- ============================================================
+alter table workspaces enable row level security;
+alter table workspace_members enable row level security;
+alter table industry_templates enable row level security;
+alter table bot_settings enable row level security;
+alter table documents enable row level security;
+alter table logs enable row level security;
+alter table handoffs enable row level security;
+alter table paused_senders enable row level security;
+alter table chat_history enable row level security;
+alter table conversation_flows enable row level security;
+alter table flow_nodes enable row level security;
+alter table flow_edges enable row level security;
+alter table conversation_context enable row level security;
+
+
+-- ============================================================
+-- 4. HELPER FUNCTIONS
+-- ============================================================
+
+create or replace function is_workspace_member(ws_id uuid)
+returns boolean
+language sql stable security definer
+as $$
+  select exists(
+    select 1 from workspace_members
+    where workspace_id = ws_id and user_id = auth.uid()
+  ) or exists(
+    select 1 from workspaces
+    where id = ws_id and owner_id = auth.uid()
+  );
+$$;
+
+
+-- ============================================================
+-- 5. POLICIES
+-- ============================================================
+
+-- Workspaces
+drop policy if exists "Owners can manage their workspaces" on workspaces;
+create policy "Owners can manage their workspaces" on workspaces for all using (auth.uid() = owner_id);
+
+drop policy if exists "Members can view their workspaces" on workspaces;
+create policy "Members can view their workspaces" on workspaces for select using (is_workspace_member(id));
+
+-- Workspace Members
+drop policy if exists "Members can view their memberships" on workspace_members;
+create policy "Members can view their memberships" on workspace_members for select using (is_workspace_member(workspace_id));
+
+drop policy if exists "Owners and admins can manage members" on workspace_members;
+create policy "Owners and admins can manage members" on workspace_members for all
+using (
+    exists (select 1 from workspace_members wm where wm.workspace_id = workspace_members.workspace_id and wm.user_id = auth.uid() and wm.role in ('owner', 'admin'))
+    or exists (select 1 from workspaces w where w.id = workspace_members.workspace_id and w.owner_id = auth.uid())
+);
+
+-- Industry Templates (Public Read)
+drop policy if exists "Anyone can read templates" on industry_templates;
+create policy "Anyone can read templates" on industry_templates for select using (true);
+
+-- Bot Settings
+drop policy if exists "Workspace members can view bot settings" on bot_settings;
+create policy "Workspace members can view bot settings" on bot_settings for select using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace admins can manage bot settings" on bot_settings;
+create policy "Workspace admins can manage bot settings" on bot_settings for all using (is_workspace_member(workspace_id));
+
+-- Documents, Logs, Handoffs, etc.
+drop policy if exists "Workspace members can manage documents" on documents;
+create policy "Workspace members can manage documents" on documents for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage logs" on logs;
+create policy "Workspace members can manage logs" on logs for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage handoffs" on handoffs;
+create policy "Workspace members can manage handoffs" on handoffs for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage paused senders" on paused_senders;
+create policy "Workspace members can manage paused senders" on paused_senders for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage chat history" on chat_history;
+create policy "Workspace members can manage chat history" on chat_history for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage flows" on conversation_flows;
+create policy "Workspace members can manage flows" on conversation_flows for all using (is_workspace_member(workspace_id));
+
+drop policy if exists "Workspace members can manage context" on conversation_context;
+create policy "Workspace members can manage context" on conversation_context for all using (is_workspace_member(workspace_id));
+
+-- Internal lookups
+drop policy if exists "Allow internal lookup by page_id" on bot_settings;
+create policy "Allow internal lookup by page_id" on bot_settings for select using (true);
+
+
+-- ============================================================
+-- 6. RPC & INDEXES
+-- ============================================================
+
+-- Drop old function signature
+DROP FUNCTION IF EXISTS match_documents(vector, float, int, uuid);
+DROP FUNCTION IF EXISTS match_documents(vector, double precision, integer, uuid);
+
+-- Documents Similarity Search
+create or replace function match_documents (
+  query_embedding vector(1536),
+  match_threshold float,
+  match_count int,
+  p_workspace_id uuid
+)
+returns table (
+  id bigint, content text, metadata jsonb, similarity float
+)
+language sql stable
+as $$
+  select
+    documents.id, documents.content, documents.metadata,
+    1 - (documents.embedding <=> query_embedding) as similarity
+  from documents
+  where (documents.workspace_id = p_workspace_id)
+    and 1 - (documents.embedding <=> query_embedding) > match_threshold
+  order by similarity desc
+  limit match_count;
+$$;
+
+-- Indexes
+create index if not exists documents_embedding_idx on documents using hnsw (embedding vector_cosine_ops);
+create index if not exists idx_documents_workspace on documents(workspace_id);
+create index if not exists idx_bot_settings_page_id on bot_settings(page_id);
+create index if not exists idx_bot_settings_workspace on bot_settings(workspace_id);
+create index if not exists idx_paused_senders_workspace on paused_senders(workspace_id, sender_id);
+create index if not exists idx_conversation_context_workspace_sender on conversation_context(workspace_id, sender_id);
+
+
+-- ============================================================
+-- 7. SEED DATA
+-- ============================================================
+insert into industry_templates (industry_code, display_name, icon, default_system_prompt, default_slot_definitions)
+values
+('admissions', 'Tuyển sinh', 'GraduationCap', 'Bạn là tư vấn viên tuyển sinh thân thiện...', '[{"name":"ho_ten","label":"Họ tên","type":"text","required":true}]'),
+('ecommerce', 'Bán hàng', 'ShoppingBag', 'Bạn là nhân viên bán hàng thân thiện...', '[{"name":"ho_ten","label":"Tên khách hàng","type":"text","required":true}]'),
+('customer_service', 'CSKH', 'Headphones', 'Bạn là nhân viên CSKH...', '[]'),
+('booking', 'Đặt lịch', 'Calendar', 'Bạn là nhân viên hỗ trợ đặt lịch hẹn...', '[]'),
+('general', 'Tổng quát', 'Settings', 'Bạn là trợ lý ảo tổng quát...', '[]')
+
+on conflict (industry_code) do nothing;
+
+-- Force reload schema cache for PostgREST
+NOTIFY pgrst, 'reload schema';

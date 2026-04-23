@@ -18,10 +18,12 @@ import {
   Pause,
   Play
 } from "lucide-react";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { apiFetch } from "@/lib/auth";
 
 export default function HandoffInbox() {
   const { t } = useLanguage();
+  const { currentWorkspace } = useWorkspace();
   const [handoffs, setHandoffs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedSenders, setExpandedSenders] = useState<Record<string, boolean>>({});
@@ -71,13 +73,15 @@ export default function HandoffInbox() {
   };
 
   useEffect(() => {
-    fetchHandoffs();
-    // Fetch paused senders
-    apiFetch("/api/senders/paused")
-      .then(res => res.ok ? res.json() : [])
-      .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
-      .catch(err => console.error("Failed to fetch paused senders:", err));
-  }, []);
+    if (currentWorkspace) {
+      fetchHandoffs();
+      // Fetch paused senders
+      apiFetch("/api/senders/paused")
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
+        .catch(err => console.error("Failed to fetch paused senders:", err));
+    }
+  }, [currentWorkspace?.id]);
 
   const togglePause = async (senderId: string) => {
     const isPaused = pausedSenders.has(senderId);
@@ -242,7 +246,10 @@ export default function HandoffInbox() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("nav.handoffs")}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <Inbox size={32} color="#f59e0b" />
+          <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{t("nav.handoffs")}</h1>
+        </div>
         <p style={{ color: 'var(--text-muted)' }}>{t("handoff.desc")}</p>
       </header>
 

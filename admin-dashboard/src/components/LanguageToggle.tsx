@@ -15,24 +15,26 @@ export function LanguageToggle() {
       onClick={toggleLang}
       className="nav-item"
       style={{
-        width: "100%",
-        background: "transparent",
-        border: "none",
+        background: "var(--accent-glow)",
+        border: "1px solid var(--accent-alpha)",
         cursor: "pointer",
-        textAlign: "left",
-        fontSize: "16px",
+        textAlign: "center",
+        fontSize: "11px",
         fontFamily: "inherit",
         display: "flex",
         alignItems: "center",
-        gap: "12px",
-        padding: "12px 16px"
+        justifyContent: "center",
+        padding: "4px 10px",
+        borderRadius: "20px",
+        color: "var(--accent)",
+        fontWeight: 700,
+        transition: "all 0.2s",
       }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-alpha)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-glow)'; }}
       title="Toggle Language"
     >
-      <Globe size={20} color="var(--text-muted)" />
-      <span style={{ fontWeight: 600, color: "var(--foreground)" }}>
-        {t("lang.toggle")}
-      </span>
+      {t("lang.toggle")}
     </button>
   );
 }

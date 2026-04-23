@@ -23,10 +23,12 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+import { useWorkspace } from "@/components/WorkspaceContext";
 import { apiFetch } from "@/lib/auth";
 
 export default function KnowledgeBase() {
   const { t } = useLanguage();
+  const { currentWorkspace } = useWorkspace();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
@@ -81,9 +83,11 @@ export default function KnowledgeBase() {
   };
 
   useEffect(() => {
-    fetchSources();
-    fetchMedia();
-  }, []);
+    if (currentWorkspace) {
+      fetchSources();
+      fetchMedia();
+    }
+  }, [currentWorkspace?.id]);
 
   const handleDeleteSource = async (filename: string) => {
     if (!confirm(t("knowledge.deleteConfirm"))) return;
@@ -235,7 +239,10 @@ export default function KnowledgeBase() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("knowledge.title")}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <Database size={32} color="var(--accent)" />
+          <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{t("knowledge.title")}</h1>
+        </div>
         <p style={{ color: 'var(--text-muted)' }}>{t("knowledge.desc")}</p>
       </header>
 

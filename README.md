@@ -1,78 +1,71 @@
-# Facebook Chatbot RAG (Multi-Tenant & OpenRouter)
+# Facebook Chatbot SaaS Platform (Multi-Tenant & Visual Flow Builder)
 
-A powerful, multi-tenant AI chatbot system for Facebook Messenger, powered by OpenRouter LLMs and Retrieval-Augmented Generation (RAG) via Supabase and PostgreSQL.
+A powerful, multi-tenant SaaS AI chatbot platform for Facebook Messenger. It allows organizations to manage multiple bots, knowledge bases, and team members from a single dashboard. Powered by OpenRouter LLMs, a professional **n8n-style** Visual Flow Builder, and RAG via Supabase.
+
+---
 
 ## 🚀 Key Features
 
-- **Multi-Tenant Architecture**: Independent configurations, knowledge bases, and settings for each admin/page, securely managed in Supabase.
-- **Custom AI Personality**: Customize your bot's system prompt and instructions directly from the dashboard.
-- **OpenRouter LLM Integration**: Dynamically select from hundreds of models (GPT-4o, DeepSeek, Llama 3) via the dashboard with no vendor lock-in.
-- **Dynamic RAG Pipeline**: 
-  - **Optimized Embeddings**: Uses high-performance OpenRouter embeddings with 1536-dimension vectors.
-  - **HNSW Vector Search**: High-performance approximate nearest neighbor indexing via `pgvector`.
-- **Facebook Messenger Integration**: Seamless webhook support with multiple bubble delivery via `[SPLIT]` tags and automated `mark_seen`/`typing_on` indicators.
-- **LLM Interruption (Pause AI)**: Admins can pause AI responses per sender to take over the conversation manually via Business Suite, then resume AI when done.
-- **Handoff Inbox Management**:
-  - Active and Resolved queues grouped by sender.
-  - Batch resolve, restore, and delete operations with multi-select.
-  - Facebook name resolution — shows real user names alongside PSIDs.
-- **Premium Admin Dashboard**: Cutting-edge **Next.js 16** dashboard with:
-  - Theme-aware design (Dark/Light mode/Glassmorphism).
-  - Robust authentication & recovery flows (Email + Google OAuth).
-  - Real-time knowledge source management & indexing controls.
-  - System Overview with per-sender AI pause/resume toggle.
-  - Bilingual support (English / Vietnamese).
+### 🏢 Multi-Tenant SaaS Architecture
+- **Workspace Isolation**: Each client manages their own isolated data, configuration, and team members.
+- **Role-Based Access**: Owner, Admin, and Viewer roles for team collaboration.
+- **Industry Templates**: One-click setup for common industries (Admissions, E-commerce, CSKH, Booking).
+- **Workspace Gallery**: A Trello-inspired minimalist entry point to manage all your bot projects.
+
+### 🎨 Pro Visual Flow Builder (n8n-inspired)
+- **Interactive Drag-and-Drop**: A professional @xyflow/react canvas for designing conversation trees.
+- **Sidepanel Toolbox**: Drag nodes directly onto the canvas like a pro.
+- **Interactive Wires**: Visual, animated connections between logic blocks.
+- **On-Node Editing**: Edit message content or logic keywords directly on the node without opening sidebars.
+- **Navigation Tools**: Built-in Mini-map, Zoom/Pan controls, and on-node deletion.
+
+### 🧠 Advanced AI & RAG
+- **OpenRouter Integration**: Access GPT-4o, Claude 3.5, Llama 3, etc.
+- **Dynamic RAG Pipeline**: High-performance vector search (1536-dim) with HNSW indexing and workspace filtering.
+- **Custom AI Personality**: Workspace-specific system prompts.
+
+### 📊 Modern Admin Dashboard
+- **Glassmorphic UI**: Premium translucent elements with blurs and vibrant gradients.
+- **Cross-Theme Support**: Perfectly optimized for Dark, Light, and custom themes (Pink, Green, Blue).
+- **Handoff Inbox**: Real-time management of human intervention requests.
+- **Workspace Switcher**: Seamlessly switch between different bot projects via clickable breadcrumbs.
+
+---
 
 ## 🛠️ Technology Stack
 
 - **Backend**: FastAPI (Python 3.10+)
-- **Frontend**: Next.js 16, React 19, TailwindCSS 4, Lucide Icons
+- **Frontend**: Next.js 16, React 19, TailwindCSS 4
+- **Flow Canvas**: @xyflow/react (React Flow)
 - **Database**: Supabase (PostgreSQL + `pgvector`)
-- **AI Backend**: OpenAI SDK (routed via OpenRouter.ai)
-- **Security**: Supabase JWT (HS256) & RLS Policies
+- **Security**: Supabase JWT + RLS Isolation
+
+---
 
 ## ⚙️ Setup & Installation
 
 ### 1. Supabase Preparation
-- Enable the **Vector** extension in your Supabase project.
-- Run `backend/setup_supabase.sql` to initialize the full multi-tenant schema (includes `bot_settings`, `documents`, `faqs`, `logs`, `handoffs`, `paused_senders`, and the similarity search function).
-
-> **Note:** If upgrading from an older version, run these migrations in the SQL Editor:
-> ```sql
-> ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS system_prompt TEXT;
-> 
-> CREATE TABLE IF NOT EXISTS paused_senders (
->   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
->   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
->   sender_id text NOT NULL,
->   paused_at timestamptz DEFAULT now(),
->   UNIQUE(user_id, sender_id)
-> );
-> ALTER TABLE paused_senders ENABLE ROW LEVEL SECURITY;
-> CREATE POLICY "Users can manage their own paused senders"
->   ON paused_senders FOR ALL
->   USING (auth.uid() = user_id)
->   WITH CHECK (auth.uid() = user_id);
-> 
-> NOTIFY pgrst, 'reload schema';
-> ```
+- Run `backend/setup_supabase.sql` in your Supabase SQL Editor. This will create all tables, indexes, RLS policies, and industry templates.
 
 ### 2. Environment Variables
-Create a `.env` file in the root directory:
+Create a `.env` file in the root:
 ```env
-SUPABASE_URL=your-project-url
-SUPABASE_KEY=your-anon-key
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_JWT_SECRET=your-jwt-secret
-OPENROUTER_API_KEY=your-openrouter-key
+
+# API
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ### 3. Backend Setup
 ```bash
+cd backend
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-python -m backend.main
+python main.py
 ```
 
 ### 4. Admin Dashboard
@@ -82,47 +75,33 @@ npm install
 npm run dev
 ```
 
-## 📡 API Endpoints
+---
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/health` | Health check |
-| `GET/PUT` | `/api/settings` | Bot settings (tokens, model, system prompt) |
-| `GET` | `/api/handoffs` | List all handoff requests |
-| `PUT` | `/api/handoffs/{id}/resolve` | Mark handoff as resolved |
-| `PUT` | `/api/handoffs/{id}/restore` | Restore resolved handoff to active |
-| `DELETE` | `/api/handoffs/{id}` | Permanently delete a handoff |
-| `GET` | `/api/senders/paused` | List paused sender IDs |
-| `POST` | `/api/senders/{id}/pause` | Pause AI for a sender |
-| `DELETE` | `/api/senders/{id}/pause` | Resume AI for a sender |
-| `POST` | `/api/facebook/resolve-names` | Resolve PSIDs to Facebook names |
-| `GET` | `/api/analytics` | Conversation logs & stats |
-| `GET/POST/DELETE` | `/api/faq` | FAQ management |
-| `GET/POST/DELETE` | `/api/sources` | Knowledge source management |
+## 🇻🇳 Hướng dẫn sử dụng (Vietnamese)
+
+### 1. Tạo Workspace mới
+- Sau khi đăng nhập, chọn **"Tạo Workspace mới"** từ trang Gallery.
+- Chọn **Template Industry** (ví dụ: Tuyển sinh, Bán hàng) để tự động cài đặt AI Prompt và các nút dữ liệu mẫu.
+
+### 2. Quản lý luồng hội thoại (Flow Builder)
+- Vào mục **Flows** trên Sidebar.
+- Sử dụng Toolbox bên trái, **kéo thả** các Node vào vùng làm việc.
+- Dùng chuột nối các điểm tròn để tạo liên kết logic.
+- Sửa nội dung trực tiếp trên Node và nhấn **Save Flow** (sẽ có thông báo xanh hiện lên khi lưu thành công).
+
+### 3. Cài đặt Facebook Page
+- Vào mục **Settings**, nhập đầy đủ Page Token và ID để kết nối với Fanpage của bạn.
+
+### 4. Nạp dữ liệu kiến thức (RAG)
+- Vào mục **Knowledge Base**, tải lên tài liệu để AI học kiến thức chuyên môn.
+
+---
 
 ## 📦 Project Structure
+- `/backend`: FastAPI Server & Flow Engine.
+- `/admin-dashboard`: Next.js 16 Workspace Dashboard with XYFlow integration.
+- `diag_db.py`: Database diagnostic utility.
 
-```text
-/
-├── admin-dashboard/        # Next.js 16 frontend
-│   └── src/
-│       ├── app/(auth)/     # Login, signup, recovery
-│       ├── app/(dashboard)/ # Overview, handoffs, settings, sources, FAQ
-│       ├── components/     # LanguageContext, shared UI
-│       └── lib/            # Auth utilities
-├── backend/                # FastAPI backend
-│   ├── services/           # Ingestion, FAQs, History
-│   ├── main.py             # API & Webhook controller
-│   ├── message_handler.py  # RAG pipeline orchestrator
-│   ├── openrouter_integration.py # LLM response generation
-│   └── setup_supabase.sql  # Full database schema
-├── raw_data/               # Staging for document indexing
-└── .env                    # Environment config
-```
-
-## 🔒 Security & Multi-Tenancy
-This project uses **Row Level Security (RLS)** in Supabase. Every document, FAQ, handoff, paused sender, and setting is strictly tied to a `user_id`, ensuring data isolation between different Facebook Page admins.
-
+---
 ## 📝 License
 Internal project / Proprietary.
-

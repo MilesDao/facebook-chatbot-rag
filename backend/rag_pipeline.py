@@ -26,8 +26,6 @@ def get_embedding(text: str, api_key: str = None) -> list[float]:
 
     try:
         client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_key)
-        # Using a model that supports embeddings via OpenRouter
-        # NOTE: Model must match the one used during ingestion
         result = client.embeddings.create(
             model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
             input=text,
@@ -48,7 +46,7 @@ def get_embedding(text: str, api_key: str = None) -> list[float]:
         print(f"Error generating OpenRouter embedding: {e}")
         return [0.0] * 1536
 
-def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, user_id: str = None, api_key: str = None):
+def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, workspace_id: str = None, api_key: str = None):
     """
     Retrieve documents from Supabase vector db.
     Returns:
@@ -70,9 +68,9 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
             "match_count": match_count
         }
         
-        # If user_id is provided, use the multi-tenant RPC
-        if user_id:
-            rpc_params["p_user_id"] = user_id
+        # Use workspace_id for multi-tenant filtering
+        if workspace_id:
+            rpc_params["p_workspace_id"] = workspace_id
             
         response = supabase.rpc("match_documents", rpc_params).execute()
     except Exception as e:
@@ -80,7 +78,7 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
         return "", 0.0
     
     data = response.data
-    print(f"DEBUG: RAG search returned {len(data) if data else 0} results for user {user_id}")
+    print(f"DEBUG: RAG search returned {len(data) if data else 0} results for workspace {workspace_id}")
     
     if not data:
         return "", 0.0
@@ -99,7 +97,5 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
     # The highest similarity score is always at index 0 from our SQL sorting
     best_score = float(data[0].get('similarity', 0.0))
     print(f"DEBUG: Final retrieval score: {best_score:.4f}")
-    
-    return context_str, best_score
     
     return context_str, best_score

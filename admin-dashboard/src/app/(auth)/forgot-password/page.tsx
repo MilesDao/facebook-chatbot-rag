@@ -35,9 +35,9 @@ export default function ForgotPasswordPage() {
         padding: "13px 14px 13px 44px",
         borderRadius: "10px",
         fontSize: "15px",
-        color: "white",
-        background: "rgba(255,255,255,0.05)",
-        border: "1px solid rgba(255,255,255,0.1)",
+        color: "var(--foreground)",
+        background: "var(--nav-hover)",
+        border: "1px solid var(--card-border)",
         outline: "none",
         transition: "border-color 0.2s ease",
     };
@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
                                 <CheckCircle2 color="#22c55e" size={32} />
                             </div>
                             <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>Check your email</h1>
-                            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: "1.6", marginBottom: "32px" }}>
+                            <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6", marginBottom: "32px" }}>
                                 We've sent a password reset link to <strong>{email}</strong>.
                             </p>
                             <Link href="/login" className="btn" style={{ display: 'inline-flex', width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
                                 alignItems: 'center',
                                 gap: '8px',
                                 fontSize: '14px',
-                                color: 'rgba(255,255,255,0.4)',
+                                color: 'var(--text-muted)',
                                 textDecoration: 'none',
                                 marginBottom: '24px'
                             }}>
@@ -118,7 +118,7 @@ export default function ForgotPasswordPage() {
                             </Link>
 
                             <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>Forgot password?</h1>
-                            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px", marginBottom: "32px" }}>
+                            <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "32px" }}>
                                 No worries, we'll send you reset instructions.
                             </p>
 
@@ -142,11 +142,11 @@ export default function ForgotPasswordPage() {
 
                             <form onSubmit={handleResetRequest} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                         Email
                                     </label>
                                     <div style={{ position: "relative" }}>
-                                        <Mail size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.3)", pointerEvents: "none" }} />
+                                        <Mail size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
                                         <input
                                             type="email"
                                             value={email}
