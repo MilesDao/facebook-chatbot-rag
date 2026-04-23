@@ -17,3 +17,5 @@ supabase
 pydantic
 PyJWT
 cryptography
+Pillow
+requests

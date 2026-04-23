@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useWorkspace } from "./WorkspaceContext";
-import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
+import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, FileText } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./UserMenu";
 
@@ -185,6 +185,9 @@ export function Sidebar() {
             </Link>
             <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? "Handoff Inbox" : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Inbox size={16} /> {!isSidebarCollapsed && "Handoff Inbox"}
+            </Link>
+            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? "User Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <FileText size={16} /> {!isSidebarCollapsed && "User Documents"}
             </Link>
             <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? "Members" : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Users size={16} /> {!isSidebarCollapsed && "Members"}
