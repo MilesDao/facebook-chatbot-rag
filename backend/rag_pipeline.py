@@ -9,42 +9,44 @@ Responsibilities:
 import os
 import threading
 from dotenv import load_dotenv
-from openai import OpenAI
+from google import genai
 from .database import supabase
 
 load_dotenv()
 
 def get_embedding(text: str, api_key: str = None) -> list[float]:
     """
-    Generate 1536-dimension embeddings via OpenRouter (truncated from 2048).
-    Dimensions must match the Supabase table schema (1536).
+    Generate 768-dimension embeddings via Google GenAI (Gemini Embedding 1).
+    Dimensions must match the Supabase table schema (768).
     """
-    openrouter_key = api_key or os.getenv("OPENROUTER_API_KEY")
-    if not openrouter_key:
-        print("Error: No OpenRouter API key found for embedding generation.")
-        return [0.0] * 1536
+    google_key = api_key or os.getenv("GOOGLE_API_KEY")
+    if not google_key:
+        print("Error: No Google API key found for embedding generation.")
+        return [0.0] * 768
 
     try:
-        client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=openrouter_key)
-        result = client.embeddings.create(
-            model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-            input=text,
-            encoding_format="float",
-            extra_body={"input_type": "query"}
+        client = genai.Client(api_key=google_key)
+        # Use text-embedding-004 or text-embedding-005 as modern defaults
+        # or stick to models/embedding-001 for consistency if already used.
+        # The user was using embedding-001.
+        result = client.models.embed_content(
+            model="models/embedding-001",
+            contents=text,
+            config=genai.types.EmbedContentConfig(
+                task_type="RETRIEVAL_QUERY"
+            )
         )
-        if not result.data:
-            return [0.0] * 2048
-            
-        raw_embed = result.data[0].embedding
-        # Regularize to exactly 1536 dimensions (to fit Supabase index limits)
-        embedding = list(raw_embed[:1536])
-        if len(embedding) < 1536:
-            embedding += [0.0] * (1536 - len(embedding))
+        
+        raw_embed = result.embeddings[0].values
+        # Regularize to exactly 768 dimensions
+        embedding = list(raw_embed[:768])
+        if len(embedding) < 768:
+            embedding += [0.0] * (768 - len(embedding))
         return embedding
         
     except Exception as e:
-        print(f"Error generating OpenRouter embedding: {e}")
-        return [0.0] * 1536
+        print(f"Error generating Google embedding: {e}")
+        return [0.0] * 768
 
 def retrieve_context(user_message: str, match_threshold: float = 0.5, match_count: int = 5, workspace_id: str = None, api_key: str = None):
     """

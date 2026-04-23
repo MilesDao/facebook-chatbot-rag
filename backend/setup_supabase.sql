@@ -56,10 +56,10 @@ create table if not exists bot_settings (
   id uuid primary key default gen_random_uuid(),
   workspace_id uuid references workspaces(id) on delete cascade,
   page_access_token text,
-  openrouter_api_key text,
+  google_api_key text,
   page_id text,
   verify_token text,
-  llm_model text default 'openai/gpt-oss-120b:free',
+  llm_model text default 'google/gemini-3.1-flash-lite-preview',
   app_secret text,
   system_prompt text,
   slot_definitions jsonb default '[]',
@@ -71,7 +71,7 @@ create table if not exists documents (
   id bigserial primary key,
   content text not null,
   metadata jsonb,
-  embedding vector(1536),
+  embedding vector(768),
   workspace_id uuid references workspaces(id) on delete cascade
 );
 
@@ -164,14 +164,27 @@ create table if not exists conversation_context (
 -- Ensure workspace_id and new config columns exist
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS workspace_id uuid REFERENCES workspaces(id) ON DELETE CASCADE;
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS slot_definitions jsonb DEFAULT '[]';
-ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS llm_model text DEFAULT 'openai/gpt-oss-120b:free';
-ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS system_prompt text;
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS llm_model text DEFAULT 'google/gemini-3.1-flash-lite-preview';
 
 -- Remove legacy components (dependencies)
 DROP POLICY IF EXISTS "Users can manage their own bot settings" ON bot_settings;
 ALTER TABLE bot_settings DROP COLUMN IF EXISTS user_id CASCADE;
 ALTER TABLE bot_settings DROP CONSTRAINT IF EXISTS bot_settings_workspace_id_unique;
 ALTER TABLE bot_settings ADD CONSTRAINT bot_settings_workspace_id_unique UNIQUE (workspace_id);
+-- Migration: Rename old column if it exists and new one doesn't (legacy support)
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bot_settings' AND column_name='openrouter_api_key') 
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bot_settings' AND column_name='google_api_key') THEN
+    ALTER TABLE bot_settings RENAME COLUMN openrouter_api_key TO google_api_key;
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='bot_settings' AND column_name='openrouter_api_key') THEN
+    -- If both exist, just drop the old one
+    ALTER TABLE bot_settings DROP COLUMN openrouter_api_key;
+  END IF;
+END $$;
+
+-- Ensure new config columns exist
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS google_api_key text;
 
 
 
@@ -297,7 +310,7 @@ DROP FUNCTION IF EXISTS match_documents(vector, double precision, integer, uuid)
 
 -- Documents Similarity Search
 create or replace function match_documents (
-  query_embedding vector(1536),
+  query_embedding vector(768),
   match_threshold float,
   match_count int,
   p_workspace_id uuid

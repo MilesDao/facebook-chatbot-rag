@@ -4,8 +4,9 @@ uvicorn
 python-multipart
 requests
 
-# AI & LLM (OpenRouter via OpenAI SDK)
-openai
+# AI & LLM
+google-genai
+
 langchain-text-splitters
 pypdf
 python-dotenv

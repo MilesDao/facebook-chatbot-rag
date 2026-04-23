@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from backend.rag_pipeline import retrieve_context
-from backend.openrouter_integration import generate_response
+from backend.google_ai_integration import generate_response
 from backend.intent_router import classify_intent # Import hàm mới / Import the new function
 
 def chat_loop():
@@ -47,6 +47,8 @@ def chat_loop():
             
             # 2. Get LLM response
             print("  [🧠 LLM is thinking...]")
+            replyGOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+            MODEL = "gemini-1.5-flash"
             reply_obj = generate_response(user_msg, context, history)
             
             print(f"\n🤖 Bot (Score: {reply_obj.confidence_score} | Handoff: {reply_obj.needs_human}):")

@@ -26,7 +26,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface BotSettings {
     page_access_token: string;
-    openrouter_api_key: string;
+    google_api_key: string;
     page_id: string;
     verify_token: string;
     llm_model: string;
@@ -37,7 +37,7 @@ interface BotSettings {
 interface ValidationErrors {
     page_id?: string;
     page_access_token?: string;
-    openrouter_api_key?: string;
+    google_api_key?: string;
     verify_token?: string;
     app_secret?: string;
 }
@@ -49,10 +49,10 @@ export default function SettingsPage() {
     const { currentWorkspace } = useWorkspace();
     const [settings, setSettings] = useState<BotSettings>({
         page_access_token: "",
-        openrouter_api_key: "",
+        google_api_key: "",
         page_id: "",
         verify_token: "tuyensinh2026",
-        llm_model: "openai/gpt-oss-120b:free",
+        llm_model: "google/gemini-3.1-flash-lite-preview",
         app_secret: "",
         system_prompt: ""
     });
@@ -62,7 +62,7 @@ export default function SettingsPage() {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
     const [showTokens, setShowTokens] = useState({
         page_access_token: false,
-        openrouter_api_key: false,
+        google_api_key: false,
         app_secret: false
     });
 
@@ -82,10 +82,10 @@ export default function SettingsPage() {
                 const data = await response.json();
                 setSettings({
                     page_access_token: data.page_access_token || "",
-                    openrouter_api_key: data.openrouter_api_key || "",
+                    google_api_key: data.google_api_key || "",
                     page_id: data.page_id || "",
                     verify_token: data.verify_token || "tuyensinh2026",
-                    llm_model: data.llm_model || "openai/gpt-oss-120b:free",
+                    llm_model: data.llm_model || "google/gemini-3.1-flash-lite-preview",
                     app_secret: data.app_secret || "",
                     system_prompt: data.system_prompt || ""
                 });
@@ -112,8 +112,8 @@ export default function SettingsPage() {
             newErrors.page_access_token = "Valid Page Access Token is required";
         }
 
-        if (!settings.openrouter_api_key || settings.openrouter_api_key.length < 15) {
-            newErrors.openrouter_api_key = "OpenRouter API Key is required";
+        if (!settings.google_api_key || settings.google_api_key.length < 15) {
+            newErrors.google_api_key = "Google AI Studio API Key is required";
         }
 
         if (!settings.verify_token || settings.verify_token.length < 5) {
@@ -156,7 +156,7 @@ export default function SettingsPage() {
 
     const isFormValid = settings.page_id.length >= 10 &&
         settings.page_access_token.length >= 20 &&
-        settings.openrouter_api_key.length >= 15;
+        settings.google_api_key.length >= 15;
 
     if (loading) {
         return (
@@ -374,34 +374,34 @@ export default function SettingsPage() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            Your bot uses OpenRouter (e.g., DeepSeek, Gemini, GPT) for reasoning and retrieval.
+                            Your bot uses Google AI Studio (Gemini) for reasoning and retrieval.
                         </p>
 
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>OpenRouter API Key</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>Google AI Studio API Key</label>
                             <div style={{ position: 'relative' }}>
                                 <input
-                                    type={showTokens.openrouter_api_key ? "text" : "password"}
+                                    type={showTokens.google_api_key ? "text" : "password"}
                                     className="glass-input"
-                                    value={settings.openrouter_api_key}
+                                    value={settings.google_api_key}
                                     onChange={e => {
-                                        setSettings({ ...settings, openrouter_api_key: e.target.value });
-                                        if (errors.openrouter_api_key) setErrors({ ...errors, openrouter_api_key: undefined });
+                                        setSettings({ ...settings, google_api_key: e.target.value });
+                                        if (errors.google_api_key) setErrors({ ...errors, google_api_key: undefined });
                                     }}
-                                    placeholder="sk-or-v1-..."
+                                    placeholder="AIzaSy..."
                                     style={{
                                         width: '100%',
                                         padding: '12px',
                                         paddingRight: '44px',
                                         borderRadius: '8px',
                                         background: 'var(--nav-hover)',
-                                        border: `1px solid ${errors.openrouter_api_key ? '#ef4444' : 'var(--card-border)'}`,
+                                        border: `1px solid ${errors.google_api_key ? '#ef4444' : 'var(--card-border)'}`,
                                         color: 'var(--foreground)'
                                     }}
                                 />
                                 <button
                                     type="button"
-                                    onClick={() => setShowTokens({ ...showTokens, openrouter_api_key: !showTokens.openrouter_api_key })}
+                                    onClick={() => setShowTokens({ ...showTokens, google_api_key: !showTokens.google_api_key })}
                                     style={{
                                         position: 'absolute',
                                         right: '12px',
@@ -416,15 +416,15 @@ export default function SettingsPage() {
                                         padding: '4px'
                                     }}
                                 >
-                                    {showTokens.openrouter_api_key ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    {showTokens.google_api_key ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
-                            {errors.openrouter_api_key && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.openrouter_api_key}</p>}
+                            {errors.google_api_key && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.google_api_key}</p>}
                         </div>
 
                         <div className="form-group">
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
-                                LLM Model (OpenRouter)
+                                Gemini Model
                             </label>
                             <select
                                 className="glass-input"
@@ -442,17 +442,13 @@ export default function SettingsPage() {
                                     cursor: 'pointer'
                                 }}
                             >
-                                <option value="deepseek/deepseek-chat">DeepSeek Chat (Default)</option>
-                                <option value="nvidia/nemotron-4-340b-instruct:free">Nvidia Nemotron 4 (Free)</option>
-                                <option value="google/gemma-2-9b-it:free">Google Gemma 2 9B (Free)</option>
-                                <option value="meta-llama/llama-3.1-8b-instruct:free">Meta Llama 3.1 8B (Free)</option>
-                                <option value="mistralai/pixtral-12b:free">Mistral Pixtral 12B (Free)</option>
-                                <option value="qwen/qwen-2-7b-instruct:free">Qwen 2 7B (Free)</option>
-                                <option value="nvidia/nemotron-3-super-120b-a12b:free">Nvidia Nemotron 3 Super (Free)</option>
-                                <option value="openai/gpt-oss-120b:free">OpenAI GPT OSS (Free)</option>
+                                <option value="google/gemini-3.1-flash-lite-preview">Gemini 3.1 Flash Lite (Default)</option>
+                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fast)</option>
+                                <option value="gemini-1.5-pro">Gemini 1.5 Pro (Powerful)</option>
+                                <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
                             </select>
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                Models ending in <b>:free</b> are usually subject to lower rate limits.
+                                For best performance, use Gemini 1.5 Flash or higher.
                             </p>
                         </div>
 

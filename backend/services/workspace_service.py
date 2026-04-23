@@ -79,9 +79,9 @@ def create_workspace(name: str, industry: str, owner_id: str) -> dict:
         bot_settings = {
             "workspace_id": ws_id,
             "page_access_token": "",
-            "openrouter_api_key": "",
+            "google_api_key": "",
             "page_id": "",
-            "llm_model": "openai/gpt-oss-120b:free",
+            "llm_model": "google/gemini-3.1-flash-lite-preview",
             "system_prompt": template["default_system_prompt"] if template else "",
             "slot_definitions": template["default_slot_definitions"] if template else "[]"
         }

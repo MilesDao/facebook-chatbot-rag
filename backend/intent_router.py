@@ -1,29 +1,24 @@
 import os
 import time
 import json
-import openai
+from google import genai
 from pydantic import BaseModel, Field
 
 # Định nghĩa cấu trúc dữ liệu ép LLM phải tuân theo
 class IntentResponse(BaseModel):
     intent: str = Field(description="Must be strictly 'CHITCHAT' or 'QA'")
 
-def classify_intent(user_query: str, openrouter_key: str = None) -> str:
+def classify_intent(user_query: str, google_key: str = None) -> str:
     """
-    Classifies user query into CHITCHAT or QA using OpenRouter.
+    Classifies user query into CHITCHAT or QA using Google Gemini.
     """
-    api_key = openrouter_key or os.getenv("OPENROUTER_API_KEY")
-    base_url = "https://openrouter.ai/api/v1"
+    api_key = google_key or os.getenv("GOOGLE_API_KEY")
     
     if not api_key:
-        print("CRITICAL: OpenRouter API key missing for intent routing!")
+        print("CRITICAL: Google API key missing for intent routing!")
         return "QA" # Default fallback
         
-    try:
-        client = openai.OpenAI(api_key=api_key, base_url=base_url)
-    except Exception as e:
-        print(f"Error initializing OpenRouter client for router: {e}")
-        return "QA"
+    client = genai.Client(api_key=api_key)
 
     system_instruction = """
     You are a high-speed traffic router for an AI assistant.
@@ -39,17 +34,16 @@ def classify_intent(user_query: str, openrouter_key: str = None) -> str:
 
     for attempt in range(max_retries):
         try:
-            completion = client.chat.completions.create(
-                model="openai/gpt-oss-120b:free", # Use a cheap/fast model for routing
-                messages=[
-                    {"role": "system", "content": system_instruction},
-                    {"role": "user", "content": user_query}
-                ],
-                response_format={"type": "json_object"},
-                temperature=0.0
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=f"{system_instruction}\n\nUser Message: {user_query}",
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.0
+                )
             )
             
-            response_data = json.loads(completion.choices[0].message.content)
+            response_data = json.loads(response.text)
             return response_data.get("intent", "QA")
             
         except Exception as e:

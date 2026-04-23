@@ -1,6 +1,6 @@
 import os
 import glob
-from openai import OpenAI
+from google import genai
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
 from dotenv import load_dotenv
@@ -9,11 +9,12 @@ load_dotenv()
 
 class IngestionService:
     def __init__(self, api_key: str = None):
-        print("Initializing Ingestion Service with OpenRouter API")
-        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+        print("Initializing Ingestion Service with Google GenAI SDK")
+        self.api_key = api_key or os.getenv("GOOGLE_API_KEY")
         if not self.api_key:
-            print("CRITICAL: OPENROUTER_API_KEY missing in IngestionService")
-        self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key) if self.api_key else None
+            print("CRITICAL: GOOGLE_API_KEY missing in IngestionService")
+        
+        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
 
         
         self.text_splitter = RecursiveCharacterTextSplitter(
@@ -23,8 +24,8 @@ class IngestionService:
         )
 
     def ingest_file(self, filepath: str, workspace_id: str = None):
-        if not self.client or not supabase:    
-            print("Error: Client or Supabase not initialized.")
+        if not self.api_key or not supabase:    
+            print("Error: Google API Key or Supabase not initialized.")
             return
 
         filename = os.path.basename(filepath)
@@ -63,28 +64,28 @@ class IngestionService:
         
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
-            result = self.client.embeddings.create(
-                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
-                input=chunks,
-                encoding_format="float",
-                extra_body={"input_type": "passage"}
+            result = self.client.models.embed_content(
+                model="models/embedding-001",
+                contents=chunks,
+                config=genai.types.EmbedContentConfig(
+                    task_type="RETRIEVAL_PASSAGE"
+                )
             )
-            if not result.data:
-                print("Error: No embedding data received from API")
+            
+            if not result.embeddings:
+                print("Error: No embedding data received from Google GenAI")
                 return
-            embeddings = [r.embedding for r in result.data]
+            embeddings = [e.values for e in result.embeddings]
         except Exception as e:
             print(f"Failed to generate embeddings batch for {filename}: {e}")
-            if "401" in str(e):
-                print("HINT: Your OpenRouter API key might be invalid or your account doesn't have access to this model.")
             return
             
         for i, (chunk, raw_embed) in enumerate(zip(chunks, embeddings)):
             
-            # Truncate to 1536 dimensions to fit Supabase index limits
-            embedding = raw_embed[:1536]
-            if len(embedding) < 1536:
-                embedding += [0.0] * (1536 - len(embedding))
+            # Truncate to 768 dimensions to fit Supabase index limits
+            embedding = raw_embed[:768]
+            if len(embedding) < 768:
+                embedding += [0.0] * (768 - len(embedding))
             
             try:
                 data = {

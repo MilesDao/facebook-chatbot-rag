@@ -5,7 +5,7 @@
 **Project Name:** Facebook Chatbot RAG Platform
 **Type:** Multi-Tenant SaaS Web Application
 
-A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizations can manage multiple bots, knowledge bases, and team members from a single dashboard. Powered by OpenRouter LLMs, Visual Flow Builder, and RAG via Supabase.
+A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizations can manage multiple bots, knowledge bases, and team members from a single dashboard. Powered by Google Gemini LLMs, Visual Flow Builder, and RAG via Supabase.
 
 ---
 
@@ -17,7 +17,7 @@ A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizatio
 | Frontend | Next.js 16, React 19, TailwindCSS 4 |
 | Flow Canvas | @xyflow/react (React Flow) |
 | Database | Supabase (PostgreSQL + pgvector) |
-| AI | OpenRouter API (GPT-4o, Claude, Llama) |
+| AI | Google AI Studio (Gemini 1.5 Pro/Flash) |
 | Storage | Supabase Storage |
 
 ---
@@ -48,8 +48,8 @@ A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizatio
 
 ### 3.3 AI & RAG Pipeline
 
-- **OpenRouter Integration**: Access to GPT-4o, Claude 3.5, Llama 3, etc.
-- **Vector Search**: 1536-dimension embeddings with HNSW indexing
+- **Google AI Studio Integration**: Access to Gemini 1.5 Pro, Flash, etc.
+- **Vector Search**: 768-dimension embeddings via models/embedding-001
 - **Workspace-scoped filtering**: RAG searches within workspace boundaries
 - **Custom AI Personality**: Workspace-specific system prompts
 - **Intent Classification**: QA, HANDOFF, CHITCHAT detection
@@ -215,7 +215,7 @@ A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizatio
 ### 6.4 Facebook Page Connection
 
 1. User navigates to "Settings"
-2. User enters Page Access Token, Page ID, OpenRouter API Key
+2. User enters Page Access Token, Page ID, Google API Key
 3. System validates credentials
 4. Webhook is ready to receive messages
 
@@ -225,7 +225,7 @@ A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizatio
 2. System identifies workspace by page_id
 3. System checks if Flow Engine can handle message
 4. If not, system uses RAG + Intent Classification
-5. System generates AI response via OpenRouter
+5. System generates AI response via Google Gemini
 6. System sends reply to Facebook Messenger
 
 ### 6.6 Human Handoff
@@ -243,7 +243,7 @@ A powerful, multi-tenant AI chatbot platform for Facebook Messenger. Organizatio
 - **Authentication**: Supabase JWT (auth.users)
 - **Authorization**: Row Level Security (RLS) policies
 - **Workspace Isolation**: All queries filtered by workspace_id
-- **API Key Protection**: OpenRouter keys stored per-workspace
+- **API Key Protection**: Google AI Studio keys stored per-workspace
 
 ---
 
@@ -258,7 +258,7 @@ facebook-chatbot-rag/
 │   ├── message_handler.py       # Message orchestration
 │   ├── rag_pipeline.py          # Vector search & retrieval
 │   ├── intent_router.py         # Intent classification
-│   ├── openrouter_integration.py # LLM API calls
+│   ├── google_ai_integration.py # LLM API calls
 │   ├── handoff.py               # Human handoff logic
 │   ├── analytics.py             # Logging utilities
 │   ├── setup_supabase.sql       # Database schema
@@ -285,7 +285,7 @@ facebook-chatbot-rag/
 - [ ] Visual Flow Builder allows drag-and-drop node creation
 - [ ] Flows trigger based on keywords or as default
 - [ ] RAG pipeline retrieves relevant context from uploaded documents
-- [ ] AI responses generated via OpenRouter with configurable models
+- [ ] AI responses generated via Google Gemini with configurable models
 - [ ] Facebook webhook receives and processes messages
 - [ ] Handoff system allows human agents to take over conversations
 - [ ] Admin dashboard displays analytics and handoff inbox

@@ -19,8 +19,9 @@ from .auth import get_current_user
 # Load environment variables early
 load_dotenv()
 
+# AI models and RAG components
 from .message_handler import handle_message
-from .openrouter_integration import generate_response
+from .google_ai_integration import generate_response
 from .database import supabase
 from .services.ingestion import IngestionService
 
@@ -41,10 +42,10 @@ class GenerateRequest(BaseModel):
 
 class BotSettingsUpdate(BaseModel):
     page_access_token: str = Field(..., min_length=20)
-    openrouter_api_key: str = Field(..., min_length=15)
+    google_api_key: str = Field(..., min_length=15)
     page_id: str = Field(..., min_length=10, pattern=r"^\d+$")
     verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
-    llm_model: Optional[str] = Field("openai/gpt-oss-120b:free")
+    llm_model: Optional[str] = Field("google/gemini-3.1-flash-lite-preview")
     app_secret: Optional[str] = Field(None, min_length=32, max_length=32)
     system_prompt: Optional[str] = Field(None)
     slot_definitions: Optional[str] = Field(None)  # JSON string
@@ -461,16 +462,15 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         print(f"ERROR fetching settings for page {page_id}: {e}")
 
     token = settings.get("page_access_token")
-    openrouter_key = settings.get("openrouter_api_key")
-
-    if not token:
-        print(f"CRITICAL: No access token available for page {page_id}. Aborting.")
-        return
-        
-    if not openrouter_key:
-        print(f"WARNING: No OpenRouter API Key available for page {page_id}.")
-    else:
-        print(f"DEBUG: Using OpenRouter Key (Redacted: {openrouter_key[:6]}...)")
+    google_key = settings.get("google_api_key")
+    llm_model = settings.get("llm_model", "gemini-1.5-flash")
+    
+    # Fallback to env if setting is empty
+    if not google_key:
+        google_key = os.getenv("GOOGLE_API_KEY")
+    
+    if google_key:
+        print(f"DEBUG: Using Google Key (Redacted: {google_key[:6]}...)")
 
     # Check if this sender is paused (admin took over)
     try:
@@ -534,7 +534,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     send_fb_action(sender_id, "typing_on", token)
     
     try:
-        llm_model = settings.get("llm_model") or "openai/gpt-oss-120b:free"
+        llm_model = settings.get("llm_model") or "google/gemini-3.1-flash-lite-preview"
         system_prompt = settings.get("system_prompt")
         print(f"Generating AI response for: {user_message[:50]}... using model {llm_model}")
         
@@ -542,7 +542,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
             sender_id, 
             user_message, 
             workspace_id=workspace_id, 
-            openrouter_key=openrouter_key, 
+            google_key=google_key, 
             llm_model=llm_model,
             system_prompt=system_prompt
         ) or ""
@@ -604,14 +604,14 @@ async def trigger_indexing(request: Request, background_tasks: BackgroundTasks, 
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
     
-    # Fetch workspace's OpenRouter key
-    settings_res = supabase.table("bot_settings").select("openrouter_api_key").eq("workspace_id", workspace_id).limit(1).execute()
-    openrouter_key = None
-    if settings_res.data and settings_res.data[0].get("openrouter_api_key"):
-        openrouter_key = settings_res.data[0]["openrouter_api_key"]
+    # Fetch workspace's Google key
+    settings_res = supabase.table("bot_settings").select("google_api_key").eq("workspace_id", workspace_id).limit(1).execute()
+    google_key = None
+    if settings_res.data and settings_res.data[0].get("google_api_key"):
+        google_key = settings_res.data[0]["google_api_key"]
 
     def run_indexing():
-        service = IngestionService(api_key=openrouter_key)
+        service = IngestionService(api_key=google_key)
         service.ingest_directory(RAW_DATA_DIR, workspace_id=workspace_id)
     
     background_tasks.add_task(run_indexing)
@@ -815,9 +815,9 @@ async def get_bot_settings(request: Request, current_user: dict = Depends(get_cu
             new_settings = {
                 "workspace_id": workspace_id,
                 "page_access_token": "",
-                "openrouter_api_key": "",
+                "google_api_key": "",
                 "page_id": "",
-                "llm_model": "openai/gpt-oss-120b:free",
+                "llm_model": "google/gemini-1.5-flash",
                 "system_prompt": "",
                 "slot_definitions": "[]"
             }
@@ -837,7 +837,7 @@ async def update_bot_settings(settings: BotSettingsUpdate, request: Request, cur
         data = {
             "workspace_id": workspace_id,
             "page_access_token": settings.page_access_token,
-            "openrouter_api_key": settings.openrouter_api_key,
+            "google_api_key": settings.google_api_key,
             "page_id": settings.page_id,
             "verify_token": settings.verify_token,
             "llm_model": settings.llm_model or "openai/gpt-oss-120b:free",

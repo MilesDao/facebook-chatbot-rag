@@ -20,8 +20,8 @@ A powerful, multi-tenant SaaS AI chatbot platform for Facebook Messenger. It all
 - **Navigation Tools**: Built-in Mini-map, Zoom/Pan controls, and on-node deletion.
 
 ### 🧠 Advanced AI & RAG
-- **OpenRouter Integration**: Access GPT-4o, Claude 3.5, Llama 3, etc.
-- **Dynamic RAG Pipeline**: High-performance vector search (1536-dim) with HNSW indexing and workspace filtering.
+- **LLM Engine**: Google Gemini (Gemini 1.5 Flash via Google AI Studio)
+- **Embeddings**: Google Generative AI (models/embedding-001) with HNSW indexing and workspace filtering.
 - **Custom AI Personality**: Workspace-specific system prompts.
 
 ### 📊 Modern Admin Dashboard

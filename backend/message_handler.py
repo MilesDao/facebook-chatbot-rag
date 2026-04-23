@@ -6,20 +6,20 @@ Responsibilities:
 - Classify intent (Router)
 - Retrieve relevant context from RAG (Supabase)
 - Load & update conversation history
-- Generate response using OpenRouter structured outputs
+- Generate response using Google Gemini structured outputs
 - Decide whether to trigger human handoff based on LLM flag
 - Log interaction for analytics
 """
 
 from .intent_router import classify_intent
 from .rag_pipeline import retrieve_context
-from .openrouter_integration import generate_response
+from .google_ai_integration import generate_response
 from .services.history_service import add_message, get_history
 from .services.flow_engine import process_flow_interaction
 from .handoff import trigger_handoff
 from .analytics import log_interaction
 
-def handle_message(sender_id: str, user_message: str, workspace_id: str = None, openrouter_key: str = None, llm_model: str = "openai/gpt-oss-120b:free", system_prompt: str = None):
+def handle_message(sender_id: str, user_message: str, workspace_id: str = None, google_key: str = None, llm_model: str = "google/gemini-3.1-flash-lite-preview", system_prompt: str = None):
     """
     Orchestrate the AI message flow:
     1. Try Visual Flow Engine first (Stateful)
@@ -39,7 +39,7 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
             return flow_reply
 
     # 2. PHÂN LOẠI Ý ĐỊNH (Intent Classification) - Fallback
-    intent = classify_intent(user_message, openrouter_key=openrouter_key)
+    intent = classify_intent(user_message, google_key=google_key)
     print(f"DEBUG: Intent for '{user_message[:20]}...' is {intent}")
 
     # 2. Load History
@@ -58,7 +58,7 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
         context_str, confidence_score = retrieve_context(
             user_message, 
             workspace_id=workspace_id, 
-            api_key=openrouter_key
+            api_key=google_key
         )
     
     # 4. Check confidence for handoff
@@ -67,12 +67,12 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
         trigger_handoff(sender_id, user_message, confidence_score, workspace_id=workspace_id)
         handoff_triggered = True
         
-    # 5. Generate Response using OpenRouter
+    # 5. Generate Response using Google AI
     bot_res = generate_response(
         user_message, 
         context_str, 
         history, 
-        openrouter_key=openrouter_key,
+        google_key=google_key,
         llm_model=llm_model,
         custom_system_prompt=system_prompt
     )
