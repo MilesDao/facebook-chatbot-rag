@@ -131,7 +131,7 @@ export default function WorkspaceOverview() {
                 </div>
             </header>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
                 <Link href={`/w/${workspaceId}/flows`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', background: 'linear-gradient(135deg, var(--accent), #6366f1)', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', transition: 'transform 0.2s', border: 'none' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                         <h2 style={{ margin: 0, fontSize: '24px', color: 'white' }}>{t('overview.messengerBot')}</h2>
