@@ -14,18 +14,18 @@
 }
 
 [data-theme='dark'] {
-  --background: #0a0a0c;
+  --background: #0f172a;
   --foreground: #f8fafc;
-  --card-bg: rgba(22, 22, 26, 0.8);
-  --card-bg-rgb: 22, 22, 26;
-  --card-border: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(30, 41, 59, 0.8);
+  --card-bg-rgb: 30, 41, 59;
+  --card-border: rgba(255, 255, 255, 0.1);
   --accent: #3b82f6;
   --accent-glow: rgba(59, 130, 246, 0.25);
   --accent-alpha: rgba(59, 130, 246, 0.12);
-  --text-muted: rgba(248, 250, 252, 0.5);
-  --nav-hover: rgba(255, 255, 255, 0.06);
-  --bg-gradient-1: rgba(59, 130, 246, 0.1);
-  --bg-gradient-2: rgba(147, 51, 234, 0.08);
+  --text-muted: rgba(248, 250, 252, 0.6);
+  --nav-hover: rgba(255, 255, 255, 0.08);
+  --bg-gradient-1: rgba(59, 130, 246, 0.08);
+  --bg-gradient-2: rgba(147, 51, 234, 0.06);
 }
 
 
@@ -237,4 +237,15 @@ th {
 
 .custom-scrollbar:hover::-webkit-scrollbar-thumb {
   background: rgba(var(--card-bg-rgb), 0.2);
+}
+
+/* React Flow Overrides for Dark Mode Context */
+[data-theme='dark'] .react-flow__controls-button {
+  background: var(--card-bg) !important;
+  border-bottom-color: var(--card-border) !important;
+  fill: var(--foreground) !important;
+}
+
+[data-theme='dark'] .react-flow__controls-button:hover {
+  background: var(--nav-hover) !important;
 }

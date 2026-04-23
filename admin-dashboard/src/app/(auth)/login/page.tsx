@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, Mail, Lock, LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { LogIn, AlertCircle, Eye, EyeOff, Mail, Lock, BarChart3 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageContext";
 
 export default function LoginPage() {
+  const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +124,7 @@ export default function LoginPage() {
             </span>
           </div>
           <p style={{ color: "var(--text-muted)", fontSize: "14px" }}>
-            Multi-tenant Facebook RAG Platform
+            {t("auth.multiTenant")}
           </p>
         </div>
 
@@ -136,7 +138,7 @@ export default function LoginPage() {
               letterSpacing: "-0.03em",
             }}
           >
-            Welcome back
+            {t("auth.loginTitle")}
           </h1>
           <p
             style={{
@@ -145,7 +147,7 @@ export default function LoginPage() {
               marginBottom: "32px",
             }}
           >
-            Sign in to your dashboard.
+            {t("auth.loginDesc")}
           </p>
 
           {/* Error Banner */}
@@ -185,7 +187,7 @@ export default function LoginPage() {
                   letterSpacing: "1px",
                 }}
               >
-                Email
+                {t("auth.emailLabel")}
               </label>
               <div style={{ position: "relative" }}>
                 <Mail
@@ -203,7 +205,7 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   required
                   style={inputStyle}
                   onFocus={(e) =>
@@ -228,7 +230,7 @@ export default function LoginPage() {
                   letterSpacing: "1px",
                 }}
               >
-                Password
+                {t("auth.passwordLabel")}
               </label>
               <div style={{ position: "relative" }}>
                 <Lock
@@ -246,7 +248,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder={t("auth.passwordPlaceholder")}
                   required
                   style={{ ...inputStyle, paddingRight: "44px" }}
                   onFocus={(e) =>
@@ -287,7 +289,7 @@ export default function LoginPage() {
                   onMouseEnter={(e) => (e.currentTarget.style.color = '#3b82f6')}
                   onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
                 >
-                  Forgot password?
+                  {t("auth.forgotTitle")}
                 </Link>
               </div>
             </div>
@@ -326,7 +328,7 @@ export default function LoginPage() {
               ) : (
                 <LogIn size={18} />
               )}
-              {loading ? "Signing in…" : "Sign In"}
+              {loading ? t("auth.signingIn") : t("auth.signIn")}
             </button>
 
           </form>
@@ -340,12 +342,12 @@ export default function LoginPage() {
               color: "var(--text-muted)",
             }}
           >
-            Don&apos;t have an account?{" "}
+            {t("auth.noAccount")}{" "}
             <Link
               href="/register"
               style={{ color: "#3b82f6", textDecoration: "none", fontWeight: "500" }}
             >
-              Create one
+              {t("auth.createOne")}
             </Link>
           </p>
         </div>

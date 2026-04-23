@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, Lock, Loader2, AlertCircle, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageContext";
 
 export default function UpdatePasswordPage() {
+    const { t } = useLanguage();
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [error, setError] = useState<string | null>(null);
@@ -110,7 +112,7 @@ export default function UpdatePasswordPage() {
                     {checkingSession ? (
                         <div style={{ textAlign: 'center', padding: '20px' }}>
                             <Loader2 className="animate-spin" size={32} style={{ margin: '0 auto 16px', color: 'var(--accent)' }} />
-                            <p style={{ color: 'var(--text-muted)' }}>Verifying your reset session...</p>
+                            <p style={{ color: 'var(--text-muted)' }}>{t("auth.verifySession")}</p>
                         </div>
                     ) : success ? (
                         <div style={{ textAlign: "center" }}>
@@ -126,16 +128,16 @@ export default function UpdatePasswordPage() {
                             }}>
                                 <CheckCircle2 color="#22c55e" size={32} />
                             </div>
-                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>Password updated</h1>
+                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>{t("auth.passwordUpdated")}</h1>
                             <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "24px" }}>
-                                Your password has been reset successfully. Redirecting you to login...
+                                {t("auth.passwordUpdatedDesc")}
                             </p>
                         </div>
                     ) : (
                         <>
-                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>Set new password</h1>
+                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>{t("auth.setNewPassword")}</h1>
                             <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "32px" }}>
-                                Your new password must be different from previous ones.
+                                {t("auth.setNewPasswordDesc")}
                             </p>
 
                             {error && (
@@ -159,7 +161,7 @@ export default function UpdatePasswordPage() {
                             <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        New Password
+                                        {t("auth.newPasswordLabel")}
                                     </label>
                                     <div style={{ position: "relative" }}>
                                         <Lock size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
@@ -167,7 +169,7 @@ export default function UpdatePasswordPage() {
                                             type={showPassword ? "text" : "password"}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            placeholder="Min. 6 characters"
+                                            placeholder={t("auth.passwordMin")}
                                             required
                                             style={{ ...inputStyle, paddingRight: "44px" }}
                                         />
@@ -179,7 +181,7 @@ export default function UpdatePasswordPage() {
 
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        Confirm Password
+                                        {t("auth.confirmPassword")}
                                     </label>
                                     <div style={{ position: "relative" }}>
                                         <Lock size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
@@ -187,7 +189,7 @@ export default function UpdatePasswordPage() {
                                             type={showConfirm ? "text" : "password"}
                                             value={confirm}
                                             onChange={(e) => setConfirm(e.target.value)}
-                                            placeholder="Repeat password"
+                                            placeholder={t("auth.repeatPlaceholder")}
                                             required
                                             style={{ ...inputStyle, paddingRight: "44px" }}
                                         />
@@ -198,7 +200,7 @@ export default function UpdatePasswordPage() {
                                 </div>
 
                                 <button type="submit" disabled={loading} className="btn" style={{ width: '100%', padding: '14px', fontWeight: '600' }}>
-                                    {loading ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : "Update Password"}
+                                    {loading ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : t("auth.updatePasswordBtn")}
                                 </button>
                             </form>
                         </>

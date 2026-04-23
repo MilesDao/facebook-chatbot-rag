@@ -106,6 +106,8 @@ export default function DashboardLayout({
           <Header />
           <main className="main-content" style={{
             flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
             overflowY: 'auto',
             paddingTop: backendStatus === "error" ? '24px' : '0'
           }}>

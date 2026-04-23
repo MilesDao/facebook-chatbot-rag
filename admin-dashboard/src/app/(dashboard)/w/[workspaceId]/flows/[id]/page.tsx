@@ -20,7 +20,9 @@ import {
     useReactFlow,
     ReactFlowProvider,
 } from "@xyflow/react";
+import { useTheme } from "next-themes";
 import "@xyflow/react/dist/style.css";
+import { useLanguage } from "@/components/LanguageContext";
 
 import {
     ArrowLeft,
@@ -46,10 +48,12 @@ const nodeTypes = {
 };
 
 function FlowEditorContent() {
+    const { t } = useLanguage();
     const { id } = useParams();
     const router = useRouter();
     const { currentWorkspace, setUnsavedChanges, unsavedChanges } = useWorkspace();
     const { screenToFlowPosition } = useReactFlow();
+    const { theme } = useTheme();
 
     const [name, setName] = useState("");
     const [triggerKeywords, setTriggerKeywords] = useState("");
@@ -264,10 +268,10 @@ function FlowEditorContent() {
         }
     };
 
-    if (loading) return <div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Pro Flow Editor...</div>;
+    if (loading) return <div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading')}</div>;
 
     return (
-        <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', background: 'transparent', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'transparent', overflow: 'hidden' }}>
             <header style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -282,7 +286,7 @@ function FlowEditorContent() {
                     <button
                         onClick={() => {
                             if (unsavedChanges) {
-                                if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) return;
+                                if (!window.confirm(t('flows.unsavedChanges'))) return;
                                 setUnsavedChanges(false);
                             }
                             router.push(`/w/${currentWorkspace?.id}/flows`);
@@ -298,15 +302,18 @@ function FlowEditorContent() {
                             setName(e.target.value);
                             setUnsavedChanges(true);
                         }}
-                        placeholder="Name your flow..."
+                        placeholder={t('flows.newFlow')}
                         style={{
-                            fontSize: '16px',
-                            fontWeight: '600',
-                            background: 'none',
-                            border: 'none',
+                            background: 'rgba(var(--foreground-rgb), 0.05)',
+                            border: '1px solid var(--card-border)',
                             color: 'var(--foreground)',
+                            padding: '6px 12px',
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            width: '240px',
                             outline: 'none',
-                            width: '250px'
+                            borderRadius: '8px',
+                            transition: 'all 0.2s'
                         }}
                     />
                     <div style={{ height: '24px', width: '1px', background: 'var(--card-border)' }} />
@@ -319,7 +326,7 @@ function FlowEditorContent() {
                                 setTriggerKeywords(e.target.value);
                                 setUnsavedChanges(true);
                             }}
-                            placeholder="Triggers (comma-separated)..."
+                            placeholder={t('flows.triggersPlaceholder')}
                             style={{
                                 fontSize: '13px',
                                 fontWeight: '500',
@@ -338,7 +345,7 @@ function FlowEditorContent() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     {saveSuccess && (
                         <div style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', padding: '6px 12px', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
-                            <CheckCircle size={14} /> Saved
+                            <CheckCircle size={14} /> {t('flows.saved')}
                         </div>
                     )}
                     <button
@@ -431,7 +438,7 @@ function FlowEditorContent() {
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
                         nodeTypes={nodeTypes}
-                        colorMode="system"
+                        colorMode={theme === 'dark' ? 'dark' : 'light'}
                         minZoom={0.05}
                         maxZoom={2}
                         fitView

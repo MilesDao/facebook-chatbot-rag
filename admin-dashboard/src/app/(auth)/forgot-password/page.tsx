@@ -4,8 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { BarChart3, Mail, Loader2, AlertCircle, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { createClient } from "@/lib/supabase";
+import { useLanguage } from "@/components/LanguageContext";
 
 export default function ForgotPasswordPage() {
+    const { t } = useLanguage();
     const [email, setEmail] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -95,12 +97,12 @@ export default function ForgotPasswordPage() {
                             }}>
                                 <CheckCircle2 color="#22c55e" size={32} />
                             </div>
-                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>Check your email</h1>
+                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "12px" }}>{t("auth.checkEmailTitle")}</h1>
                             <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.6", marginBottom: "32px" }}>
-                                We've sent a password reset link to <strong>{email}</strong>.
+                                {t("auth.checkEmailDesc")} <strong>{email}</strong>.
                             </p>
                             <Link href="/login" className="btn" style={{ display: 'inline-flex', width: '100%', justifyContent: 'center', textDecoration: 'none' }}>
-                                Return to Login
+                                {t("auth.backToLogin")}
                             </Link>
                         </div>
                     ) : (
@@ -114,12 +116,12 @@ export default function ForgotPasswordPage() {
                                 textDecoration: 'none',
                                 marginBottom: '24px'
                             }}>
-                                <ArrowLeft size={14} /> Back to Login
+                                <ArrowLeft size={14} /> {t("auth.backToLogin")}
                             </Link>
 
-                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>Forgot password?</h1>
+                            <h1 style={{ fontSize: "24px", fontWeight: "700", marginBottom: "8px" }}>{t("auth.forgotTitle")}</h1>
                             <p style={{ color: "var(--text-muted)", fontSize: "14px", marginBottom: "32px" }}>
-                                No worries, we'll send you reset instructions.
+                                {t("auth.forgotDesc")}
                             </p>
 
                             {error && (
@@ -143,7 +145,7 @@ export default function ForgotPasswordPage() {
                             <form onSubmit={handleResetRequest} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
                                     <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        Email
+                                        {t("auth.emailLabel")}
                                     </label>
                                     <div style={{ position: "relative" }}>
                                         <Mail size={15} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
@@ -151,7 +153,7 @@ export default function ForgotPasswordPage() {
                                             type="email"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            placeholder="you@example.com"
+                                            placeholder={t("auth.emailPlaceholder")}
                                             required
                                             style={inputStyle}
                                         />
@@ -159,7 +161,7 @@ export default function ForgotPasswordPage() {
                                 </div>
 
                                 <button type="submit" disabled={loading} className="btn" style={{ width: '100%', padding: '14px', fontWeight: '600' }}>
-                                    {loading ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : "Reset Password"}
+                                    {loading ? <Loader2 className="animate-spin" size={20} style={{ margin: '0 auto' }} /> : t("auth.resetBtn")}
                                 </button>
                             </form>
                         </>

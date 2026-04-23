@@ -144,7 +144,25 @@ def get_workspace_members(workspace_id: str) -> list:
         return []
     try:
         res = supabase.table("workspace_members").select("*").eq("workspace_id", workspace_id).execute()
-        return res.data or []
+        members = res.data or []
+        
+        # Resolve names using Supabase Auth Admin API
+        try:
+            auth_users_res = supabase.auth.admin.list_users()
+            user_map = {user.id: user for user in auth_users_res}
+            for member in members:
+                uid = member["user_id"]
+                if uid in user_map:
+                    user_obj = user_map[uid]
+                    meta = user_obj.user_metadata or {}
+                    name = meta.get("full_name") or meta.get("name")
+                    if not name and user_obj.email:
+                        name = user_obj.email.split('@')[0]
+                    member["name"] = name or user_obj.email
+        except Exception as e:
+            print(f"Error resolving user names: {e}")
+            
+        return members
     except Exception as e:
         print(f"Error fetching workspace members: {e}")
         return []

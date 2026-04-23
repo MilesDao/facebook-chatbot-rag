@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/auth";
 import { useWorkspace } from "@/components/WorkspaceContext";
+import { useLanguage } from "@/components/LanguageContext";
 import { Users, UserPlus, Shield, Eye, Crown, Trash2 } from "lucide-react";
 
 interface Member {
@@ -26,6 +27,7 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export default function TeamPage() {
+    const { t } = useLanguage();
     const { currentWorkspace } = useWorkspace();
     const [members, setMembers] = useState<Member[]>([]);
     const [loading, setLoading] = useState(true);
@@ -48,7 +50,8 @@ export default function TeamPage() {
     }, [fetchMembers]);
 
     async function removeMember(userId: string) {
-        if (!currentWorkspace || !confirm("Remove this member?")) return;
+        // Fix chữ cứng ở popup Confirm
+        if (!currentWorkspace || !confirm(t('team.removeConfirm'))) return;
         try {
             await apiFetch(`/api/workspaces/${currentWorkspace.id}/members/${userId}`, { method: "DELETE" });
             fetchMembers();
@@ -60,7 +63,8 @@ export default function TeamPage() {
     if (!currentWorkspace) {
         return (
             <div style={{ textAlign: "center", padding: 60, color: "var(--text-muted)" }}>
-                Please select a workspace first.
+                {/* Fix chữ cứng */}
+                {t('team.selectWorkspace')}
             </div>
         );
     }
@@ -68,19 +72,21 @@ export default function TeamPage() {
     const isOwnerOrAdmin = currentWorkspace.user_role === "owner" || currentWorkspace.user_role === "admin";
 
     return (
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
                 <div>
-                    <h1 style={{ color: "var(--foreground)", display: "flex", alignItems: "center", gap: 10 }}>
-                        <Users color="var(--accent)" /> Team
+                    <h1 style={{ color: "var(--foreground)", display: "flex", alignItems: "center", gap: 10, fontSize: "32px", margin: 0, padding: 0 }}>
+                        <Users color="var(--accent)" size={32} /> {t('nav.team')}
                     </h1>
                     <p style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 4 }}>
-                        Manage workspace members and roles
+                        {/* Fix chữ cứng */}
+                        {t('team.desc')}
                     </p>
                 </div>
                 {isOwnerOrAdmin && (
                     <button
-                        onClick={() => alert("Email invitation requires Supabase Admin API setup. Coming soon!")}
+                        // Fix chữ cứng trong Alert
+                        onClick={() => alert(t('team.inviteAlert'))}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -95,39 +101,65 @@ export default function TeamPage() {
                             cursor: "pointer",
                         }}
                     >
-                        <UserPlus size={16} /> Invite Member
+                        {/* Fix chữ cứng */}
+                        <UserPlus size={16} /> {t('team.inviteMember')}
                     </button>
                 )}
             </div>
 
-            {/* Role Legend */}
-            <div className="card" style={{ padding: 16, marginBottom: 20, display: "flex", gap: 24 }}>
-                {[
-                    { role: "owner", label: "Owner — Full access, manage workspace & billing" },
-                    { role: "admin", label: "Admin — Manage bot, flows, knowledge, handoffs" },
-                    { role: "viewer", label: "Viewer — Read-only: analytics, logs" },
-                ].map(({ role, label }) => (
-                    <div key={role} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-muted)" }}>
-                        {roleIcons[role]}
-                        <span>{label}</span>
-                    </div>
-                ))}
+            {/* Role Legend Popover */}
+            <div style={{ marginBottom: 20, position: "relative", display: "inline-block" }} className="role-legend-container">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: 13, cursor: "help" }}>
+                    <Shield size={16} /> {t('team.rolesExplanation')}
+                </div>
+                <div className="glass role-legend-popover" style={{ 
+                    position: "absolute", 
+                    top: "100%", 
+                    left: 0, 
+                    marginTop: 8, 
+                    padding: 16, 
+                    display: "none", 
+                    flexDirection: "column", 
+                    gap: 12, 
+                    width: 320, 
+                    zIndex: 10 
+                }}>
+                    {/* Fix toàn bộ chữ cứng phần mô tả quyền */}
+                    {[
+                        { role: "owner", label: `${t('team.owner')} — ${t('team.ownerDesc')}` },
+                        { role: "admin", label: `${t('team.admin')} — ${t('team.adminDesc')}` },
+                        { role: "viewer", label: `${t('team.viewer')} — ${t('team.viewerDesc')}` },
+                    ].map(({ role, label }) => (
+                        <div key={role} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "var(--text-muted)" }}>
+                            <div style={{ marginTop: 2 }}>{roleIcons[role]}</div>
+                            <span>{label}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
+
+            <style dangerouslySetInnerHTML={{__html: `
+                .role-legend-container:hover .role-legend-popover {
+                    display: flex !important;
+                }
+            `}} />
 
             {/* Members List */}
             {loading ? (
-                <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading...</div>
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>{t('common.loading')}</div>
             ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {members.map((member) => (
+                <div className="custom-scrollbar" style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", padding: "16px", gap: "12px" }}>
+                    {members.map((member: any) => (
                         <div
                             key={member.id}
-                            className="card"
                             style={{
-                                padding: "14px 20px",
+                                padding: "16px",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 14,
+                                background: "var(--nav-hover)",
+                                borderRadius: "12px",
+                                border: "1px solid var(--card-border)"
                             }}
                         >
                             <div style={{
@@ -142,14 +174,14 @@ export default function TeamPage() {
                                 fontSize: 14,
                                 color: "var(--accent)",
                             }}>
-                                {member.user_id.substring(0, 2).toUpperCase()}
+                                {(member.name || member.user_id).substring(0, 2).toUpperCase()}
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 500, color: "var(--foreground)", fontSize: 14 }}>
-                                    {member.user_id}
+                                    {member.name || member.user_id}
                                 </div>
                                 <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
-                                    Joined {new Date(member.invited_at).toLocaleDateString()}
+                                    {t('team.joined')} {new Date(member.invited_at).toLocaleDateString()}
                                 </div>
                             </div>
                             <span style={{
@@ -164,7 +196,8 @@ export default function TeamPage() {
                                 color: "var(--foreground)",
                             }}>
                                 {roleIcons[member.role]}
-                                {member.role}
+                                {/* Dịch luôn tên quyền (Owner -> Chủ sở hữu) dựa vào JSON đã có */}
+                                {t(`team.${member.role}`)}
                             </span>
                             {isOwnerOrAdmin && member.role !== "owner" && (
                                 <button
@@ -177,7 +210,7 @@ export default function TeamPage() {
                                         color: "#ef4444",
                                         opacity: 0.6,
                                     }}
-                                    title="Remove member"
+                                    title={t('team.removeMember')}
                                 >
                                     <Trash2 size={14} />
                                 </button>

@@ -4,9 +4,13 @@ import React from "react";
 import Link from "next/link";
 import { Activity, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/WorkspaceContext";
+// Nhớ import thêm hook ngôn ngữ
+import { useLanguage } from "@/components/LanguageContext";
 
 export default function RootPage() {
   const { workspaces, setCurrentWorkspace } = useWorkspace();
+  // Gọi hàm t ra dùng
+  const { t } = useLanguage();
 
   React.useEffect(() => {
     setCurrentWorkspace(null);
@@ -14,11 +18,13 @@ export default function RootPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 20px' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '32px', fontWeight: 700 }}>Workspace Gallery</h1>
+      {/* Đã thay text cứng */}
+      <h1 style={{ fontSize: '32px', marginBottom: '32px', fontWeight: 700 }}>{t('workspace.gallery')}</h1>
 
       <div style={{ marginBottom: '48px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Activity size={20} /> Recently viewed
+          {/* Đã thay text cứng */}
+          <Activity size={20} /> {t('workspace.recentlyViewed')}
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
           {workspaces.slice(0, 4).map(ws => (
@@ -49,7 +55,8 @@ export default function RootPage() {
       </div>
 
       <div>
-        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)' }}>YOUR WORKSPACES</h2>
+        {/* Đã thay text cứng */}
+        <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)' }}>{t('workspace.yourWorkspaces')}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px' }}>
           {workspaces.map(ws => (
             <Link
@@ -112,7 +119,8 @@ export default function RootPage() {
             }}
           >
             <Plus size={24} />
-            <span>Create new workspace</span>
+            {/* Đã thay text cứng */}
+            <span>{t('workspace.createNew')}</span>
           </Link>
         </div>
       </div>

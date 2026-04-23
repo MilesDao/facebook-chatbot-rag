@@ -114,7 +114,8 @@ export default function WorkspaceOverview() {
             .catch(err => console.error(err));
     }, [currentWorkspace?.id]);
 
-    if (!currentWorkspace) return <div style={{ padding: 40 }}>Loading workspace...</div>;
+    // Đã thay text cứng "Loading workspace..."
+    if (!currentWorkspace) return <div style={{ padding: 40 }}>{t('common.loading')}</div>;
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '20px' }}>
@@ -125,7 +126,7 @@ export default function WorkspaceOverview() {
                     </div>
                     <div>
                         <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{currentWorkspace.name}</h1>
-                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{currentWorkspace.industry} • Workspace Overview</p>
+                        <p style={{ color: 'var(--text-muted)', margin: 0 }}>{currentWorkspace.industry} • {t('overview.workspaceOverview')}</p>
                     </div>
                 </div>
             </header>
@@ -133,44 +134,47 @@ export default function WorkspaceOverview() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '40px' }}>
                 <Link href={`/w/${workspaceId}/flows`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', background: 'linear-gradient(135deg, var(--accent), #6366f1)', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px', transition: 'transform 0.2s', border: 'none' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
-                        <h2 style={{ margin: 0, fontSize: '24px', color: 'white' }}>Messenger Bot</h2>
+                        <h2 style={{ margin: 0, fontSize: '24px', color: 'white' }}>{t('overview.messengerBot')}</h2>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', opacity: 0.9 }}>
-                            <Play size={16} /> Open Bot Builder (Flows, Knowledge)
+                            <Play size={16} /> {t('overview.openBotBuilder')}
                         </div>
                     </div>
                 </Link>
+                
+                {/* Ô THÀNH VIÊN ĐÃ ĐƯỢC THÊM MÀU (color: var(--foreground)) */}
                 <Link href={`/w/${workspaceId}/team`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '20px' }}>Members</h2>
-                            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Invite and manage workspace collaborators.</p>
+                            <h2 style={{ margin: 0, fontSize: '20px', color: 'var(--foreground)' }}>{t('nav.team')}</h2>
+                            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.manageMembers')}</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--accent)' }}>
-                            <Users size={16} /> {stats.uniqueUsers} active members
+                            <Users size={16} /> {stats.uniqueUsers} {t('overview.activeMembers')}
                         </div>
                     </div>
                 </Link>
+                
+                {/* Ô CÀI ĐẶT ĐÃ ĐƯỢC THÊM MÀU (color: var(--foreground)) */}
                 <Link href={`/w/${workspaceId}/settings`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '20px' }}>Settings</h2>
-                            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Configure API keys and bot personality.</p>
+                            <h2 style={{ margin: 0, fontSize: '20px', color: 'var(--foreground)' }}>{t('nav.settings')}</h2>
+                            <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.configureSettings')}</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--accent)' }}>
-                            <Settings size={16} /> Configure Workspace
+                            <Settings size={16} /> {t('overview.configureWorkspace')}
                         </div>
                     </div>
                 </Link>
             </div>
 
             <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '40px' }}>
-                <h2 style={{ marginBottom: '24px' }}>Analytics Preview</h2>
+                <h2 style={{ marginBottom: '24px' }}>{t('overview.analyticsPreview')}</h2>
                 <div className="stats-grid">
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Messages</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.totalMessages')}</p>
                         <h2 style={{ fontSize: '24px', margin: '8px 0' }}>{stats.totalMessages}</h2>
                     </div>
-                    {/* Add other stats if needed */}
                 </div>
             </div>
         </div>
