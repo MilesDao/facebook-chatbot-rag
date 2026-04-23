@@ -65,12 +65,9 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
         rpc_params = {
             "query_embedding": query_embedding,
             "match_threshold": match_threshold,
-            "match_count": match_count
+            "match_count": match_count,
+            "p_workspace_id": workspace_id
         }
-        
-        # Use workspace_id for multi-tenant filtering
-        if workspace_id:
-            rpc_params["p_workspace_id"] = workspace_id
             
         response = supabase.rpc("match_documents", rpc_params).execute()
     except Exception as e:

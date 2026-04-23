@@ -452,11 +452,11 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     """
     print(f"--- Processing message from {sender_id} for Page {page_id} ---")
     
-    # 1. Fetch settings for this Page ID (workspace-scoped)
+    # 1. Fetch settings for this Page ID (workspace-scoped, ignore orphaned rows)
     settings = {}
     workspace_id = None
     try:
-        response = supabase.table("bot_settings").select("*").eq("page_id", page_id).limit(1).execute()
+        response = supabase.table("bot_settings").select("*").eq("page_id", page_id).not_.is_("workspace_id", "null").limit(1).execute()
         if response.data:
             settings = response.data[0]
             workspace_id = settings.get("workspace_id")
@@ -478,13 +478,14 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         print(f"DEBUG: Using Google Key (Redacted: {google_key[:6]}...)")
 
     # Check if this sender is paused (admin took over)
-    try:
-        pause_check = supabase.table("paused_senders").select("id").eq("workspace_id", workspace_id).eq("sender_id", sender_id).limit(1).execute()
-        if pause_check.data:
-            print(f"PAUSED: Sender {sender_id} is paused for workspace {workspace_id}. Skipping AI response.")
-            return
-    except Exception as e:
-        print(f"Error checking pause status: {e}")
+    if workspace_id:
+        try:
+            pause_check = supabase.table("paused_senders").select("id").eq("workspace_id", workspace_id).eq("sender_id", sender_id).limit(1).execute()
+            if pause_check.data:
+                print(f"PAUSED: Sender {sender_id} is paused for workspace {workspace_id}. Skipping AI response.")
+                return
+        except Exception as e:
+            print(f"Error checking pause status: {e}")
 
     # Helper functions
     def send_fb(sender: str, text: str, fb_token: str):
