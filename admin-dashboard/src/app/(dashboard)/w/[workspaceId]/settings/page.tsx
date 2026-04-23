@@ -170,7 +170,10 @@ export default function SettingsPage() {
         <form onSubmit={handleSave} noValidate>
             <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                 <div>
-                    <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("settings.title")}</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                        <Settings size={32} color="#a855f7" />
+                        <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{t("settings.title")}</h1>
+                    </div>
                     <p style={{ color: 'var(--text-muted)' }}>{t("settings.desc")}</p>
                 </div>
                 <button

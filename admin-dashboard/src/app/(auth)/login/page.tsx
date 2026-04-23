@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BarChart3, Mail, Lock, LogIn, AlertCircle, Eye, EyeOff } from "lucide-react";
@@ -13,6 +13,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    // Handle Supabase error redirects (which often use # fragments)
+    const hash = window.location.hash;
+    if (hash && hash.includes("error_description")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const description = params.get("error_description");
+      if (description) {
+        setError(decodeURIComponent(description.replace(/\+/g, " ")));
+        // Clear hash after reading
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    }
+
+    // Also check query params just in case
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryError = searchParams.get("error");
+    if (queryError) {
+      setError(decodeURIComponent(queryError));
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

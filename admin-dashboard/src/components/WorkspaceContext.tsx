@@ -21,6 +21,8 @@ interface WorkspaceContextType {
     refreshWorkspaces: () => Promise<void>;
     unsavedChanges: boolean;
     setUnsavedChanges: (val: boolean) => void;
+    isSidebarCollapsed: boolean;
+    toggleSidebar: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextType>({
@@ -31,6 +33,8 @@ const WorkspaceContext = createContext<WorkspaceContextType>({
     refreshWorkspaces: async () => { },
     unsavedChanges: false,
     setUnsavedChanges: () => { },
+    isSidebarCollapsed: false,
+    toggleSidebar: () => { },
 });
 
 export function useWorkspace() {
@@ -38,12 +42,31 @@ export function useWorkspace() {
 }
 
 const WS_STORAGE_KEY = "active_workspace_id";
+const SIDEBAR_COLLAPSED_KEY = "sidebar_collapsed";
 
 export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
     const [currentWorkspace, setCurrentWorkspaceState] = useState<Workspace | null>(null);
     const [loading, setLoading] = useState(true);
     const [unsavedChanges, setUnsavedChanges] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+            if (saved === "true") setIsSidebarCollapsed(true);
+        }
+    }, []);
+
+    const toggleSidebar = useCallback(() => {
+        setIsSidebarCollapsed(prev => {
+            const next = !prev;
+            if (typeof window !== "undefined") {
+                localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+            }
+            return next;
+        });
+    }, []);
 
     const setCurrentWorkspace = useCallback((ws: Workspace | null) => {
         setCurrentWorkspaceState(ws);
@@ -88,7 +111,17 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
     return (
         <WorkspaceContext.Provider
-            value={{ workspaces, currentWorkspace, setCurrentWorkspace, loading, refreshWorkspaces, unsavedChanges, setUnsavedChanges }}
+            value={{
+                workspaces,
+                currentWorkspace,
+                setCurrentWorkspace,
+                loading,
+                refreshWorkspaces,
+                unsavedChanges,
+                setUnsavedChanges,
+                isSidebarCollapsed,
+                toggleSidebar
+            }}
         >
             {children}
         </WorkspaceContext.Provider>

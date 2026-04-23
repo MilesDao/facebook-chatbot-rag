@@ -246,7 +246,10 @@ export default function HandoffInbox() {
   return (
     <>
       <header style={{ marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', color: 'var(--foreground)' }}>{t("nav.handoffs")}</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <Inbox size={32} color="#f59e0b" />
+          <h1 style={{ fontSize: '32px', color: 'var(--foreground)', margin: 0 }}>{t("nav.handoffs")}</h1>
+        </div>
         <p style={{ color: 'var(--text-muted)' }}>{t("handoff.desc")}</p>
       </header>
 

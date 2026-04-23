@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { Activity } from "lucide-react";
+import { Activity, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/WorkspaceContext";
 
 export default function RootPage() {
@@ -93,12 +93,26 @@ export default function RootPage() {
               fontWeight: 500,
               fontSize: '14px',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              textDecoration: 'none'
+              gap: '8px',
+              textDecoration: 'none',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent)';
+              e.currentTarget.style.color = 'var(--accent)';
+              e.currentTarget.style.background = 'var(--accent-alpha)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'var(--card-border)';
+              e.currentTarget.style.color = 'var(--text-muted)';
+              e.currentTarget.style.background = 'var(--card-bg)';
             }}
           >
-            Create new workspace
+            <Plus size={24} />
+            <span>Create new workspace</span>
           </Link>
         </div>
       </div>

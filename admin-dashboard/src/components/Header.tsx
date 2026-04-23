@@ -100,7 +100,7 @@ export function Header() {
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                <UserMenu />
+                {/* UserMenu moved to Sidebar */}
             </div>
         </header>
     );

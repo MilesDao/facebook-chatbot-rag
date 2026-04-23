@@ -213,8 +213,8 @@ function FlowEditorContent() {
                 type,
                 position,
                 data: {
-                    content: type === 'message' ? "New message..." : "",
-                    keyword: type === 'logic' ? "vấn đề" : "",
+                    content: "",
+                    keyword: "",
                     onDelete: onDeleteNode,
                     onChange: onNodeDataChange
                 },
@@ -267,7 +267,7 @@ function FlowEditorContent() {
     if (loading) return <div style={{ padding: '80px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading Pro Flow Editor...</div>;
 
     return (
-        <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+        <div style={{ height: 'calc(100vh - 64px)', display: 'flex', flexDirection: 'column', background: 'transparent', overflow: 'hidden' }}>
             <header style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -362,52 +362,63 @@ function FlowEditorContent() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '24px',
-                    zIndex: 5
+                    zIndex: 5,
+                    margin: '12px',
+                    borderRadius: '24px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
                 }}>
-                    <div>
-                        <h3 style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px' }}>Toolbox</h3>
-                        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: '1.5' }}>Drag and drop nodes onto the canvas to build your flow.</p>
+                    <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--card-border)' }}>
+                        <h3 style={{ fontSize: '13px', fontWeight: '800', color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Toolbox</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>Drag components to build flow</p>
+                    </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'message')}
-                                style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px', borderRadius: '12px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}
-                            >
-                                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px', borderRadius: '8px' }}><MessageSquare size={18} color="#3b82f6" /></div>
-                                <span style={{ fontSize: '14px', fontWeight: '500' }}>Message</span>
-                                <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
-                            </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, 'message')}
+                            style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '20px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-alpha)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
+                        >
+                            <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px', borderRadius: '8px' }}><MessageSquare size={18} color="#3b82f6" /></div>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Message</span>
+                            <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
+                        </div>
 
-                            <div
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'logic')}
-                                style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px', borderRadius: '12px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}
-                            >
-                                <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="#f59e0b" /></div>
-                                <span style={{ fontSize: '14px', fontWeight: '500' }}>Condition</span>
-                                <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
-                            </div>
+                        <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, 'logic')}
+                            style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '20px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-alpha)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
+                        >
+                            <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="#f59e0b" /></div>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Condition</span>
+                            <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
+                        </div>
 
-                            <div
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'rag')}
-                                style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px', borderRadius: '12px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}
-                            >
-                                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '8px' }}><Database size={18} color="#10b981" /></div>
-                                <span style={{ fontSize: '14px', fontWeight: '500' }}>AI Search</span>
-                                <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
-                            </div>
+                        <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, 'rag')}
+                            style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '20px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-alpha)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
+                        >
+                            <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '8px' }}><Database size={18} color="#10b981" /></div>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>AI Search</span>
+                            <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
+                        </div>
 
-                            <div
-                                draggable
-                                onDragStart={(e) => onDragStart(e, 'handoff')}
-                                style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px', borderRadius: '12px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)' }}
-                            >
-                                <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '8px' }}><UserRound size={18} color="#ef4444" /></div>
-                                <span style={{ fontSize: '14px', fontWeight: '500' }}>Handoff</span>
-                                <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
-                            </div>
+                        <div
+                            draggable
+                            onDragStart={(e) => onDragStart(e, 'handoff')}
+                            style={{ background: 'var(--nav-hover)', border: '1px solid var(--card-border)', padding: '12px 16px', borderRadius: '20px', cursor: 'grab', display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--foreground)', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-alpha)'; e.currentTarget.style.borderColor = 'var(--accent)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
+                        >
+                            <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '8px' }}><UserRound size={18} color="#ef4444" /></div>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Handoff</span>
+                            <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
                     </div>
                 </aside>
@@ -421,9 +432,22 @@ function FlowEditorContent() {
                         onConnect={onConnect}
                         nodeTypes={nodeTypes}
                         colorMode="system"
+                        minZoom={0.05}
+                        maxZoom={2}
                         fitView
                     >
-                        <Controls position="bottom-right" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '10px' }} />
+                        <Controls
+                            position="bottom-right"
+                            style={{
+                                background: 'var(--card-bg)',
+                                border: '1px solid var(--card-border)',
+                                borderRadius: '12px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                padding: '4px',
+                                display: 'flex',
+                                gap: '2px'
+                            }}
+                        />
                         <Background color="var(--card-border)" variant={BackgroundVariant.Lines} gap={30} />
                         <MiniMap
                             position="top-right"
@@ -440,8 +464,8 @@ function FlowEditorContent() {
                         />
                     </ReactFlow>
                 </div>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

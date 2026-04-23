@@ -89,13 +89,27 @@ export default function FlowsPage() {
     }
 
     return (
-        <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
+        <div style={{ background: 'transparent' }}>
+            <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 32,
+                padding: '24px',
+                background: 'rgba(var(--card-bg-rgb), 0.5)',
+                backdropFilter: 'blur(10px)',
+                borderRadius: '20px',
+                border: '1px solid var(--card-border)',
+                boxShadow: '0 4px 24px -1px rgba(0,0,0,0.05)'
+            }}>
                 <div>
-                    <h1 style={{ color: "var(--foreground)", display: "flex", alignItems: "center", gap: 10 }}>
-                        <GitBranch color="var(--accent)" /> Conversation Flows
+                    <h1 style={{ color: "var(--foreground)", display: "flex", alignItems: "center", gap: 12, margin: 0, fontSize: '24px' }}>
+                        <div style={{ background: 'var(--accent-alpha)', padding: '10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <GitBranch color="var(--accent)" size={24} />
+                        </div>
+                        Conversation Flows
                     </h1>
-                    <p style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 4 }}>
+                    <p style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 8, marginLeft: '4px' }}>
                         Build automated conversation flows with custom triggers
                     </p>
                 </div>
@@ -187,11 +201,24 @@ export default function FlowsPage() {
                             key={flow.id}
                             className="card"
                             style={{
-                                padding: "16px 20px",
+                                padding: "20px 24px",
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 16,
+                                gap: 20,
                                 opacity: flow.is_active ? 1 : 0.6,
+                                border: '1.5px solid var(--card-border)',
+                                borderRadius: '18px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                transition: 'all 0.2s ease',
+                                background: 'var(--card-bg)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent)';
+                                e.currentTarget.style.boxShadow = '0 0 0 4px var(--accent-glow)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--card-border)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)';
                             }}
                         >
                             <div style={{
