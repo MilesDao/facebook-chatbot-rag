@@ -388,8 +388,13 @@ async def debounced_process(sender_id: str, page_id: str):
         if buffer.get("processed"):
             return
             
-        # Check timing: only process if the last message was at least 3.8s ago
-        last_at = datetime.fromisoformat(buffer["last_received_at"].replace("Z", "+00:00"))
+        # Robust ISO timestamp parsing (handles varying fractional formats from Postgres)
+        time_str = buffer["last_received_at"].replace("Z", "+00:00")
+        if "." in time_str:
+            parts = time_str.split("+")
+            base = parts[0].split(".")[0]
+            time_str = base + "+" + parts[1] if len(parts) > 1 else base
+        last_at = datetime.fromisoformat(time_str)
         now = datetime.now(timezone.utc)
         
         if (now - last_at).total_seconds() >= 3.8:
