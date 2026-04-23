@@ -169,12 +169,114 @@ export default function WorkspaceOverview() {
             </div>
 
             <div style={{ borderTop: '1px solid var(--card-border)', paddingTop: '40px' }}>
+<<<<<<< HEAD
                 <h2 style={{ marginBottom: '24px' }}>{t('overview.analyticsPreview')}</h2>
                 <div className="stats-grid">
                     <div className="card glass" style={{ padding: '20px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.totalMessages')}</p>
                         <h2 style={{ fontSize: '24px', margin: '8px 0' }}>{stats.totalMessages}</h2>
                     </div>
+=======
+                <h2 style={{ marginBottom: '24px' }}>Analytics & Activity Overview</h2>
+
+                <div className="stats-grid" style={{ marginBottom: '32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                    <div className="card glass" style={{ padding: '20px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Total Messages</p>
+                        <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.totalMessages}</h2>
+                    </div>
+                    <div className="card glass" style={{ padding: '20px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Unique Users (Customers)</p>
+                        <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.uniqueUsers}</h2>
+                    </div>
+                    <div className="card glass" style={{ padding: '20px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Avg Confidence</p>
+                        <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.avgConfidence}%</h2>
+                    </div>
+                    <div className="card glass" style={{ padding: '20px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Handoff Rate</p>
+                        <h2 style={{ fontSize: '28px', margin: '8px 0', color: '#ef4444' }}>{stats.handoffRate}%</h2>
+                    </div>
+                </div>
+
+                <h3 style={{ marginBottom: '16px', fontSize: '20px' }}>Active Customers Context</h3>
+                <div className="card glass" style={{ overflow: 'hidden' }}>
+                    {groupedLogs.length === 0 ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No active conversations recorded yet.
+                        </div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: 'rgba(0,0,0,0.02)', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
+                                    <th style={{ padding: '16px 24px', fontWeight: 600, fontSize: '14px', color: 'var(--foreground)' }}>Customer</th>
+                                    <th style={{ padding: '16px 24px', fontWeight: 600, fontSize: '14px', color: 'var(--foreground)' }}>Messages Sent</th>
+                                    <th style={{ padding: '16px 24px', fontWeight: 600, fontSize: '14px', color: 'var(--foreground)' }}>Bot Intervention Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {groupedLogs.sort((a, b) => b.items.length - a.items.length).map((g) => {
+                                    const isPaused = pausedSenders.has(g.sender_id);
+                                    let statusText = "Handled Automatically";
+                                    let statusColor = "#10b981";
+                                    let statusBg = "rgba(16, 185, 129, 0.1)";
+
+                                    if (isPaused) {
+                                        statusText = "Paused (Human handling)";
+                                        statusColor = "#f59e0b";
+                                        statusBg = "rgba(245, 158, 11, 0.1)";
+                                    } else if (g.status === 'handoff') {
+                                        statusText = "Requires Attention";
+                                        statusColor = "#ef4444";
+                                        statusBg = "rgba(239, 68, 68, 0.1)";
+                                    }
+
+                                    return (
+                                        <tr key={g.sender_id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                            <td style={{ padding: '16px 24px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                    {senderNames[g.sender_id]?.profile_pic ? (
+                                                        <img
+                                                            src={senderNames[g.sender_id].profile_pic}
+                                                            alt="Profile"
+                                                            style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
+                                                        />
+                                                    ) : (
+                                                        <div style={{ background: 'rgba(0,0,0,0.05)', padding: '10px', borderRadius: '10px', color: 'var(--foreground)' }}>
+                                                            <MessageCircle size={16} />
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div style={{ fontWeight: 500, color: 'var(--foreground)' }}>{displayName(g.sender_id)}</div>
+                                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{g.sender_id}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '16px 24px', color: 'var(--foreground)' }}>
+                                                <span style={{ fontWeight: 600 }}>{g.items.length}</span> messages
+                                            </td>
+                                            <td style={{ padding: '16px 24px' }}>
+                                                <span style={{
+                                                    padding: '6px 12px',
+                                                    borderRadius: '20px',
+                                                    background: statusBg,
+                                                    color: statusColor,
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
+                                                }}>
+                                                    {isPaused ? <Pause size={12} /> : g.status === 'handoff' ? <AlertCircle size={12} /> : <Activity size={12} />}
+                                                    {statusText}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
+>>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
                 </div>
             </div>
         </div>

@@ -22,6 +22,40 @@ class BotResponse(BaseModel):
     )
 
 
+def clean_llm_answer(text: str) -> str:
+    """
+    Handle models that leak structured output (double curly braces JSON) into the answer string.
+    Example: \"Chào bạn!{{ { 'content': '...', 'tone': 'friendly' } }}\" -> \"Chào bạn! ...\"
+    """
+    if not text:
+        return ""
+    
+    # Check for double curly braces pattern
+    if "{{" in text and "}}" in text:
+        try:
+            # Attempt to extract the content inside {{ }}
+            import re
+            match = re.search(r"\{\{(.*?)\}\}", text, re.DOTALL)
+            if match:
+                inner_json_str = match.group(1).strip()
+                # Try to parse it as JSON
+                try:
+                    inner_data = json.loads(inner_json_str)
+                    inner_content = inner_data.get("content") or inner_data.get("answer") or ""
+                    
+                    # Split the text before {{ and append the inner content
+                    prefix = text.split("{{")[0].strip()
+                    cleaned = f"{prefix} {inner_content}".strip()
+                    return cleaned
+                except:
+                    # If parsing fails, just strip the outer braces and hope for the best
+                    return text.replace("{{", "").replace("}}", "").strip()
+        except Exception as e:
+            print(f"DEBUG: Error in clean_llm_answer: {e}")
+            
+    return text
+
+
 # Configure OpenAI client for OpenRouter
 def get_openrouter_client(api_key: str = None):
     if not api_key:
@@ -63,13 +97,15 @@ def generate_response(user_message: str, context: str, history: list, openrouter
             "Example format: 'Dạ trường có nhiều ngành lắm ạ [SPLIT] Phổ biến nhất là mảng ICT và Hàng không [SPLIT] Bạn đang quan tâm nhóm ngành nào ạ?'\n"
             "4. ACCURACY & HANDOFF: Base your answers ONLY on the provided Background Context. "
             "If you don't know the answer, politely say you will check. "
-            "Set 'needs_human' to true if the question is unanswerable from the context or the user needs complex support. "
-            "Evaluate your 'confidence_score' based on how well the context covers the question."
+            "needs_human to true if the question is unanswerable from the context or the user needs complex support. "
+            "Evaluate your 'confidence_score' based on how well the context covers the question. "
+            "5. MEMORY: Always refer back to the conversation history provided below. If the user has already shared personal details, preferences, or context earlier, USE THAT information to make your answers more personalized and accurate."
         )
 
     # Always append JSON formatting rules to ensure the code can parse the output
     system_prompt += (
-        "\n\nCRITICAL: You MUST return a valid JSON object with 'answer', 'confidence_score' (0.0-1.0), and 'needs_human' (boolean)."
+        "\n\nCRITICAL: You MUST return a valid JSON object with 'answer', 'confidence_score' (0.0-1.0), and 'needs_human' (boolean). "
+        "The 'answer' field MUST be a plain text string ONLY. NEVER include nested JSON, double curly braces {{ }}, or any metadata like 'tone' or 'content' inside the 'answer' field."
     )
 
     messages = [{"role": "system", "content": system_prompt}]
@@ -81,7 +117,7 @@ def generate_response(user_message: str, context: str, history: list, openrouter
 
     if history:
         messages.append({"role": "system", "content": "Conversation Chat History:\n"})
-        for msg in history[-10:]:
+        for msg in history[-20:]:
             role = "user" if msg.get("role") == "user" else "assistant"
             messages.append({"role": role, "content": msg.get("content")})
 
@@ -129,8 +165,11 @@ def generate_response(user_message: str, context: str, history: list, openrouter
             # as some models might deviate slightly from the schema instructions
             val_answer = response_data.get("answer") or response_data.get("response") or ""
             
+            # Post-process to fix the double-JSON bug
+            final_answer = clean_llm_answer(val_answer)
+            
             return BotResponse(
-                answer=val_answer,
+                answer=final_answer,
                 confidence_score=float(response_data.get("confidence_score", 0.0)),
                 needs_human=bool(response_data.get("needs_human", False)),
             )

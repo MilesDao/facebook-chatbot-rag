@@ -54,23 +54,61 @@ export function Header() {
                 </Link>
                 <ChevronRight size={14} color="var(--text-muted)" />
 
-                {currentWorkspace ? (
-                    <Link
-                        href={`/w/${currentWorkspace.id}`}
-                        onClick={handleNavClick}
-                        style={{
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            color: 'var(--foreground)',
-                            textDecoration: 'none',
-                            transition: 'color 0.2s'
-                        }}
-                        onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = 'var(--accent)'}
-                        onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = 'var(--foreground)'}
-                    >
-                        {currentWorkspace.name}
-                    </Link>
-                ) : isNewWorkspace ? (
+                {currentWorkspace && (
+                    <>
+                        <Link
+                            href={`/w/${currentWorkspace.id}`}
+                            onClick={handleNavClick}
+                            style={{
+                                fontSize: '14px',
+                                fontWeight: pathname === `/w/${currentWorkspace.id}` ? 600 : 500,
+                                color: pathname === `/w/${currentWorkspace.id}` ? 'var(--foreground)' : 'var(--text-muted)',
+                                textDecoration: 'none',
+                                transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = 'var(--accent)'}
+                            onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => e.currentTarget.style.color = pathname === `/w/${currentWorkspace.id}` ? 'var(--foreground)' : 'var(--text-muted)'}
+                        >
+                            {currentWorkspace.name}
+                        </Link>
+
+                        {/* Page Breadcrumb */}
+                        {(() => {
+                            const segments = pathname.split("/").filter(Boolean);
+                            if (segments.length >= 3 && segments[0] === "w" && segments[1] === currentWorkspace.id) {
+                                const page = segments[2];
+                                const labelMap: Record<string, string> = {
+                                    flows: "Flows",
+                                    knowledge: "Knowledge",
+                                    handoffs: "Handoffs",
+                                    team: "Team",
+                                    "user-documents": "User Documents",
+                                    settings: "Settings",
+                                };
+                                const label = labelMap[page] || page.charAt(0).toUpperCase() + page.slice(1);
+                                return (
+                                    <>
+                                        <ChevronRight size={14} color="var(--text-muted)" />
+                                        <Link
+                                            href={pathname}
+                                            style={{
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: 'var(--foreground)',
+                                                textDecoration: 'none'
+                                            }}
+                                        >
+                                            {label}
+                                        </Link>
+                                    </>
+                                );
+                            }
+                            return null;
+                        })()}
+                    </>
+                )}
+
+                {!currentWorkspace && isNewWorkspace && (
                     <Link
                         href="/workspace/new"
                         onClick={handleNavClick}
@@ -83,7 +121,9 @@ export function Header() {
                     >
                         New
                     </Link>
-                ) : (
+                )}
+
+                {!currentWorkspace && !isNewWorkspace && (
                     <Link
                         href="/"
                         onClick={handleNavClick}

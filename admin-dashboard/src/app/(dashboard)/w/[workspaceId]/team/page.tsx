@@ -146,7 +146,15 @@ export default function TeamPage() {
 
             {/* Members List */}
             {loading ? (
+<<<<<<< HEAD
                 <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>{t('common.loading')}</div>
+=======
+                <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading...</div>
+            ) : members.length === 0 ? (
+                <div className="card" style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
+                    No team members found.
+                </div>
+>>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
             ) : (
                 <div className="custom-scrollbar" style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", padding: "16px", gap: "12px" }}>
                     {members.map((member: any) => (
@@ -174,6 +182,7 @@ export default function TeamPage() {
                                 fontSize: 14,
                                 color: "var(--accent)",
                             }}>
+<<<<<<< HEAD
                                 {(member.name || member.user_id).substring(0, 2).toUpperCase()}
                             </div>
                             <div style={{ flex: 1 }}>
@@ -182,6 +191,19 @@ export default function TeamPage() {
                                 </div>
                                 <div style={{ color: "var(--text-muted)", fontSize: 12 }}>
                                     {t('team.joined')} {new Date(member.invited_at).toLocaleDateString()}
+=======
+                                {member.role === 'owner' ? 'O' : 'M'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 600, color: "var(--foreground)", fontSize: 14 }}>
+                                    {member.role === 'owner' ? 'Workspace Owner' : `Team Member`}
+                                </div>
+                                <div style={{ color: "var(--text-muted)", fontSize: 12, fontFamily: "monospace" }}>
+                                    ID: {member.user_id.substring(0, 16)}...
+                                </div>
+                                <div style={{ color: "var(--text-muted)", fontSize: 11, marginTop: 2 }}>
+                                    Joined {new Date(member.invited_at).toLocaleDateString()}
+>>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
                                 </div>
                             </div>
                             <span style={{

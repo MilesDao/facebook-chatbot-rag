@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useWorkspace } from "./WorkspaceContext";
+<<<<<<< HEAD
 import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, Bot } from "lucide-react";
+=======
+import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, FileText } from "lucide-react";
+>>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./UserMenu";
 import { useLanguage } from "./LanguageContext";
@@ -189,8 +193,16 @@ export function Sidebar() {
             <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.handoffs") : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Inbox size={16} /> {!isSidebarCollapsed && t("nav.handoffs")}
             </Link>
+<<<<<<< HEAD
             <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.team") : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Users size={16} /> {!isSidebarCollapsed && t("nav.team")}
+=======
+            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? "User Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <FileText size={16} /> {!isSidebarCollapsed && "User Documents"}
+            </Link>
+            <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? "Members" : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <Users size={16} /> {!isSidebarCollapsed && "Members"}
+>>>>>>> 200ddb627d6ba468032f9822ed1aebdf52b77499
             </Link>
             <Link href={`/w/${wsId}/settings`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.settings") : ""} className={`nav-item ${pathname.includes('/settings') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Settings size={16} /> {!isSidebarCollapsed && t("nav.settings")}
