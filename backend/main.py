@@ -359,7 +359,7 @@ async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) 
         workspace_id = get_workspace_id_for_page(page_id)
         
         if not workspace_id:
-            print(f"ERROR: Could not resolve workspace_id for page_id {page_id}")
+            print(f"ERROR: Could not resolve workspace_id for page_id {page_id}. Please ensure this Page ID is correctly linked to a workspace in bot_settings table.")
             return None
 
         print(f"DEBUG: Inserting PDF record into DB for workspace {workspace_id}")

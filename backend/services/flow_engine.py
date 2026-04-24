@@ -42,6 +42,7 @@ def get_active_flow_for_message(workspace_id: str, sender_id: str, user_message:
                     print(f"DEBUG: Forcing Default Flow for message #{user_msg_count + 1}")
                     return flow
         
+        user_message = user_message or ""
         msg_lower = user_message.lower()
         
         # 2. Check keyword triggers
@@ -176,6 +177,7 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
         return []
     
     # 1. Match by label (highest priority, e.g. Quick Reply buttons)
+    user_input = user_input or ""
     user_lower = user_input.lower().strip()
     for edge in outgoing:
         label = (edge.get("label") or "").lower().strip()

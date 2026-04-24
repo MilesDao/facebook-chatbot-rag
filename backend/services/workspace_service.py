@@ -211,7 +211,12 @@ def get_workspace_id_for_page(page_id: str) -> str:
     if not supabase:
         return None
     try:
-        res = supabase.table("bot_settings").select("workspace_id").eq("page_id", page_id).limit(1).execute()
+        res = supabase.table("bot_settings") \
+            .select("workspace_id") \
+            .eq("page_id", page_id) \
+            .not_.is_("workspace_id", "null") \
+            .limit(1) \
+            .execute()
         if res.data:
             return res.data[0]["workspace_id"]
         return None
