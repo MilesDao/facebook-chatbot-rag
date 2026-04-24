@@ -9,6 +9,12 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // Dedicated keep-alive health proxy (routes BEFORE the generic /api/* catch-all)
+      {
+        source: '/api/proxy/health',
+        destination: `${backendUrl}/health`,
+      },
+      // Generic backend proxy
       {
         source: '/api/:path*',
         destination: `${backendUrl}/api/:path*`,

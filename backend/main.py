@@ -120,11 +120,21 @@ def get_workspace_id(request: Request, current_user: dict = Depends(get_current_
 # HEALTH CHECK
 # ============================================================
 
-@app.get("/")
 @app.get("/health")
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "service": "backend", "origins": origins}
+    """Keep-alive & monitoring endpoint. Returns status, server time, and environment."""
+    return {
+        "status": "ok",
+        "server_time": datetime.now(timezone.utc).isoformat(),
+        "environment": os.getenv("ENVIRONMENT", "production"),
+        "service": "RAG Messenger Bot",
+    }
+
+@app.get("/")
+def root():
+    """Root redirect — same data as /health for quick checks."""
+    return health_check()
 
 
 # ============================================================

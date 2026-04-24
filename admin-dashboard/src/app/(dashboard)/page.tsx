@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { useLanguage } from "@/components/LanguageContext";
+import ServerStatus from "@/components/ServerStatus";
 
 export default function RootPage() {
   const { workspaces, setCurrentWorkspace } = useWorkspace();
@@ -16,9 +17,14 @@ export default function RootPage() {
 
   return (
     <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 20px' }}>
-      <h1 style={{ fontSize: '32px', marginBottom: '32px', fontWeight: 700 }}>
+      <h1 style={{ fontSize: '32px', marginBottom: '24px', fontWeight: 700 }}>
         {t('workspace.gallery')}
       </h1>
+
+      {/* ── Server Health Banner ───────────────────────────────────────── */}
+      <div style={{ marginBottom: '36px' }}>
+        <ServerStatus />
+      </div>
 
       <div style={{ marginBottom: '48px' }}>
         <h2 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '8px' }}>

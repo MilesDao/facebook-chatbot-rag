@@ -1,0 +1,60 @@
+name: 🏓 Keep Alive - Ping Server
+
+on:
+  schedule:
+    # Runs every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  ping:
+    name: Ping Health Endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: 🔍 Ping Server with Retry
+        shell: bash
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          HEALTH_URL="${API_BASE_URL}/health"
+          MAX_RETRIES=3
+          RETRY_DELAY=10
+          SUCCESS=false
+
+          echo "🎯 Target: $HEALTH_URL"
+          echo "🔁 Max retries: $MAX_RETRIES | Delay: ${RETRY_DELAY}s"
+
+          for attempt in $(seq 1 $MAX_RETRIES); do
+            echo ""
+            echo "--- Attempt $attempt of $MAX_RETRIES ---"
+
+            HTTP_STATUS=$(curl \
+              --silent \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              --max-time 30 \
+              --connect-timeout 15 \
+              "$HEALTH_URL")
+
+            echo "📡 HTTP Status: $HTTP_STATUS"
+
+            if [ "$HTTP_STATUS" -eq 200 ]; then
+              echo "✅ Server is alive! (HTTP 200 OK)"
+              SUCCESS=true
+              break
+            else
+              echo "⚠️  Non-200 response. Server may still be booting..."
+              if [ "$attempt" -lt "$MAX_RETRIES" ]; then
+                echo "⏳ Waiting ${RETRY_DELAY}s before next attempt..."
+                sleep $RETRY_DELAY
+              fi
+            fi
+          done
+
+          if [ "$SUCCESS" = false ]; then
+            echo ""
+            echo "❌ All $MAX_RETRIES attempts failed. Last HTTP status: $HTTP_STATUS"
+            exit 1
+          fi
