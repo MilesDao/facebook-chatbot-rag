@@ -182,15 +182,17 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
         if not condition_text and label:
             condition_text = label
             
-        # NEW: If still no condition text, check the label of the target node itself!
-        # This handles "logic" or "condition" nodes where the name is the condition.
+        # NEW: If still no condition text, check the TARGET NODE for condition info.
+        # LogicNodes store their condition in data.keyword (config.keyword in DB).
+        # get_flow_nodes() transforms config -> data, so we access .data here.
         if not condition_text:
             target_node = node_map.get(edge["target"], {})
-            node_label = (target_node.get("label") or "").strip()
-            # If the node label looks like a condition, use it.
-            if node_label:
-                condition_text = node_label
-                print(f"DEBUG FlowEngine: Using target node label as condition text: '{condition_text}'")
+            target_data = target_node.get("data") or target_node.get("config") or {}
+            # Priority: keyword (condition nodes) > node label
+            node_condition = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
+            if node_condition:
+                condition_text = node_condition
+                print(f"DEBUG FlowEngine: Using target node keyword/label as condition: '{condition_text}'")
         
         # If there is absolutely no logic text, this is a potential fallback/default edge
         if not condition_text:
@@ -317,7 +319,7 @@ def save_flow_graph(flow_id: str, nodes: list, edges: list):
             db_node = {
                 "flow_id": flow_id,
                 "node_type": node.get("type", "message"),
-                "label": node.get("data", {}).get("content", ""),
+                "label": node.get("data", {}).get("label", "") or node.get("data", {}).get("keyword", "") or node.get("data", {}).get("content", ""),
                 "position_x": node.get("position", {}).get("x", 0),
                 "position_y": node.get("position", {}).get("y", 0),
                 "config": node.get("data", {})
