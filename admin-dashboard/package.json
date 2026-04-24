@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.103.0",
+    "@supabase/supabase-js": "^2.104.1",
     "@xyflow/react": "^12.10.2",
     "cross-env": "^10.1.0",
     "lucide-react": "^1.8.0",

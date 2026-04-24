@@ -1,107 +1,177 @@
-# Facebook Chatbot SaaS Platform (Multi-Tenant & Visual Flow Builder)
+# Supabase CLI
 
-A powerful, multi-tenant SaaS AI chatbot platform for Facebook Messenger. It allows organizations to manage multiple bots, knowledge bases, and team members from a single dashboard. Powered by OpenRouter LLMs, a professional **n8n-style** Visual Flow Builder, and RAG via Supabase.
+[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
+](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
 
----
+[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
 
-## 🚀 Key Features
+This repository contains all the functionality for Supabase CLI.
 
-### 🏢 Multi-Tenant SaaS Architecture
-- **Workspace Isolation**: Each client manages their own isolated data, configuration, and team members.
-- **Role-Based Access**: Owner, Admin, and Viewer roles for team collaboration.
-- **Industry Templates**: One-click setup for common industries (Admissions, E-commerce, CSKH, Booking).
-- **Workspace Gallery**: A Trello-inspired minimalist entry point to manage all your bot projects.
+- [x] Running Supabase locally
+- [x] Managing database migrations
+- [x] Creating and deploying Supabase Functions
+- [x] Generating types directly from your database schema
+- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
 
-### 🎨 Pro Visual Flow Builder (n8n-inspired)
-- **Interactive Drag-and-Drop**: A professional @xyflow/react canvas for designing conversation trees.
-- **Sidepanel Toolbox**: Drag nodes directly onto the canvas like a pro.
-- **Interactive Wires**: Visual, animated connections between logic blocks.
-- **On-Node Editing**: Edit message content or logic keywords directly on the node without opening sidebars.
-- **Navigation Tools**: Built-in Mini-map, Zoom/Pan controls, and on-node deletion.
+## Getting started
 
-### 🧠 Advanced AI & RAG
-- **LLM Engine**: Google Gemini (Gemini 1.5 Flash via Google AI Studio)
-- **Embeddings**: Google Generative AI (models/embedding-001) with HNSW indexing and workspace filtering.
-- **Custom AI Personality**: Workspace-specific system prompts.
+### Install the CLI
 
-### 📊 Modern Admin Dashboard
-- **Glassmorphic UI**: Premium translucent elements with blurs and vibrant gradients.
-- **Cross-Theme Support**: Perfectly optimized for Dark, Light, and custom themes (Pink, Green, Blue).
-- **Handoff Inbox**: Real-time management of human intervention requests.
-- **Workspace Switcher**: Seamlessly switch between different bot projects via clickable breadcrumbs.
+Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
 
----
-
-## 🛠️ Technology Stack
-
-- **Backend**: FastAPI (Python 3.10+)
-- **Frontend**: Next.js 16, React 19, TailwindCSS 4
-- **Flow Canvas**: @xyflow/react (React Flow)
-- **Database**: Supabase (PostgreSQL + `pgvector`)
-- **Security**: Supabase JWT + RLS Isolation
-
----
-
-## ⚙️ Setup & Installation
-
-### 1. Supabase Preparation
-- Run `backend/setup_supabase.sql` in your Supabase SQL Editor. This will create all tables, indexes, RLS policies, and industry templates.
-
-### 2. Environment Variables
-Create a `.env` file in the root:
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your-project-url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-
-# API
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-### 3. Backend Setup
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py
+npm i supabase --save-dev
 ```
 
-### 4. Admin Dashboard
+When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+
+```
+NODE_OPTIONS=--no-experimental-fetch yarn add supabase
+```
+
+> **Note**
+For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
+
+<details>
+  <summary><b>macOS</b></summary>
+
+  Available via [Homebrew](https://brew.sh). To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To install the beta release channel:
+  
+  ```sh
+  brew install supabase/tap/supabase-beta
+  brew link --overwrite supabase-beta
+  ```
+  
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Windows</b></summary>
+
+  Available via [Scoop](https://scoop.sh). To install:
+
+  ```powershell
+  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
+  scoop install supabase
+  ```
+
+  To upgrade:
+
+  ```powershell
+  scoop update supabase
+  ```
+</details>
+
+<details>
+  <summary><b>Linux</b></summary>
+
+  Available via [Homebrew](https://brew.sh) and Linux packages.
+
+  #### via Homebrew
+
+  To install:
+
+  ```sh
+  brew install supabase/tap/supabase
+  ```
+
+  To upgrade:
+
+  ```sh
+  brew upgrade supabase
+  ```
+
+  #### via Linux packages
+
+  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
+
+  ```sh
+  sudo apk add --allow-untrusted <...>.apk
+  ```
+
+  ```sh
+  sudo dpkg -i <...>.deb
+  ```
+
+  ```sh
+  sudo rpm -i <...>.rpm
+  ```
+
+  ```sh
+  sudo pacman -U <...>.pkg.tar.zst
+  ```
+</details>
+
+<details>
+  <summary><b>Other Platforms</b></summary>
+
+  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
+
+  ```sh
+  go install github.com/supabase/cli@latest
+  ```
+
+  Add a symlink to the binary in `$PATH` for easier access:
+
+  ```sh
+  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
+  ```
+
+  This works on other non-standard Linux distros.
+</details>
+
+<details>
+  <summary><b>Community Maintained Packages</b></summary>
+
+  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
+  To install in your working directory:
+
+  ```bash
+  pkgx install supabase
+  ```
+
+  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
+</details>
+
+### Run the CLI
+
 ```bash
-cd admin-dashboard
-npm install
-npm run dev
+supabase bootstrap
 ```
 
----
+Or using npx:
 
-## 🇻🇳 Hướng dẫn sử dụng (Vietnamese)
+```bash
+npx supabase bootstrap
+```
 
-### 1. Tạo Workspace mới
-- Sau khi đăng nhập, chọn **"Tạo Workspace mới"** từ trang Gallery.
-- Chọn **Template Industry** (ví dụ: Tuyển sinh, Bán hàng) để tự động cài đặt AI Prompt và các nút dữ liệu mẫu.
+The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
 
-### 2. Quản lý luồng hội thoại (Flow Builder)
-- Vào mục **Flows** trên Sidebar.
-- Sử dụng Toolbox bên trái, **kéo thả** các Node vào vùng làm việc.
-- Dùng chuột nối các điểm tròn để tạo liên kết logic.
-- Sửa nội dung trực tiếp trên Node và nhấn **Save Flow** (sẽ có thông báo xanh hiện lên khi lưu thành công).
+## Docs
 
-### 3. Cài đặt Facebook Page
-- Vào mục **Settings**, nhập đầy đủ Page Token và ID để kết nối với Fanpage của bạn.
+Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
 
-### 4. Nạp dữ liệu kiến thức (RAG)
-- Vào mục **Knowledge Base**, tải lên tài liệu để AI học kiến thức chuyên môn.
+## Breaking changes
 
----
+We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
 
-## 📦 Project Structure
-- `/backend`: FastAPI Server & Flow Engine.
-- `/admin-dashboard`: Next.js 16 Workspace Dashboard with XYFlow integration.
-- `diag_db.py`: Database diagnostic utility.
+However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
 
----
-## 📝 License
-Internal project / Proprietary.
+## Developing
+
+To run from source:
+
+```sh
+# Go >= 1.22
+go run . help
+```

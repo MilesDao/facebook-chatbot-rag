@@ -40,9 +40,9 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const setLanguage = async (newLang: Language) => {
     setLanguageState(newLang);
     try {
-      await apiFetch("/api/settings", {
+      await apiFetch("/api/settings/language", {
         method: "POST",
-        body: JSON.stringify({ setting_key: "language", setting_value: newLang })
+        body: JSON.stringify({ value: newLang })
       });
     } catch (err) {
       console.error("Failed to save language settings:", err);

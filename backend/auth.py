@@ -101,3 +101,14 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
             status_code=401,
             detail=f"Invalid token: {str(e)}",
         )
+
+def get_optional_current_user(authorization: Optional[str] = Header(None)) -> Optional[dict]:
+    """
+    Optional version of get_current_user. Returns None if unauthenticated instead of 401.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    try:
+        return get_current_user(authorization)
+    except HTTPException:
+        return None

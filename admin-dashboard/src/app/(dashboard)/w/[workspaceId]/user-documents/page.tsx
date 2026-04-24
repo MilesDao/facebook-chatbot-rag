@@ -1,154 +1,92 @@
-"use client";
+"use client"; // Thêm dòng này nếu bạn đang dùng Next.js App Router (src/app)
 
-import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import { apiFetch } from "@/lib/auth";
-import { FileText, Download, User } from "lucide-react";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabaseClient'; // Nhớ trỏ đúng đường dẫn file vừa tạo
+import Image from 'next/image';
 
-interface UserDocument {
-    id: string;
-    sender_id: string;
-    pdf_url: string;
-    created_at: string;
+// Định nghĩa kiểu dữ liệu cho bản ghi
+interface UploadedDocument {
+  id: string;
+  messenger_user_id: string;
+  public_url: string;
+  created_at: string;
 }
 
-export default function UserDocumentsPage() {
-    const params = useParams();
-    const workspaceId = params.workspaceId as string;
-    const [documents, setDocuments] = useState<UserDocument[]>([]);
-    const [senderNames, setSenderNames] = useState<Record<string, { name: string; profile_pic: string }>>({});
-    const [loading, setLoading] = useState(true);
+export default function DocumentGallery() {
+  const [documents, setDocuments] = useState<UploadedDocument[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (!workspaceId) return;
+  // Hàm gọi dữ liệu từ Supabase
+  const fetchDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('customer_uploads')
+        .select('*')
+        .order('created_at', { ascending: false }); // Xếp ảnh mới nhất lên đầu
 
-        const fetchDocuments = async () => {
-            setLoading(true);
-            try {
-                const res = await apiFetch("/api/user-documents");
-                if (res.ok) {
-                    const data = await res.json();
-                    setDocuments(data || []);
+      if (error) throw error;
+      
+      if (data) {
+        setDocuments(data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy dữ liệu ảnh:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    // Fetch real names from Facebook Graph API
-                    if (data && data.length > 0) {
-                        const uniqueIds = [...new Set(data.map((d: any) => d.sender_id))];
-                        const nameRes = await apiFetch("/api/facebook/resolve-names", {
-                            method: "POST",
-                            body: JSON.stringify({ sender_ids: uniqueIds })
-                        });
-                        if (nameRes.ok) {
-                            const nameData = await nameRes.json();
-                            setSenderNames(nameData.names || {});
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error fetching documents:", err);
-            }
-            setLoading(false);
-        };
+  // Tự động chạy hàm lấy dữ liệu khi trang vừa load
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
-        fetchDocuments();
-    }, [workspaceId]);
+  if (loading) {
+    return <div className="p-8 text-center text-gray-500">Đang tải tài liệu...</div>;
+  }
 
-    const displayName = (psid: string) => {
-        const info = senderNames[psid];
-        if (info?.name) {
-            return info.name;
-        }
-        return psid;
-    };
-
-    return (
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 20px", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
-                <div>
-                    <h1 style={{ fontSize: "32px", fontWeight: 700, margin: 0 }}>User Documents</h1>
-                    <p style={{ color: "var(--foreground)", opacity: 0.7, marginTop: "8px" }}>
-                        Generated PDFs from images uploaded by users.
-                    </p>
-                </div>
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Tài liệu khách hàng gửi (Messenger)</h1>
+      
+      {documents.length === 0 ? (
+        <p className="text-gray-500">Chưa có khách hàng nào gửi ảnh.</p>
+      ) : (
+        /* CSS Grid chia cột: màn hình nhỏ 1 cột, vừa 2 cột, to 3 cột */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {documents.map((doc, idx) => (
+            <div key={doc.public_url || idx} className="border rounded-lg overflow-hidden shadow-sm bg-white">
+              {/* Vùng hiển thị ảnh */}
+              <div className="relative w-full h-48 bg-gray-100">
+                {/* Dùng thẻ <img> thường hoặc <Image> của Next.js tùy cấu hình config */}
+                <img 
+                  src={doc.public_url} 
+                  alt={`Tài liệu từ user ${doc.messenger_user_id}`}
+                  className="object-contain w-full h-full"
+                />
+              </div>
+              
+              {/* Thông tin bên dưới ảnh */}
+              <div className="p-4 border-t">
+                <p className="text-sm font-semibold text-gray-700 truncate">
+                  User ID: {doc.messenger_user_id}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ngày nhận: {new Date(doc.created_at).toLocaleString('vi-VN')}
+                </p>
+                <a 
+                  href={doc.public_url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-block mt-3 text-sm text-blue-600 hover:underline"
+                >
+                  Xem ảnh gốc &rarr;
+                </a>
+              </div>
             </div>
-
-            <div style={{
-                background: "var(--card-bg)",
-                border: "1px solid var(--border)",
-                borderRadius: "16px",
-                overflow: "hidden"
-            }}>
-                {loading ? (
-                    <div style={{ padding: "40px", textAlign: "center", color: "var(--foreground-muted)" }}>
-                        Loading documents...
-                    </div>
-                ) : documents.length === 0 ? (
-                    <div style={{ padding: "60px 40px", textAlign: "center" }}>
-                        <div style={{ width: 64, height: 64, borderRadius: "32px", background: "var(--bg-gradient-2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-                            <FileText size={28} color="white" />
-                        </div>
-                        <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "8px" }}>No documents found</h3>
-                        <p style={{ color: "var(--foreground)", opacity: 0.7, maxWidth: 400, margin: "0 auto" }}>
-                            When users send images through Messenger, they will be combined into a PDF and appear here.
-                        </p>
-                    </div>
-                ) : (
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead>
-                            <tr style={{ background: "rgba(0,0,0,0.02)", borderBottom: "1px solid var(--border)", textAlign: "left" }}>
-                                <th style={{ padding: "16px 24px", fontWeight: 600, fontSize: "14px" }}>User / Sender ID</th>
-                                <th style={{ padding: "16px 24px", fontWeight: 600, fontSize: "14px" }}>Date</th>
-                                <th style={{ padding: "16px 24px", fontWeight: 600, fontSize: "14px", textAlign: "right" }}>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {documents.map((doc) => (
-                                <tr key={doc.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                                    <td style={{ padding: "16px 24px" }}>
-                                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                            {senderNames[doc.sender_id]?.profile_pic ? (
-                                                <img
-                                                    src={senderNames[doc.sender_id].profile_pic}
-                                                    alt="Profile"
-                                                    style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover" }}
-                                                />
-                                            ) : (
-                                                <div style={{ background: "rgba(0,0,0,0.05)", padding: "10px", borderRadius: "10px" }}>
-                                                    <User size={16} />
-                                                </div>
-                                            )}
-                                            <span style={{ fontWeight: 500 }}>{displayName(doc.sender_id)}</span>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: "16px 24px", color: "var(--foreground-muted)", fontSize: "14px" }}>
-                                        {new Date(doc.created_at).toLocaleString()}
-                                    </td>
-                                    <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                                        <a
-                                            href={doc.pdf_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style={{
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                gap: "8px",
-                                                padding: "8px 16px",
-                                                background: "var(--button-bg)",
-                                                color: "white",
-                                                borderRadius: "8px",
-                                                textDecoration: "none",
-                                                fontSize: "14px",
-                                                fontWeight: 500
-                                            }}
-                                        >
-                                            <Download size={14} /> Open PDF
-                                        </a>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+          ))}
         </div>
-    );
+      )}
+    </div>
+  );
 }

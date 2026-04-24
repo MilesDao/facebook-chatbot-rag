@@ -14,22 +14,19 @@ from fastapi import FastAPI, Request, BackgroundTasks, Response, HTTPException, 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
-from .auth import get_current_user
+from .auth import get_current_user, get_optional_current_user
 
-# Load environment variables early
 load_dotenv()
 
-# AI models and RAG components
 from .message_handler import handle_message
 from .google_ai_integration import generate_response
 from .database import supabase
 from .services.ingestion import IngestionService
 
-# Data directory
 RAW_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "raw_data")
 os.makedirs(RAW_DATA_DIR, exist_ok=True)
 
-# --- Pydantic Models ---
+
 
 class Message(BaseModel):
     role: str
@@ -39,6 +36,9 @@ class GenerateRequest(BaseModel):
     user_message: str
     context: str = ""
     history: List[dict] = []
+
+class LanguageSetting(BaseModel):
+    value: str
 
 class BotSettingsUpdate(BaseModel):
     page_access_token: str = Field(..., min_length=20)
@@ -372,6 +372,35 @@ async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) 
         traceback.print_exc()
         return None
 
+async def upload_individual_images(sender_id: str, image_urls: list, page_id: str):
+    """Uploads individual raw images to customer-images bucket and customer_uploads table."""
+    for idx, url in enumerate(image_urls):
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200:
+                img_data = r.content
+                file_name = f"{sender_id}/{int(time.time()*1000)}_{idx}.jpg"
+                
+                # Upload
+                supabase.storage.from_("customer-images").upload(
+                    file_name,
+                    img_data,
+                    {"content-type": "image/jpeg"}
+                )
+                
+                # Get URL
+                public_url = supabase.storage.from_("customer-images").get_public_url(file_name)
+                
+                # Insert to table
+                supabase.table("customer_uploads").insert({
+                    "messenger_user_id": sender_id,
+                    "public_url": public_url,
+                    "created_at": time.strftime('%Y-%m-%dT%H:%M:%S.000Z', time.gmtime())
+                }).execute()
+                print(f"DEBUG: Saved individual image for {sender_id} to customer_uploads.")
+        except Exception as e:
+            print(f"ERROR: Failed to save individual image from {url}: {e}")
+
 async def debounced_process(sender_id: str, page_id: str):
     """
     Wait 4 seconds, then check if we are the latest message in the buffer.
@@ -418,6 +447,7 @@ async def debounced_process(sender_id: str, page_id: str):
             # Process Images
             if combined_images:
                 try:
+                    await upload_individual_images(sender_id, combined_images, page_id)
                     pdf_url = await process_images_to_pdf(sender_id, combined_images, page_id)
                     if pdf_url:
                         # Fetch token to notify user
@@ -804,6 +834,43 @@ async def delete_handoff(handoff_id: str, request: Request, current_user: dict =
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ============================================================
+# ADMIN API: USER SETTINGS (user-scoped)
+# ============================================================
+
+@app.get("/api/settings/language")
+async def get_user_language(current_user: Optional[dict] = Depends(get_optional_current_user)):
+    if not current_user:
+        return {"value": "en"}
+    user_id = current_user["sub"]
+    try:
+        if not supabase or not hasattr(supabase.auth, 'admin'):
+            return {"value": "en"}
+        res = supabase.auth.admin.get_user_by_id(user_id)
+        if res and res.user and res.user.user_metadata:
+            lang = res.user.user_metadata.get("language", "en")
+            return {"value": lang}
+        return {"value": "en"}
+    except Exception as e:
+        print(f"Error fetching user language: {e}")
+        return {"value": "en"}
+
+@app.post("/api/settings/language")
+async def set_user_language(setting: LanguageSetting, current_user: dict = Depends(get_current_user)):
+    user_id = current_user["sub"]
+    try:
+        if not supabase or not hasattr(supabase.auth, 'admin'):
+            raise HTTPException(status_code=500, detail="Supabase admin not available")
+        # Fetch current metadata to merge
+        user_res = supabase.auth.admin.get_user_by_id(user_id)
+        meta = user_res.user.user_metadata if user_res.user and user_res.user.user_metadata else {}
+        meta["language"] = setting.value
+        supabase.auth.admin.update_user_by_id(user_id, attributes={"user_metadata": meta})
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Error setting user language: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============================================================
 # ADMIN API: SETTINGS (workspace-scoped)
