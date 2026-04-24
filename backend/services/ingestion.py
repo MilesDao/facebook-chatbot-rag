@@ -1,7 +1,7 @@
 import os
 import glob
 import time
-from google import genai
+from openai import OpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ..database import supabase
 from dotenv import load_dotenv
@@ -13,8 +13,8 @@ class IngestionService:
         print("Initializing Ingestion Service with OpenRouter API")
         self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
-            print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
-        self.client = genai.Client(api_key=self.api_key) if self.api_key else None
+            print("CRITICAL: OPENROUTER_API_KEY missing in IngestionService")
+        self.client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=self.api_key) if self.api_key else None
 
         
         self.text_splitter = RecursiveCharacterTextSplitter(
