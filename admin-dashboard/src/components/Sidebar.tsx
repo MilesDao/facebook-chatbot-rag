@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useWorkspace } from "./WorkspaceContext";
-import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, Bot } from "lucide-react";
+import { Layout, Users, Settings, MessageSquare, Database, Inbox, ChevronLeft, ChevronRight, Bot, FileText } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "./UserMenu";
 import { useLanguage } from "./LanguageContext";
@@ -14,7 +14,7 @@ export function Sidebar() {
 
   const handleNavClick = (e: React.MouseEvent) => {
     if (unsavedChanges) {
-      const confirmed = window.confirm(t("common.unsavedChanges"));
+      const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?");
       if (!confirmed) {
         e.preventDefault();
       } else {
@@ -75,7 +75,7 @@ export function Sidebar() {
             WebkitTextFillColor: 'transparent',
             marginLeft: '12px',
             flex: 1
-          }}>{t("common.appLogo")}</span>
+          }}>Chatbot AI</span>
         )}
 
         <button
@@ -188,6 +188,9 @@ export function Sidebar() {
             </Link>
             <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.handoffs") : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Inbox size={16} /> {!isSidebarCollapsed && t("nav.handoffs")}
+            </Link>
+            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.documents") || "Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
+              <FileText size={16} /> {!isSidebarCollapsed && (t("nav.documents") || "Documents")}
             </Link>
             <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.team") : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Users size={16} /> {!isSidebarCollapsed && t("nav.team")}

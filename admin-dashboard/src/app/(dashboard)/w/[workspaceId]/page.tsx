@@ -140,7 +140,7 @@ export default function WorkspaceOverview() {
                         </div>
                     </div>
                 </Link>
-
+                
                 {/* Ô THÀNH VIÊN ĐÃ ĐƯỢC THÊM MÀU (color: var(--foreground)) */}
                 <Link href={`/w/${workspaceId}/team`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
@@ -153,7 +153,7 @@ export default function WorkspaceOverview() {
                         </div>
                     </div>
                 </Link>
-
+                
                 {/* Ô CÀI ĐẶT ĐÃ ĐƯỢC THÊM MÀU (color: var(--foreground)) */}
                 <Link href={`/w/${workspaceId}/settings`} style={{ textDecoration: 'none' }}>
                     <div className="card glass" style={{ height: '160px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '24px' }}>
@@ -177,15 +177,15 @@ export default function WorkspaceOverview() {
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.totalMessages}</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Unique Users (Customers)</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.uniqueUsers')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.uniqueUsers}</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Avg Confidence</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.avgConfidence')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: 'var(--accent)' }}>{stats.avgConfidence}%</h2>
                     </div>
                     <div className="card glass" style={{ padding: '20px' }}>
-                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Handoff Rate</p>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('overview.handoffRate')}</p>
                         <h2 style={{ fontSize: '28px', margin: '8px 0', color: '#ef4444' }}>{stats.handoffRate}%</h2>
                     </div>
                 </div>

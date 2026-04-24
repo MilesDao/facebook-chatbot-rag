@@ -59,7 +59,7 @@ export function UserMenu() {
                     width: isSidebarCollapsed ? '48px' : 'auto',
                     height: isSidebarCollapsed ? '48px' : 'auto'
                 }}
-                title={isSidebarCollapsed ? (user?.email || t('user.account')) : ""}
+                title={isSidebarCollapsed ? (user?.email || "User Account") : ""}
             >
                 <div style={{
                     width: '24px',
@@ -77,7 +77,7 @@ export function UserMenu() {
                 {!isSidebarCollapsed && (
                     <>
                         <span style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {user?.email?.split('@')[0] || t('user.defaultName')}
+                            {user?.email?.split('@')[0] || "User"}
                         </span>
                         <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
                     </>

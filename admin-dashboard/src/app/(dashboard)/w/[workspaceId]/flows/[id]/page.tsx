@@ -354,7 +354,7 @@ function FlowEditorContent() {
                         disabled={saving}
                         style={{ background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', borderRadius: '10px', fontWeight: '600' }}
                     >
-                        <Save size={18} /> {saving ? t("flows.savingBtn") : t("flows.saveBtn")}
+                        <Save size={18} /> {saving ? "Saving..." : "Save Flow"}
                     </button>
                 </div>
             </header>
@@ -375,8 +375,8 @@ function FlowEditorContent() {
                     boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
                 }}>
                     <div style={{ marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid var(--card-border)' }}>
-                        <h3 style={{ fontSize: '13px', fontWeight: '800', color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>{t("flows.toolbox")}</h3>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>{t("flows.dragDesc")}</p>
+                        <h3 style={{ fontSize: '13px', fontWeight: '800', color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>Toolbox</h3>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>Drag components to build flow</p>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -388,7 +388,7 @@ function FlowEditorContent() {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                         >
                             <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '8px', borderRadius: '8px' }}><MessageSquare size={18} color="#3b82f6" /></div>
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{t("flows.nodeMessage")}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Message</span>
                             <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
 
@@ -400,7 +400,7 @@ function FlowEditorContent() {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                         >
                             <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="#f59e0b" /></div>
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{t("flows.nodeCondition")}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Condition</span>
                             <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
 
@@ -412,7 +412,7 @@ function FlowEditorContent() {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                         >
                             <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '8px' }}><Database size={18} color="#10b981" /></div>
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{t("flows.nodeAISearch")}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>AI Search</span>
                             <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
 
@@ -424,7 +424,7 @@ function FlowEditorContent() {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                         >
                             <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '8px' }}><UserRound size={18} color="#ef4444" /></div>
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>{t("flows.nodeHandoff")}</span>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Handoff</span>
                             <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
                     </div>

@@ -3,7 +3,6 @@ fastapi
 uvicorn
 python-multipart
 requests
-flask
 
 # AI & LLM (Google GenAI Official SDK)
 google-genai
@@ -16,5 +15,9 @@ python-dotenv
 supabase
 redis/upstash-redis
 
-# Environment & Schema
+# Environment, Schema & Security
 pydantic
+PyJWT
+cryptography
+Pillow
+requests

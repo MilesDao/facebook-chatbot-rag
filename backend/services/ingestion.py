@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class IngestionService:
-    def __init__(self):
-        print("Initializing Ingestion Service with Gemini API")
-        self.api_key = os.getenv("GEMINI_API_KEY")
+    def __init__(self, api_key: str = None):
+        print("Initializing Ingestion Service with OpenRouter API")
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
         if not self.api_key:
             print("CRITICAL: GEMINI_API_KEY missing in IngestionService")
         self.client = genai.Client(api_key=self.api_key) if self.api_key else None
@@ -23,7 +23,7 @@ class IngestionService:
             separators=["\n\n", "\n", " ", ""]
         )
 
-    def ingest_file(self, filepath: str):
+    def ingest_file(self, filepath: str, workspace_id: str = None):
         if not self.client or not supabase:    
             print("Error: Client or Supabase not initialized.")
             return
@@ -33,8 +33,14 @@ class IngestionService:
         
         content = ""
         if filepath.lower().endswith(".txt"):
+            chunks_io: list[str] = []
             with open(filepath, "r", encoding="utf-8") as f:
-                content = f.read()
+                while True:
+                    block = f.read(65536)  # 64 KB per read
+                    if not block:
+                        break
+                    chunks_io.append(block)
+            content = "".join(chunks_io)
         elif filepath.lower().endswith(".pdf"):
             try:
                 from pypdf import PdfReader
@@ -56,48 +62,47 @@ class IngestionService:
 
         chunks = self.text_splitter.split_text(content)
         
-        max_retries = 6
-        base_delay = 3.0
-        embeddings = None
-
-        for attempt in range(max_retries):
-            try:
-                if attempt == 0:
-                    print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
-                result = self.client.models.embed_content(
-                    model="gemini-embedding-001",
-                    contents=chunks
-                )
-                embeddings = result.embeddings
-                break # Success, exit retry loop
-            except Exception as e:
-                print(f"Failed to generate embeddings batch (Attempt {attempt + 1}/{max_retries}): {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(base_delay * (2 ** attempt))
-                    
-        if embeddings is None:
-            print("Failed to generate embeddings after all retries.")
+        try:
+            print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
+            result = self.client.embeddings.create(
+                model="nvidia/llama-nemotron-embed-vl-1b-v2:free",
+                input=chunks,
+                encoding_format="float",
+                extra_body={"input_type": "passage"}
+            )
+            if not result.data:
+                print("Error: No embedding data received from API")
+                return
+            embeddings = [r.embedding for r in result.data]
+        except Exception as e:
+            print(f"Failed to generate embeddings batch for {filename}: {e}")
+            if "401" in str(e):
+                print("HINT: Your OpenRouter API key might be invalid or your account doesn't have access to this model.")
             return
             
         for i, (chunk, embed_obj) in enumerate(zip(chunks, embeddings)):
             raw_embed = embed_obj.values
             
-            # Đảm bảo kích thước vector là 2048 / Fixed dimension typo to 2048
-            embedding = raw_embed[:2048]
-            if len(embedding) < 2048:
-                embedding += [0.0] * (2048 - len(embedding))
+            # Truncate to 1536 dimensions to fit Supabase index limits
+            embedding = raw_embed[:1536]
+            if len(embedding) < 1536:
+                embedding += [0.0] * (1536 - len(embedding))
             
             try:
-                supabase.table("documents").insert({
+                data = {
                     "content": chunk,
                     "metadata": {"source": filename, "chunk_id": i},
                     "embedding": embedding 
-                }).execute()
+                }
+                if workspace_id:
+                    data["workspace_id"] = workspace_id
+                    
+                supabase.table("documents").insert(data).execute()
                 print(f"  > Inserted chunk {i+1}/{len(chunks)} of {filename}")
             except Exception as e:
                 print(f"  > Failed to insert chunk {i+1}: {e}")
 
-    def ingest_directory(self, data_dir: str):
+    def ingest_directory(self, data_dir: str, workspace_id: str = None):
         if not os.path.exists(data_dir):
             print(f"Data directory not found at {data_dir}")
             return
@@ -109,4 +114,4 @@ class IngestionService:
             return
 
         for filepath in files:
-            self.ingest_file(filepath)
+            self.ingest_file(filepath, workspace_id=workspace_id)

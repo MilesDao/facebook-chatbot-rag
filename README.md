@@ -1,59 +1,107 @@
-# 🤖 Gemini Messenger AI Bot (RAG)
+# Facebook Chatbot SaaS Platform (Multi-Tenant & Visual Flow Builder)
 
-A professional, end-to-end AI Messenger Bot system featuring a high-performance Backend and a premium Admin Dashboard. Fully migrated to the **Google Gemini 3.1 Stack**.
+A powerful, multi-tenant SaaS AI chatbot platform for Facebook Messenger. It allows organizations to manage multiple bots, knowledge bases, and team members from a single dashboard. Powered by OpenRouter LLMs, a professional **n8n-style** Visual Flow Builder, and RAG via Supabase.
 
-## 🏗️ Project Structure
-* `backend/`: FastAPI server handling webhooks, RAG logic, and Gemini integration.
-* `admin-dashboard/`: Next.js (TypeScript) management interface with a premium glassmorphic UI.
-* `raw_data/`: Local storage for documents pending ingestion.
+---
 
-## 🚀 Getting Started
+## 🚀 Key Features
 
-### 1. Prerequisites
-* Python 3.10+
-* Node.js 18+
-* Supabase Account (for Vector DB)
-* Google AI Studio API Key (Gemini)
+### 🏢 Multi-Tenant SaaS Architecture
+- **Workspace Isolation**: Each client manages their own isolated data, configuration, and team members.
+- **Role-Based Access**: Owner, Admin, and Viewer roles for team collaboration.
+- **Industry Templates**: One-click setup for common industries (Admissions, E-commerce, CSKH, Booking).
+- **Workspace Gallery**: A Trello-inspired minimalist entry point to manage all your bot projects.
 
-### 2. Database Initialization (Supabase)
-Execute the following SQL in your Supabase SQL Editor to support **2048-dimensional** vectors:
+### 🎨 Pro Visual Flow Builder (n8n-inspired)
+- **Interactive Drag-and-Drop**: A professional @xyflow/react canvas for designing conversation trees.
+- **Sidepanel Toolbox**: Drag nodes directly onto the canvas like a pro.
+- **Interactive Wires**: Visual, animated connections between logic blocks.
+- **On-Node Editing**: Edit message content or logic keywords directly on the node without opening sidebars.
+- **Navigation Tools**: Built-in Mini-map, Zoom/Pan controls, and on-node deletion.
 
-```sql
--- Enable Vector Extension
-create extension if not exists vector;
+### 🧠 Advanced AI & RAG
+- **OpenRouter Integration**: Access GPT-4o, Claude 3.5, Llama 3, etc.
+- **Dynamic RAG Pipeline**: High-performance vector search (1536-dim) with HNSW indexing and workspace filtering.
+- **Custom AI Personality**: Workspace-specific system prompts.
 
--- Create Documents Table
-create table documents (
-  id bigint primary key generated always as identity,
-  content text,
-  metadata jsonb,
-  embedding vector(2048) 
-);
+### 📊 Modern Admin Dashboard
+- **Glassmorphic UI**: Premium translucent elements with blurs and vibrant gradients.
+- **Cross-Theme Support**: Perfectly optimized for Dark, Light, and custom themes (Pink, Green, Blue).
+- **Handoff Inbox**: Real-time management of human intervention requests.
+- **Workspace Switcher**: Seamlessly switch between different bot projects via clickable breadcrumbs.
 
--- Create Search Function
-create or replace function match_documents (
-  query_embedding vector(2048),
-  match_threshold float,
-  match_count int
-)
-returns table (
-  id bigint,
-  content text,
-  metadata jsonb,
-  similarity float
-)
-language plpgsql
-as $$
-begin
-  return query
-  select
-    documents.id,
-    documents.content,
-    documents.metadata,
-    1 - (documents.embedding <=> query_embedding) as similarity
-  from documents
-  where 1 - (documents.embedding <=> query_embedding) > match_threshold
-  order by similarity desc
-  limit match_count;
-end;
-$$;
+---
+
+## 🛠️ Technology Stack
+
+- **Backend**: FastAPI (Python 3.10+)
+- **Frontend**: Next.js 16, React 19, TailwindCSS 4
+- **Flow Canvas**: @xyflow/react (React Flow)
+- **Database**: Supabase (PostgreSQL + `pgvector`)
+- **Security**: Supabase JWT + RLS Isolation
+
+---
+
+## ⚙️ Setup & Installation
+
+### 1. Supabase Preparation
+- Run `backend/setup_supabase.sql` in your Supabase SQL Editor. This will create all tables, indexes, RLS policies, and industry templates.
+
+### 2. Environment Variables
+Create a `.env` file in the root:
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your-project-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# API
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. Backend Setup
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+### 4. Admin Dashboard
+```bash
+cd admin-dashboard
+npm install
+npm run dev
+```
+
+---
+
+## 🇻🇳 Hướng dẫn sử dụng (Vietnamese)
+
+### 1. Tạo Workspace mới
+- Sau khi đăng nhập, chọn **"Tạo Workspace mới"** từ trang Gallery.
+- Chọn **Template Industry** (ví dụ: Tuyển sinh, Bán hàng) để tự động cài đặt AI Prompt và các nút dữ liệu mẫu.
+
+### 2. Quản lý luồng hội thoại (Flow Builder)
+- Vào mục **Flows** trên Sidebar.
+- Sử dụng Toolbox bên trái, **kéo thả** các Node vào vùng làm việc.
+- Dùng chuột nối các điểm tròn để tạo liên kết logic.
+- Sửa nội dung trực tiếp trên Node và nhấn **Save Flow** (sẽ có thông báo xanh hiện lên khi lưu thành công).
+
+### 3. Cài đặt Facebook Page
+- Vào mục **Settings**, nhập đầy đủ Page Token và ID để kết nối với Fanpage của bạn.
+
+### 4. Nạp dữ liệu kiến thức (RAG)
+- Vào mục **Knowledge Base**, tải lên tài liệu để AI học kiến thức chuyên môn.
+
+---
+
+## 📦 Project Structure
+- `/backend`: FastAPI Server & Flow Engine.
+- `/admin-dashboard`: Next.js 16 Workspace Dashboard with XYFlow integration.
+- `diag_db.py`: Database diagnostic utility.
+
+---
+## 📝 License
+Internal project / Proprietary.

@@ -101,23 +101,23 @@ export default function SettingsPage() {
         const newErrors: ValidationErrors = {};
 
         if (!settings.page_id) {
-            newErrors.page_id = t("settings.pageIdRequired");
+            newErrors.page_id = "Page ID is required";
         } else if (!/^\d+$/.test(settings.page_id)) {
-            newErrors.page_id = t("settings.pageIdNumeric");
+            newErrors.page_id = "Page ID must contain only numbers";
         } else if (settings.page_id.length < 10) {
-            newErrors.page_id = t("settings.pageIdShort");
+            newErrors.page_id = "Page ID is too short (min 10 digits)";
         }
 
         if (!settings.page_access_token || settings.page_access_token.length < 20) {
-            newErrors.page_access_token = t("settings.tokenRequired");
+            newErrors.page_access_token = "Valid Page Access Token is required";
         }
 
         if (!settings.openrouter_api_key || settings.openrouter_api_key.length < 15) {
-            newErrors.openrouter_api_key = t("settings.openrouterRequired");
+            newErrors.openrouter_api_key = "OpenRouter API Key is required";
         }
 
         if (!settings.verify_token || settings.verify_token.length < 5) {
-            newErrors.verify_token = t("settings.verifyTokenShort");
+            newErrors.verify_token = "Verify Token must be at least 5 chars";
         }
 
         setErrors(newErrors);
@@ -128,7 +128,7 @@ export default function SettingsPage() {
         e.preventDefault();
 
         if (!validate()) {
-            setMessage({ type: 'error', text: t("settings.fixErrors") });
+            setMessage({ type: 'error', text: 'Please fix the errors before saving.' });
             return;
         }
 
@@ -142,10 +142,10 @@ export default function SettingsPage() {
             });
 
             if (response.ok) {
-                setMessage({ type: 'success', text: t("settings.saveSuccess") });
+                setMessage({ type: 'success', text: 'Settings saved successfully to Supabase!' });
             } else {
                 const err = await response.json();
-                throw new Error(err.detail || t("settings.saveFail"));
+                throw new Error(err.detail || 'Failed to save settings');
             }
         } catch (err: any) {
             setMessage({ type: 'error', text: err.message });
@@ -221,7 +221,7 @@ export default function SettingsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div className="form-group">
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
-                                {t("settings.pageIdLabel")}
+                                Page ID (Numeric only)
                             </label>
                             <input
                                 type="text"
@@ -231,7 +231,7 @@ export default function SettingsPage() {
                                     setSettings({ ...settings, page_id: e.target.value });
                                     if (errors.page_id) setErrors({ ...errors, page_id: undefined });
                                 }}
-                                placeholder={t("settings.pageIdPlaceholder")}
+                                placeholder="e.g. 104857293847562"
                                 style={{
                                     width: '100%',
                                     padding: '12px',
@@ -242,13 +242,13 @@ export default function SettingsPage() {
                                 }}
                             />
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                {t("settings.pageIdHint")}
+                                Find this in Meta Business Suite &gt; Settings &gt; Page Info
                             </p>
                             {errors.page_id && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.page_id}</p>}
                         </div>
 
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("settings.appSecretLabel")}</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>App Secret (32 chars)</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showTokens.app_secret ? "text" : "password"}
@@ -290,13 +290,13 @@ export default function SettingsPage() {
                                 </button>
                             </div>
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                {t("settings.appSecretHint")}
+                                Find this in App Dashboard &gt; Settings &gt; Basic
                             </p>
                             {errors.app_secret && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.app_secret}</p>}
                         </div>
 
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("settings.pageAccessTokenLabel")}</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>Page Access Token</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showTokens.page_access_token ? "text" : "password"}
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("settings.verifyTokenLabel")}</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>Verify Token</label>
                             <input
                                 type="text"
                                 className="glass-input"
@@ -360,9 +360,6 @@ export default function SettingsPage() {
                                     color: 'var(--foreground)'
                                 }}
                             />
-                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                                {t("settings.verifyTokenHint")}
-                            </p>
                             {errors.verify_token && <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>{errors.verify_token}</p>}
                         </div>
                     </div>
@@ -377,11 +374,11 @@ export default function SettingsPage() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-                            {t("settings.aiIntegrationDesc") || "Your bot uses OpenRouter (e.g., DeepSeek, Gemini, GPT) for reasoning and retrieval."}
+                            Your bot uses OpenRouter (e.g., DeepSeek, Gemini, GPT) for reasoning and retrieval.
                         </p>
 
                         <div className="form-group">
-                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>{t("settings.openrouterKeyLabel")}</label>
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>OpenRouter API Key</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type={showTokens.openrouter_api_key ? "text" : "password"}
@@ -427,7 +424,7 @@ export default function SettingsPage() {
 
                         <div className="form-group">
                             <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
-                                {t("settings.modelLabel")}
+                                LLM Model (OpenRouter)
                             </label>
                             <select
                                 className="glass-input"
@@ -455,13 +452,13 @@ export default function SettingsPage() {
                                 <option value="openai/gpt-oss-120b:free">OpenAI GPT OSS (Free)</option>
                             </select>
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
-                                {t("settings.modelHint")}
+                                Models ending in <b>:free</b> are usually subject to lower rate limits.
                             </p>
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', color: '#10b981', fontSize: '13px' }}>
                             <ShieldCheck size={18} />
-                            {t("settings.supabaseConnected") || "Supabase Vector DB Connected"}
+                            Supabase Vector DB Connected
                         </div>
                     </div>
                 </div>
@@ -486,7 +483,7 @@ export default function SettingsPage() {
                                 className="glass-input"
                                 value={settings.system_prompt}
                                 onChange={e => setSettings({ ...settings, system_prompt: e.target.value })}
-                                placeholder={t("settings.promptPlaceholder")}
+                                placeholder="e.g. You are a helpful assistant for a coffee shop. Be very friendly and use lots of emojis! ☕✨"
                                 style={{
                                     width: '100%',
                                     minHeight: '150px',
@@ -502,7 +499,7 @@ export default function SettingsPage() {
                                 }}
                             />
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
-                                {t("settings.promptHint") || "Use this to set the bot's name, role, tone, and specific rules (e.g. 'Never mention competitors')."}
+                                Use this to set the bot's name, role, tone, and specific rules (e.g. "Never mention competitors").
                             </p>
                         </div>
                     </div>
@@ -523,7 +520,7 @@ export default function SettingsPage() {
                         <button
                             type="button"
                             onClick={async () => {
-                                if (confirm(t("common.confirmDelete") || `Are you absolutely sure you want to delete this workspace?`)) {
+                                if (confirm(`Are you absolutely sure you want to delete "${currentWorkspace?.name}"? This action cannot be undone.`)) {
                                     try {
                                         const res = await apiFetch(`/api/workspaces/${currentWorkspace?.id}`, {
                                             method: 'DELETE'

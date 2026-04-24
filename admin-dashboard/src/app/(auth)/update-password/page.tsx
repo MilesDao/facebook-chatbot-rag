@@ -24,7 +24,7 @@ export default function UpdatePasswordPage() {
             const supabase = createClient();
             const { data } = await supabase.auth.getSession();
             if (!data.session) {
-                setError(t("auth.errorResetExpired"));
+                setError("Your reset session has expired or is invalid. Please request a new password reset link.");
             }
             setCheckingSession(false);
         }
@@ -36,11 +36,11 @@ export default function UpdatePasswordPage() {
         setError(null);
 
         if (password !== confirm) {
-            setError(t("auth.errorPasswordMismatch"));
+            setError("Passwords do not match.");
             return;
         }
         if (password.length < 6) {
-            setError(t("auth.errorPasswordTooShort"));
+            setError("Password must be at least 6 characters.");
             return;
         }
 
