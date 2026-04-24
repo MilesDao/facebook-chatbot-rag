@@ -26,15 +26,19 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
     """
     # 1. TRY FLOW ENGINE
     if workspace_id:
-        flow_reply = process_flow_interaction(workspace_id, sender_id, user_message)
+        flow_reply = process_flow_interaction(workspace_id, sender_id, user_message, google_key=google_key)
         if flow_reply:
-            print(f"DEBUG: Flow Engine handled message for {sender_id}")
+            print(f"DEBUG: Flow Engine handled message for {sender_id} (workspace: {workspace_id})")
             # Log and save to memory
             try:
                 log_interaction(sender_id, user_message, flow_reply, 1.0, False, workspace_id=workspace_id)
+            except Exception as e:
+                print(f"ERROR: Failed to log flow interaction for {sender_id}: {e}")
+            try:
                 add_message(sender_id, role="user", content=user_message, workspace_id=workspace_id)
                 add_message(sender_id, role="assistant", content=flow_reply, workspace_id=workspace_id)
-            except: pass
+            except Exception as e:
+                print(f"ERROR: Failed to save flow history for {sender_id}: {e}")
             return flow_reply
 
     # 2. PHÂN LOẠI Ý ĐỊNH (Intent Classification) - Fallback

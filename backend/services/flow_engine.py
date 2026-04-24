@@ -8,6 +8,7 @@ Responsibilities:
 """
 
 from ..database import supabase
+from .condition_evaluator import evaluate_condition
 
 
 def get_active_flow_for_message(workspace_id: str, sender_id: str, user_message: str) -> dict:
@@ -162,7 +163,7 @@ def update_sender_context(workspace_id: str, sender_id: str, updates: dict):
         print(f"Error updating sender context: {e}")
 
 
-def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None) -> list:
+def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, google_key: str = None) -> list:
     """
     Get the next nodes from the current node based on edges and optional user input matching.
     """
@@ -193,6 +194,11 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None) -
                         return [edge["target"]]
                 elif condition.get("operator") == "contains":
                     if str(condition.get("value", "")).lower() in user_lower:
+                        return [edge["target"]]
+                elif condition.get("operator") == "llm_match":
+                    # Use LLM to evaluate natural language condition
+                    condition_text = str(condition.get("value", ""))
+                    if evaluate_condition(user_input, condition_text):
                         return [edge["target"]]
     
     # Default: return first edge target (fallback)
@@ -325,7 +331,7 @@ def save_flow_graph(flow_id: str, nodes: list, edges: list):
         raise Exception(f"Error saving flow graph: {e}")
 
 
-def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str) -> str:
+def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str, google_key: str = None) -> str:
     """
     Core engine logic:
     1. Check if sender is already in a flow.
@@ -357,7 +363,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             else:
                 # For message #2, jump to the node after start_node
                 if start_node:
-                    next_ids = get_next_nodes(flow["id"], start_node["id"])
+                    next_ids = get_next_nodes(flow["id"], start_node["id"], google_key=google_key)
                     current_node_id = next_ids[0] if next_ids else start_node["id"]
             
             current_flow_id = flow["id"]
@@ -386,46 +392,67 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             })
 
     if not flow or not current_node_id:
+        print(f"DEBUG FlowEngine: No flow or no current_node_id for {sender_id}. flow={bool(flow)}, node_id={current_node_id}")
         return None
 
-    # Execute current node logic
-    node_res = supabase.table("flow_nodes").select("*").eq("id", current_node_id).execute()
-    if not node_res.data:
-        # Node vanished? Reset context
-        update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-        return None
-    
-    node = node_res.data[0]
-    node_type = node.get("node_type")
-    node_data = node.get("config") or {}
-    
+    # Execute current node logic — with auto-traversal for non-content nodes
+    MAX_HOPS = 10  # Safety limit to prevent infinite loops
+    visited_nodes = set()
     reply = None
-    
-    if node_type == "message":
-        reply = node_data.get("content")
-    elif node_type == "rag":
-        # Trigger RAG pipeline (this will be handled by message_handler fallback if we return None)
-        # Or we can call it here. For simplicity, let's just return None to let handle_message do it.
-        return None
-    elif node_type == "handoff":
-        # Handoff functionality removed per user request
-        reply = "Tính năng chuyển tiếp nhân viên hiện đang được bảo trì. Vui lòng quay lại sau."
-    elif node_type == "logic":
-        # If it's a logic node, we might need to check keywords to decide where to go
-        pass
+    active_node_id = current_node_id
 
-    # Move to next node
-    next_node_ids = get_next_nodes(current_flow_id, current_node_id, user_message)
-    if next_node_ids:
-        next_node_id = next_node_ids[0]
-        update_sender_context(workspace_id, sender_id, {"current_node_id": next_node_id})
-        
-        # If current node was just a logic check or RAG and didn't have a reply, 
-        # we might want to recursively process the next node.
-        # But to prevent infinite loops, we'll just stop here and return the reply if we have one.
-    else:
-        # End of flow
-        update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
+    for hop in range(MAX_HOPS):
+        if active_node_id in visited_nodes:
+            print(f"DEBUG FlowEngine: Cycle detected at node {active_node_id}, breaking")
+            break
+        visited_nodes.add(active_node_id)
+
+        node_res = supabase.table("flow_nodes").select("*").eq("id", active_node_id).execute()
+        if not node_res.data:
+            print(f"DEBUG FlowEngine: Node {active_node_id} vanished, resetting context")
+            update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
+            return None
+
+        node = node_res.data[0]
+        node_type = node.get("node_type")
+        node_data = node.get("config") or {}
+        print(f"DEBUG FlowEngine: Processing node {active_node_id} type={node_type} hop={hop}")
+
+        if node_type == "message":
+            reply = node_data.get("content")
+            if reply:
+                print(f"DEBUG FlowEngine: Got message content: {reply[:60]}...")
+            else:
+                print(f"DEBUG FlowEngine: Message node has no 'content' in config: {node_data}")
+        elif node_type == "handoff":
+            reply = "Tính năng chuyển tiếp nhân viên hiện đang được bảo trì. Vui lòng quay lại sau."
+        elif node_type == "rag":
+            # RAG node: let handle_message do RAG, but still advance the flow cursor
+            print(f"DEBUG FlowEngine: RAG node encountered, advancing cursor but delegating response to LLM")
+        elif node_type == "logic":
+            print(f"DEBUG FlowEngine: Logic node encountered, auto-advancing to next node")
+
+        # Move to next node
+        next_node_ids = get_next_nodes(current_flow_id, active_node_id, user_message, google_key=google_key)
+
+        if reply:
+            # We have content — update cursor to the next node and return
+            if next_node_ids:
+                update_sender_context(workspace_id, sender_id, {"current_node_id": next_node_ids[0]})
+            else:
+                # End of flow
+                update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
+            return reply
+
+        # No reply from this node — auto-traverse to the next node
+        if next_node_ids:
+            active_node_id = next_node_ids[0]
+            update_sender_context(workspace_id, sender_id, {"current_node_id": active_node_id})
+        else:
+            # End of flow with no content
+            print(f"DEBUG FlowEngine: Reached end of flow with no content for {sender_id}")
+            update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
+            break
 
     return reply
 

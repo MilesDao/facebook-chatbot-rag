@@ -1,3 +1,4 @@
+import traceback
 from .database import supabase
 
 def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff_triggered, workspace_id=None):
@@ -8,6 +9,9 @@ def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff
         print("Warning: Supabase not initialized, skipping log.")
         return
 
+    if not workspace_id:
+        print(f"WARNING: log_interaction called with workspace_id={workspace_id} for sender {sender_id}. Analytics may not show in dashboard.")
+
     try:
         data = {
             "sender_id": sender_id,
@@ -17,7 +21,11 @@ def log_interaction(sender_id, user_message, ai_reply, confidence_score, handoff
             "handoff_triggered": handoff_triggered,
             "workspace_id": workspace_id
         }
-        supabase.table("logs").insert(data).execute()
-        print(f"Logged interaction for {sender_id}")
+        result = supabase.table("logs").insert(data).execute()
+        if result.data:
+            print(f"Logged interaction for {sender_id} (workspace: {workspace_id})")
+        else:
+            print(f"WARNING: log insert returned no data for {sender_id}. Result: {result}")
     except Exception as e:
-        print(f"Error logging interaction: {e}")
+        print(f"ERROR logging interaction for {sender_id} (workspace: {workspace_id}): {e}")
+        traceback.print_exc()

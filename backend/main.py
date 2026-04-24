@@ -384,10 +384,10 @@ async def process_images_to_pdf(sender_id: str, image_urls: list, page_id: str) 
 
 async def debounced_process(sender_id: str, page_id: str):
     """
-    Wait 4 seconds, then check if we are the latest message in the buffer.
+    Wait 2 seconds, then check if we are the latest message in the buffer.
     If so, process the whole accumulated text and any accumulated images.
     """
-    await asyncio.sleep(4)
+    await asyncio.sleep(2)
     
     try:
         res = supabase.table("chat_message_buffer").select("*").eq("sender_id", sender_id).execute()
@@ -407,7 +407,7 @@ async def debounced_process(sender_id: str, page_id: str):
         last_at = datetime.fromisoformat(time_str)
         now = datetime.now(timezone.utc)
         
-        if (now - last_at).total_seconds() >= 3.8:
+        if (now - last_at).total_seconds() >= 1.8:
             combined_text = buffer.get("accumulated_text", "")
             combined_images = buffer.get("accumulated_images", [])
             
