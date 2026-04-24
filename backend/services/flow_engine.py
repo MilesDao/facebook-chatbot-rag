@@ -188,6 +188,13 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
             if not best_fallback:
                 best_fallback = edge["target"]
             continue
+        operator = condition.get("operator")
+        value = str(condition.get("value", ""))
+        
+        if not value:
+            if not best_fallback:
+                best_fallback = edge["target"]
+            continue
 
         # Evaluate based on operator
         matched = False
@@ -196,22 +203,16 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
         elif operator == "contains":
             matched = (value.lower() in user_lower)
         elif operator == "llm_match" or not operator:
-            # If no operator is specified but a value exists, we treat it as an LLM condition
-            # as requested by the user ("LLM would read it and check")
             matched = evaluate_condition(user_input, value, google_key=google_key)
             
+        print(f"DEBUG FlowEngine: Evaluating edge to {edge['target']} | Cond: {value} | Match: {matched}")
         if matched:
             return [edge["target"]]
-    
-    # 3. Fallback: return the first edge that had no condition (if any)
     if best_fallback:
+        print(f"DEBUG FlowEngine: No matches found, using best explicit fallback: {best_fallback}")
         return [best_fallback]
     
-    # 4. Ultimate fallback: if everything failed but there are outgoing edges, 
-    # we return the first one to avoid dead ends (standard flow behavior)
-    if outgoing:
-        return [outgoing[0]["target"]]
-    
+    print(f"DEBUG FlowEngine: No matches found for input '{user_input}' and no fallback edge exists.")
     return []
 
 

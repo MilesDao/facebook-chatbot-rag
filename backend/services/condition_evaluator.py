@@ -29,20 +29,20 @@ def evaluate_condition(user_message: str, condition_text: str, google_key: str =
     Your task is to determine if a user's message satisfies a specific condition.
     
     CRITICAL RULES:
-    1. If the message explicitly denies or is opposite to the condition, return {"match": false}.
-    2. "Yes" does not match a "No" condition. "No" does not match a "Yes" condition.
-    3. Be strict: if there is ambiguity, consider the most likely intent in a conversation.
-    4. Ignore case and minor typos.
+    1. STRICT NEGATION: In Vietnamese, phrases like "không phải mà", "không phải mò", "đéo phải", "không hề" are strong negations. They must return {"match": false} for agreement conditions.
+    2. CONTEXTUAL MATCH: If the condition is "phủ nhận" (deny), then "không phải", "sai rồi" are PERFECT matches.
+    3. Be extremely strict: A "Deny" intent should NEVER match an "Agree" condition.
+    4. Ignore case, minor typos, and emotional particles (mò, mà, nhé, nha).
     
     You MUST respond with a valid JSON object matching the schema: {"match": boolean, "reason": "string"}.
     """
     
     prompt = f"""
-    Evaluate this match:
+    Evaluate the intent match:
     - User Message: "{user_message}"
-    - Condition: "{condition_text}"
+    - Condition Target: "{condition_text}"
     
-    Does the message content clearly satisfy the meaning of the condition?
+    Does the message content clearly satisfy the intent of the condition?
     """
     
     max_retries = 2
