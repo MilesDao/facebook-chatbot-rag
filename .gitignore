@@ -69,3 +69,7 @@ yarn-error.log*
 
 # OS
 .DS_Store
+
+grapuco-skills/
+.grapuco-skills/
+.grapuco
