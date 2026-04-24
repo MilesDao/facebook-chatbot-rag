@@ -164,55 +164,51 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
     if not outgoing:
         return []
     
-    # 1. Match by label (highest priority, e.g. Quick Reply buttons)
+    # 2. Check all edges (prioritise conditions, then descriptive labels)
     user_input = user_input or ""
     user_lower = user_input.lower().strip()
-    for edge in outgoing:
-        label = (edge.get("label") or "").lower().strip()
-        if label and label in user_lower:
-            return [edge["target"]]
-    
-    # 2. Match by explicit conditions
     best_fallback = None
     for edge in outgoing:
-        condition = edge.get("condition")
-        if not condition or not isinstance(condition, dict):
-            if not best_fallback:
-                best_fallback = edge["target"]
-            continue
-            
-        operator = condition.get("operator")
-        value = str(condition.get("value", ""))
+        condition = edge.get("condition") or {}
+        label = (edge.get("label") or "").strip()
         
-        if not value:
-            if not best_fallback:
-                best_fallback = edge["target"]
-            continue
-        operator = condition.get("operator")
-        value = str(condition.get("value", ""))
+        # Determine the "logic text" to evaluate
+        # If the user put the condition in the 'value' field OR the 'label' field, we should check it.
+        condition_text = str(condition.get("value", "")).strip()
+        if not condition_text and label:
+            # If the label is more than a simple word, treat it as a condition
+            if len(label.split()) > 1 or label.lower() in ["đồng ý", "không đồng ý", "phủ nhận"]:
+                condition_text = label
         
-        if not value:
+        # If there is absolutely no logic text, this is a potential fallback/default edge
+        if not condition_text:
             if not best_fallback:
                 best_fallback = edge["target"]
             continue
 
-        # Evaluate based on operator
+        # Evaluate logic
+        operator = condition.get("operator")
         matched = False
+        
         if operator == "equals":
-            matched = (user_lower == value.lower())
+            matched = (user_lower == condition_text.lower())
         elif operator == "contains":
-            matched = (value.lower() in user_lower)
-        elif operator == "llm_match" or not operator:
-            matched = evaluate_condition(user_input, value, google_key=google_key)
+            matched = (condition_text.lower() in user_lower)
+        else:
+            # Default to LLM matching for natural language in values OR labels
+            print(f"DEBUG FlowEngine: Evaluating intent for edge '{label}' with condition logic '{condition_text}'")
+            matched = evaluate_condition(user_input, condition_text, google_key=google_key)
             
-        print(f"DEBUG FlowEngine: Evaluating edge to {edge['target']} | Cond: {value} | Match: {matched}")
         if matched:
+            print(f"DEBUG FlowEngine: Successfully matched edge to {edge['target']} ({label})")
             return [edge["target"]]
+    
+    # 3. Fallback: Only use the first edge that had NO label and NO condition
     if best_fallback:
-        print(f"DEBUG FlowEngine: No matches found, using best explicit fallback: {best_fallback}")
+        print(f"DEBUG FlowEngine: No matches found, using explicit fallback: {best_fallback}")
         return [best_fallback]
     
-    print(f"DEBUG FlowEngine: No matches found for input '{user_input}' and no fallback edge exists.")
+    print(f"DEBUG FlowEngine: No matches found for input '{user_input}' and no fallback exists.")
     return []
 
 
