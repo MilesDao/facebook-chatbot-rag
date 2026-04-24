@@ -25,24 +25,24 @@ def evaluate_condition(user_message: str, condition_text: str, google_key: str =
     client = genai.Client(api_key=api_key)
 
     system_instruction = """
-    You are a logic evaluator for a chatbot flow system. 
-    Your task is to determine if a given user message satisfies a specific condition.
+    You are a precise logic evaluator for a chatbot flow system. 
+    Your task is to determine if a user's message satisfies a specific condition.
     
-    Conditions are expressed in natural language.
-    Example conditions:
-    - "User wants to buy something"
-    - "User is asking about pricing"
-    - "User seems angry or frustrated"
-    - "User is saying goodbye"
+    CRITICAL RULES:
+    1. If the message explicitly denies or is opposite to the condition, return {"match": false}.
+    2. "Yes" does not match a "No" condition. "No" does not match a "Yes" condition.
+    3. Be strict: if there is ambiguity, consider the most likely intent in a conversation.
+    4. Ignore case and minor typos.
     
     You MUST respond with a valid JSON object matching the schema: {"match": boolean, "reason": "string"}.
     """
     
     prompt = f"""
-    Condition to check: "{condition_text}"
-    User Message: "{user_message}"
+    Evaluate this match:
+    - User Message: "{user_message}"
+    - Condition: "{condition_text}"
     
-    Does the message satisfy the condition?
+    Does the message content clearly satisfy the meaning of the condition?
     """
     
     max_retries = 2

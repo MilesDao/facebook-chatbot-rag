@@ -175,33 +175,50 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
     if not outgoing:
         return []
     
-    # If user input provided, try to match edge conditions
-    if user_input:
-        user_lower = user_input.lower().strip()
-        for edge in outgoing:
-            label = (edge.get("label") or "").lower().strip()
-            condition = edge.get("condition") or {}
-            
-            # Match by label (quick reply text)
-            if label and label in user_lower:
-                return [edge["target"]]
-            
-            # Match by condition
-            if condition:
-                # Simple string equality check
-                if condition.get("operator") == "equals":
-                    if user_lower == str(condition.get("value", "")).lower():
-                        return [edge["target"]]
-                elif condition.get("operator") == "contains":
-                    if str(condition.get("value", "")).lower() in user_lower:
-                        return [edge["target"]]
-                elif condition.get("operator") == "llm_match":
-                    # Use LLM to evaluate natural language condition
-                    condition_text = str(condition.get("value", ""))
-                    if evaluate_condition(user_input, condition_text):
-                        return [edge["target"]]
+    # 1. Match by label (highest priority, e.g. Quick Reply buttons)
+    user_lower = user_input.lower().strip()
+    for edge in outgoing:
+        label = (edge.get("label") or "").lower().strip()
+        if label and label in user_lower:
+            return [edge["target"]]
     
-    # Default: return first edge target (fallback)
+    # 2. Match by explicit conditions
+    best_fallback = None
+    for edge in outgoing:
+        condition = edge.get("condition")
+        if not condition or not isinstance(condition, dict):
+            if not best_fallback:
+                best_fallback = edge["target"]
+            continue
+            
+        operator = condition.get("operator")
+        value = str(condition.get("value", ""))
+        
+        if not value:
+            if not best_fallback:
+                best_fallback = edge["target"]
+            continue
+
+        # Evaluate based on operator
+        matched = False
+        if operator == "equals":
+            matched = (user_lower == value.lower())
+        elif operator == "contains":
+            matched = (value.lower() in user_lower)
+        elif operator == "llm_match" or not operator:
+            # If no operator is specified but a value exists, we treat it as an LLM condition
+            # as requested by the user ("LLM would read it and check")
+            matched = evaluate_condition(user_input, value, google_key=google_key)
+            
+        if matched:
+            return [edge["target"]]
+    
+    # 3. Fallback: return the first edge that had no condition (if any)
+    if best_fallback:
+        return [best_fallback]
+    
+    # 4. Ultimate fallback: if everything failed but there are outgoing edges, 
+    # we return the first one to avoid dead ends (standard flow behavior)
     if outgoing:
         return [outgoing[0]["target"]]
     
