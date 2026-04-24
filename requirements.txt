@@ -4,8 +4,9 @@ uvicorn
 python-multipart
 requests
 
-# AI & LLM (Google GenAI Official SDK)
+# AI & LLM (Google & OpenRouter)
 google-genai
+openai
 langchain-text-splitters
 pypdf
 Pillow

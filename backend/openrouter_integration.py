@@ -1,13 +1,12 @@
 import os
 import time
 import openai
-import json  # Import json for parsing
+import json
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-
 
 # --- 1. ĐỊNH NGHĨA KHUÔN DỮ LIỆU ĐẦU RA (STRUCTURED OUTPUT SCHEMA) ---
 class BotResponse(BaseModel):
@@ -18,7 +17,10 @@ class BotResponse(BaseModel):
         description="Điểm tự tin của câu trả lời từ 0.0 đến 1.0 (1.0 là cực kỳ chắc chắn vì có dữ liệu trong Context)."
     )
     needs_human: bool = Field(
-        description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quádef clean_llm_answer(text: str) -> str:
+        description="Trả về True nếu user đang cáu gắt, hoặc hỏi những câu quá khó cần nhân viên hỗ trợ."
+    )
+
+def clean_llm_answer(text: str) -> str:
     """
     Handle models that leak structured output (double curly braces JSON) into the answer string.
     Example: "Chào bạn!{{ { 'content': '...', 'tone': 'friendly' } }}" -> "Chào bạn! ..."

@@ -342,8 +342,8 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         return None
     
     node = node_res.data[0]
-    node_type = node.get("type")
-    node_data = node.get("data") or {}
+    node_type = node.get("node_type")
+    node_data = node.get("config") or {}
     
     reply = None
     
