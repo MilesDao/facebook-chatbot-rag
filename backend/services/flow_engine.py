@@ -164,7 +164,10 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
     if not outgoing:
         return []
     
-    # 2. Check all edges (prioritise conditions, then descriptive labels)
+    # Fetch all nodes in the flow to check target node labels if needed
+    nodes = get_flow_nodes(flow_id)
+    node_map = {n["id"]: n for n in nodes}
+    
     user_input = user_input or ""
     user_lower = user_input.lower().strip()
     best_fallback = None
@@ -177,8 +180,17 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
         # Determine the "logic text" to evaluate
         condition_text = str(condition.get("value", "")).strip()
         if not condition_text and label:
-            # If there's a label but no condition value, use the label as the intent to match
             condition_text = label
+            
+        # NEW: If still no condition text, check the label of the target node itself!
+        # This handles "logic" or "condition" nodes where the name is the condition.
+        if not condition_text:
+            target_node = node_map.get(edge["target"], {})
+            node_label = (target_node.get("label") or "").strip()
+            # If the node label looks like a condition, use it.
+            if node_label:
+                condition_text = node_label
+                print(f"DEBUG FlowEngine: Using target node label as condition text: '{condition_text}'")
         
         # If there is absolutely no logic text, this is a potential fallback/default edge
         if not condition_text:
