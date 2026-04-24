@@ -172,13 +172,13 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
         condition = edge.get("condition") or {}
         label = (edge.get("label") or "").strip()
         
+        print(f"DEBUG FlowEngine: Edge {edge['id']} | Raw Label: '{label}' | Raw Cond: {condition}")
+        
         # Determine the "logic text" to evaluate
-        # If the user put the condition in the 'value' field OR the 'label' field, we should check it.
         condition_text = str(condition.get("value", "")).strip()
         if not condition_text and label:
-            # If the label is more than a simple word, treat it as a condition
-            if len(label.split()) > 1 or label.lower() in ["đồng ý", "không đồng ý", "phủ nhận"]:
-                condition_text = label
+            # If there's a label but no condition value, use the label as the intent to match
+            condition_text = label
         
         # If there is absolutely no logic text, this is a potential fallback/default edge
         if not condition_text:
