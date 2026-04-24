@@ -81,7 +81,7 @@ def create_workspace(name: str, industry: str, owner_id: str) -> dict:
             "page_access_token": "",
             "google_api_key": "",
             "page_id": "",
-            "llm_model": "google/gemini-3.1-flash-lite-preview",
+            "llm_model": "gemini-3.1-flash-lite-preview",
             "system_prompt": template["default_system_prompt"] if template else "",
             "slot_definitions": template["default_slot_definitions"] if template else "[]"
         }

@@ -85,7 +85,11 @@ def retrieve_context(user_message: str, match_threshold: float = 0.5, match_coun
     for doc in data:
         content = doc.get('content', '')
         score = doc.get('similarity', 0.0)
-        print(f"DEBUG: Found chunk with score {score:.4f}: {content[:50]}...")
+        try:
+            f_score = float(score)
+            print(f"DEBUG: Found chunk with score {f_score:.4f}: {content[:50]}...")
+        except:
+            print(f"DEBUG: Found chunk with score {score}: {content[:50]}...")
         if content:
              contexts.append(str(content))
              

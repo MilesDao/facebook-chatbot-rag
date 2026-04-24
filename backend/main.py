@@ -45,7 +45,7 @@ class BotSettingsUpdate(BaseModel):
     google_api_key: str = Field(..., min_length=15)
     page_id: str = Field(..., min_length=10, pattern=r"^\d+$")
     verify_token: Optional[str] = Field("tuyensinh2026", min_length=5)
-    llm_model: Optional[str] = Field("google/gemini-3.1-flash-lite-preview")
+    llm_model: Optional[str] = Field("gemini-3.1-flash-lite-preview")
     app_secret: Optional[str] = Field(None, min_length=32, max_length=32)
     system_prompt: Optional[str] = Field(None)
     slot_definitions: Optional[str] = Field(None)  # JSON string
@@ -550,7 +550,7 @@ def process_message(sender_id: str, user_message: str, page_id: str):
     send_fb_action(sender_id, "typing_on", token)
     
     try:
-        llm_model = settings.get("llm_model") or "google/gemini-3.1-flash-lite-preview"
+        llm_model = settings.get("llm_model") or "gemini-3.1-flash-lite-preview"
         system_prompt = settings.get("system_prompt")
         print(f"Generating AI response for: {user_message[:50]}... using model {llm_model}")
         
@@ -727,89 +727,14 @@ async def get_user_documents(request: Request, current_user: dict = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/handoffs")
-async def get_handoffs(request: Request, current_user: dict = Depends(get_current_user)):
-    """Fetch all handoff requests for the current workspace."""
-    workspace_id = request.headers.get("x-workspace-id")
-    if not workspace_id:
-        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Database not configured")
-    try:
-        response = supabase.table("handoffs").select("*").eq("workspace_id", workspace_id).order("created_at", desc=True).limit(100).execute()
-        return response.data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/handoffs/{handoff_id}/chat-link")
-async def get_chat_link(handoff_id: str, request: Request, current_user: dict = Depends(get_current_user)):
-    """Fetch the direct Business Suite chat link for a conversation."""
-    workspace_id = request.headers.get("x-workspace-id")
-    if not workspace_id:
-        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Database not configured")
-        
-    try:
-        response = supabase.table("handoffs").select("sender_id").eq("id", handoff_id).eq("workspace_id", workspace_id).execute()
-        if not response.data:
-            raise HTTPException(status_code=404, detail="Handoff not found or unauthorized")
-            
-        sender_id = response.data[0]["sender_id"]
-        
-        settings_res = supabase.table("bot_settings").select("page_access_token").eq("workspace_id", workspace_id).limit(1).execute()
-        if not settings_res.data or not settings_res.data[0].get("page_access_token"):
-            raise HTTPException(status_code=400, detail="Page Access Token not configured")
-            
-        token = settings_res.data[0]["page_access_token"]
-        
-        url = f"https://graph.facebook.com/v21.0/me/conversations?user_id={sender_id}&access_token={token}"
-        r = requests.get(url)
-        r.raise_for_status()
-        data = r.json()
-        
-        if "data" in data and len(data["data"]) > 0:
-            link = data["data"][0].get("link")
-            if link:
-                return {"status": "success", "link": link}
-                
-        return {"status": "success", "link": f"https://business.facebook.com/latest/inbox/all?selected_item_id={sender_id}"}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/handoffs/{handoff_id}/resolve")
-async def resolve_handoff(handoff_id: str, request: Request, current_user: dict = Depends(get_current_user)):
-    """Mark a handoff as resolved."""
+@app.get("/api/messages/{sender_id}")
+async def get_messages(sender_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    """Fetch chat history for a specific sender_id."""
     workspace_id = request.headers.get("x-workspace-id")
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
     try:
-        response = supabase.table("handoffs").update({"status": "resolved"}).eq("id", handoff_id).eq("workspace_id", workspace_id).execute()
-        return {"status": "success", "data": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.put("/api/handoffs/{handoff_id}/restore")
-async def restore_handoff(handoff_id: str, request: Request, current_user: dict = Depends(get_current_user)):
-    """Restore a resolved handoff back to active status."""
-    workspace_id = request.headers.get("x-workspace-id")
-    if not workspace_id:
-        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
-    try:
-        response = supabase.table("handoffs").update({"status": "active"}).eq("id", handoff_id).eq("workspace_id", workspace_id).execute()
-        return {"status": "success", "data": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/api/handoffs/{handoff_id}")
-async def delete_handoff(handoff_id: str, request: Request, current_user: dict = Depends(get_current_user)):
-    """Permanently delete a handoff."""
-    workspace_id = request.headers.get("x-workspace-id")
-    if not workspace_id:
-        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
-    try:
-        response = supabase.table("handoffs").delete().eq("id", handoff_id).eq("workspace_id", workspace_id).execute()
+        response = supabase.table("chat_history").select("*").eq("sender_id", sender_id).eq("workspace_id", workspace_id).order("created_at", desc=False).execute()
         return {"status": "success", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -897,10 +822,9 @@ async def pause_sender(sender_id: str, request: Request, current_user: dict = De
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
     try:
-        supabase.table("paused_senders").upsert(
-            {"workspace_id": workspace_id, "sender_id": sender_id},
-            on_conflict="workspace_id,sender_id"
-        ).execute()
+        # Idempotent approach: ensure old one is gone then insert new
+        supabase.table("paused_senders").delete().eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
+        supabase.table("paused_senders").insert({"workspace_id": workspace_id, "sender_id": sender_id}).execute()
         return {"status": "success", "paused": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -915,6 +839,46 @@ async def resume_sender(sender_id: str, request: Request, current_user: dict = D
         supabase.table("paused_senders").delete().eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
         return {"status": "success", "paused": False}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/senders/{sender_id}")
+async def delete_sender_endpoint(sender_id: str, request: Request, current_user: dict = Depends(get_current_user)):
+    """Delete all data for a specific sender in the current workspace."""
+    workspace_id = request.headers.get("x-workspace-id")
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
+    
+    try:
+        # 1. Clean up Storage: user PDFs
+        try:
+            pdf_res = supabase.table("user_generated_pdfs").select("pdf_url").eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
+            if pdf_res.data:
+                # Extract filenames from URLs
+                files_to_remove = []
+                for row in pdf_res.data:
+                    url = row.get("pdf_url", "")
+                    if "user_documents/" in url:
+                        filename = url.split("user_documents/")[-1]
+                        files_to_remove.append(filename)
+                
+                if files_to_remove:
+                    print(f"DEBUG: Removing {len(files_to_remove)} PDF files from storage for sender {sender_id}")
+                    supabase.storage.from_("user_documents").remove(files_to_remove)
+        except Exception as se:
+            print(f"WARNING: Failed to clean up storage for sender {sender_id}: {se}")
+
+        # 2. Database Tables Cleanup (with workspace context)
+        tables = ["chat_history", "conversation_context", "paused_senders", "user_generated_pdfs", "handoffs", "logs"]
+        for table in tables:
+            supabase.table(table).delete().eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
+            
+        # 3. Clean up chat_message_buffer (sender_id based)
+        supabase.table("chat_message_buffer").delete().eq("sender_id", sender_id).execute()
+            
+        print(f"DEBUG: Fully deleted sender {sender_id} from workspace {workspace_id}")
+        return {"status": "success"}
+    except Exception as e:
+        print(f"ERROR: Failed to delete sender {sender_id}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -947,7 +911,9 @@ async def resolve_facebook_names(request: Request, current_user: dict = Depends(
     import requests # Local import to ensure it's available
     names = {}
 
-    for psid in sender_ids[:50]:
+    import asyncio
+    
+    def fetch_name(psid: str) -> dict:
         try:
             url = f"https://graph.facebook.com/v21.0/{psid}?fields=first_name,last_name,profile_pic&access_token={token}"
             r = requests.get(url, timeout=5)
@@ -956,14 +922,21 @@ async def resolve_facebook_names(request: Request, current_user: dict = Depends(
                 first = data.get("first_name", "")
                 last = data.get("last_name", "")
                 fullName = f"{first} {last}".strip()
-                names[psid] = {
+                return {
+                    "psid": psid,
                     "name": fullName or psid,
                     "profile_pic": data.get("profile_pic", "")
                 }
-            else:
-                names[psid] = {"name": psid, "profile_pic": ""}
-        except Exception as e:
-            names[psid] = {"name": psid, "profile_pic": ""}
+            return {"psid": psid, "name": psid, "profile_pic": ""}
+        except Exception:
+            return {"psid": psid, "name": psid, "profile_pic": ""}
+
+    loop = asyncio.get_running_loop()
+    tasks = [loop.run_in_executor(None, fetch_name, psid) for psid in sender_ids[:50]]
+    results = await asyncio.gather(*tasks)
+    
+    for res in results:
+        names[res["psid"]] = {"name": res["name"], "profile_pic": res["profile_pic"]}
 
     return {"names": names}
 

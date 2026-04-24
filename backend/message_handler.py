@@ -16,10 +16,9 @@ from .rag_pipeline import retrieve_context
 from .google_ai_integration import generate_response
 from .services.history_service import add_message, get_history
 from .services.flow_engine import process_flow_interaction
-from .handoff import trigger_handoff
 from .analytics import log_interaction
 
-def handle_message(sender_id: str, user_message: str, workspace_id: str = None, google_key: str = None, llm_model: str = "google/gemini-3.1-flash-lite-preview", system_prompt: str = None):
+def handle_message(sender_id: str, user_message: str, workspace_id: str = None, google_key: str = None, llm_model: str = "gemini-3.1-flash-lite-preview", system_prompt: str = None):
     """
     Orchestrate the AI message flow:
     1. Try Visual Flow Engine first (Stateful)
@@ -61,11 +60,9 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
             api_key=google_key
         )
     
-    # 4. Check confidence for handoff
+    # 4. Check confidence (Handoff deactivated)
     handoff_triggered = False
-    if confidence_score < 0.3 and intent != "CHITCHAT":
-        trigger_handoff(sender_id, user_message, confidence_score, workspace_id=workspace_id)
-        handoff_triggered = True
+    # trigger_handoff calls removed per user request
         
     # 5. Generate Response using Google AI
     bot_res = generate_response(
@@ -79,10 +76,8 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
     
     ai_reply = bot_res.answer
     
-    # 6. Decide handoff if LLM flagged it
-    if bot_res.needs_human and not handoff_triggered:
-        trigger_handoff(sender_id, user_message, bot_res.confidence_score, workspace_id=workspace_id)
-        handoff_triggered = True
+    # 6. Decide handoff (Handoff deactivated)
+    # trigger_handoff calls removed per user request
 
     # 7. Log analytics
     try:

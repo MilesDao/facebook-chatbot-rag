@@ -10,9 +10,10 @@ Responsibilities:
 from ..database import supabase
 
 
-def get_active_flow_for_message(workspace_id: str, user_message: str) -> dict:
+def get_active_flow_for_message(workspace_id: str, sender_id: str, user_message: str) -> dict:
     """
     Find a matching active flow based on trigger keywords.
+    For the first 2 messages (regardless of input), it prioritizes the DEFAULT flow.
     Returns the flow dict or None.
     """
     if not supabase:
@@ -28,20 +29,32 @@ def get_active_flow_for_message(workspace_id: str, user_message: str) -> dict:
         
         if not res.data:
             return None
+
+        # 1. SPECIAL LOGIC: Force DEFAULT flow for first 2 messages
+        from .history_service import get_history
+        history = get_history(sender_id, limit=10, workspace_id=workspace_id)
+        user_msg_count = len([m for m in history if m.get("role") == "user"])
+        
+        if user_msg_count < 2:
+            for flow in res.data:
+                if flow.get("is_default"):
+                    print(f"DEBUG: Forcing Default Flow for message #{user_msg_count + 1}")
+                    return flow
         
         msg_lower = user_message.lower()
         
-        # Check keyword triggers
+        # 2. Check keyword triggers
         for flow in res.data:
             keywords = flow.get("trigger_keywords") or []
             for kw in keywords:
                 if kw.lower() in msg_lower:
                     return flow
         
-        # Return default flow if exists
-        for flow in res.data:
-            if flow.get("is_default"):
-                return flow
+        # 3. Return default flow ONLY for first 2 messages
+        if user_msg_count < 2:
+            for flow in res.data:
+                if flow.get("is_default"):
+                    return flow
         
         return None
         
@@ -125,7 +138,14 @@ def get_sender_context(workspace_id: str, sender_id: str) -> dict:
         
     except Exception as e:
         print(f"Error getting sender context: {e}")
-        return None
+        # Return a fallback context to allow stateless logic to proceed
+        return {
+            "workspace_id": workspace_id,
+            "sender_id": sender_id,
+            "extracted_slots": {},
+            "current_flow_id": None,
+            "current_node_id": None
+        }
 
 
 def update_sender_context(workspace_id: str, sender_id: str, updates: dict):
@@ -149,7 +169,7 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None) -
     edges = get_flow_edges(flow_id)
     
     # Filter edges from current node
-    outgoing = [e for e in edges if e["source_node_id"] == current_node_id]
+    outgoing = [e for e in edges if e["source"] == current_node_id]
     
     if not outgoing:
         return []
@@ -163,21 +183,21 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None) -
             
             # Match by label (quick reply text)
             if label and label in user_lower:
-                return [edge["target_node_id"]]
+                return [edge["target"]]
             
             # Match by condition
             if condition:
                 # Simple string equality check
                 if condition.get("operator") == "equals":
                     if user_lower == str(condition.get("value", "")).lower():
-                        return [edge["target_node_id"]]
+                        return [edge["target"]]
                 elif condition.get("operator") == "contains":
                     if str(condition.get("value", "")).lower() in user_lower:
-                        return [edge["target_node_id"]]
+                        return [edge["target"]]
     
     # Default: return first edge target (fallback)
     if outgoing:
-        return [outgoing[0]["target_node_id"]]
+        return [outgoing[0]["target"]]
     
     return []
 
@@ -190,7 +210,7 @@ def get_start_node(flow_id: str) -> dict:
     
     # Find node with no incoming edges (start node)
     edges = get_flow_edges(flow_id)
-    target_ids = {e["target_node_id"] for e in edges}
+    target_ids = {e["target"] for e in edges}
     
     for node in nodes:
         if node["id"] not in target_ids:
@@ -226,6 +246,15 @@ def update_flow(flow_id: str, updates: dict) -> dict:
     if not supabase:
         raise Exception("Database not initialized")
     try:
+        # If setting as default, unset other flows in the same workspace
+        if updates.get("is_default") is True:
+            # 1. Get workspace_id for this flow
+            flow_res = supabase.table("conversation_flows").select("workspace_id").eq("id", flow_id).limit(1).execute()
+            if flow_res.data:
+                workspace_id = flow_res.data[0]["workspace_id"]
+                # 2. Unset others
+                supabase.table("conversation_flows").update({"is_default": False}).eq("workspace_id", workspace_id).execute()
+
         res = supabase.table("conversation_flows").update(updates).eq("id", flow_id).execute()
         return res.data[0] if res.data else None
     except Exception as e:
@@ -311,19 +340,44 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
     current_flow_id = ctx.get("current_flow_id")
     current_node_id = ctx.get("current_node_id")
 
+    # 1. SPECIAL LOGIC: Determine current position based on history for first 2 messages
+    from .history_service import get_history
+    history = get_history(sender_id, limit=5, workspace_id=workspace_id)
+    user_msg_count = len([m for m in history if m.get("role") == "user"])
+
     flow = None
-    if current_flow_id:
+    if user_msg_count < 2:
+        # For the first 2 messages, we ignore existing context and force the Default flow
+        res = supabase.table("conversation_flows").select("*").eq("workspace_id", workspace_id).eq("is_default", True).execute()
+        if res.data:
+            flow = res.data[0]
+            start_node = get_start_node(flow["id"])
+            if user_msg_count == 0:
+                current_node_id = start_node["id"] if start_node else None
+            else:
+                # For message #2, jump to the node after start_node
+                if start_node:
+                    next_ids = get_next_nodes(flow["id"], start_node["id"])
+                    current_node_id = next_ids[0] if next_ids else start_node["id"]
+            
+            current_flow_id = flow["id"]
+            # Even if DB update fails due to missing columns, we have our local state
+            update_sender_context(workspace_id, sender_id, {
+                "current_flow_id": current_flow_id,
+                "current_node_id": current_node_id
+            })
+    
+    if not flow and current_flow_id:
         # User is already in a flow, try to continue
         res = supabase.table("conversation_flows").select("*").eq("id", current_flow_id).execute()
         if res.data:
             flow = res.data[0]
     
     if not flow:
-        # Check if new flow is triggered
-        flow = get_active_flow_for_message(workspace_id, user_message)
+        # Check if new flow is triggered via keyword
+        flow = get_active_flow_for_message(workspace_id, sender_id, user_message)
         if flow:
             current_flow_id = flow["id"]
-            # Get start node
             start_node = get_start_node(current_flow_id)
             current_node_id = start_node["id"] if start_node else None
             update_sender_context(workspace_id, sender_id, {
@@ -342,8 +396,8 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         return None
     
     node = node_res.data[0]
-    node_type = node.get("type")
-    node_data = node.get("data") or {}
+    node_type = node.get("node_type")
+    node_data = node.get("config") or {}
     
     reply = None
     
@@ -354,9 +408,8 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         # Or we can call it here. For simplicity, let's just return None to let handle_message do it.
         return None
     elif node_type == "handoff":
-        from ..handoff import trigger_handoff
-        trigger_handoff(sender_id, user_message, 0.0, workspace_id=workspace_id)
-        reply = "Đã chuyển kết nối tới nhân viên hỗ trợ. Vui lòng đợi trong giây lát."
+        # Handoff functionality removed per user request
+        reply = "Tính năng chuyển tiếp nhân viên hiện đang được bảo trì. Vui lòng quay lại sau."
     elif node_type == "logic":
         # If it's a logic node, we might need to check keywords to decide where to go
         pass
