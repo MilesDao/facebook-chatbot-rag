@@ -15,22 +15,24 @@ if not url or not key:
 supabase: Client = create_client(url, key)
 
 try:
-    print(f"Checking table 'bot_settings' at {url}...")
-    # This will trigger a schema check if we ask for keys
-    res = supabase.table("bot_settings").select("*").limit(1).execute()
-    print("Columns found in bot_settings result:")
+    print(f"Checking table 'conversation_context' at {url}...")
+    # List all columns from information_schema
+    query = f"SELECT column_name, is_nullable, column_default FROM information_schema.columns WHERE table_name = 'conversation_context'"
+    # Note: supabase-py doesn't support raw SQL easily without RPC. 
+    # We'll try to insert a dummy row to see all columns in the error message if it fails, 
+    # or select * and check keys.
+    
+    res = supabase.table("conversation_context").select("*").limit(1).execute()
+    print("Columns found in conversation_context result:")
     if res.data:
         print(list(res.data[0].keys()))
     else:
-        print("Table is empty, cannot determine columns from data.")
-        
-    # Check if user_id is mentioned in any lingering way
-    print("\nAttempting to specifically select 'user_id' to see if it exists but is hidden...")
-    try:
-        res2 = supabase.table("bot_settings").select("user_id").limit(1).execute()
-        print("SUCCESS: 'user_id' actually exists in the database!")
-    except Exception as e:
-        print(f"EXPECTED ERROR: 'user_id' is indeed missing or inaccessible: {e}")
+        print("Table is empty. Attempting to determine schema via dummy insert...")
+        try:
+            # Try to insert empty to trigger not-null errors which reveal column names
+            supabase.table("conversation_context").insert({}).execute()
+        except Exception as e:
+            print(f"Schema Info from Error: {e}")
 
 except Exception as e:
     print(f"Error during diagnostic: {e}")

@@ -4,7 +4,16 @@ import { useState, useEffect, useCallback } from "react";
 import { apiFetch } from "@/lib/auth";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { useLanguage } from "@/components/LanguageContext";
-import { GitBranch, Plus, Trash2, Play, Pause, Edit3, ChevronRight } from "lucide-react";
+import {
+    GitBranch,
+    Plus,
+    Trash2,
+    Play,
+    Pause,
+    Edit3,
+    ChevronRight,
+    Star
+} from "lucide-react";
 import Link from "next/link";
 
 interface Flow {
@@ -77,6 +86,18 @@ export default function FlowsPage() {
         if (!confirm(t('flows.deleteConfirm'))) return;
         try {
             await apiFetch(`/api/flows/${flowId}`, { method: "DELETE" });
+            fetchFlows();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function setDefaultFlow(flow: Flow) {
+        try {
+            await apiFetch(`/api/flows/${flow.id}`, {
+                method: "PUT",
+                body: JSON.stringify({ is_default: !flow.is_default }),
+            });
             fetchFlows();
         } catch (e) {
             console.error(e);
@@ -242,13 +263,19 @@ export default function FlowsPage() {
                                     {flow.is_default && (
                                         <span style={{
                                             marginLeft: 8,
-                                            padding: "2px 8px",
-                                            background: "var(--accent-alpha)",
-                                            color: "var(--accent)",
-                                            borderRadius: 6,
-                                            fontSize: 11,
-                                            fontWeight: 500,
+                                            padding: "4px 10px",
+                                            background: "rgba(234, 179, 8, 0.15)",
+                                            color: "#eab308",
+                                            borderRadius: 8,
+                                            fontSize: 10,
+                                            fontWeight: 800,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
                                         }}>
+                                            <Star size={10} fill="#eab308" />
                                             {t('flows.defaultFlow')}
                                         </span>
                                     )}
@@ -261,6 +288,21 @@ export default function FlowsPage() {
                                 </div>
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                    onClick={() => setDefaultFlow(flow)}
+                                    title={flow.is_default ? "Unset Default" : "Set as Default"}
+                                    style={{
+                                        padding: 8,
+                                        background: flow.is_default ? "rgba(234, 179, 8, 0.1)" : "var(--card-bg)",
+                                        border: "1px solid " + (flow.is_default ? "#eab308" : "var(--card-border)"),
+                                        borderRadius: 8,
+                                        cursor: "pointer",
+                                        color: flow.is_default ? "#eab308" : "var(--text-muted)",
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                >
+                                    <Star size={16} fill={flow.is_default ? "#eab308" : "transparent"} />
+                                </button>
                                 <button
                                     onClick={() => toggleActive(flow)}
                                     // Bọc tooltip Title khi hover

@@ -27,26 +27,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    apiFetch("/api/settings/language")
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data && data.value && (data.value === "en" || data.value === "vi")) {
-          setLanguageState(data.value);
-        }
-      })
-      .catch(err => console.error("Failed to load language settings:", err));
+    const savedLang = localStorage.getItem("app_language");
+    if (savedLang === "en" || savedLang === "vi") {
+      setLanguageState(savedLang as Language);
+    }
   }, []);
 
-  const setLanguage = async (newLang: Language) => {
+  const setLanguage = (newLang: Language) => {
     setLanguageState(newLang);
-    try {
-      await apiFetch("/api/settings", {
-        method: "POST",
-        body: JSON.stringify({ setting_key: "language", setting_value: newLang })
-      });
-    } catch (err) {
-      console.error("Failed to save language settings:", err);
-    }
+    localStorage.setItem("app_language", newLang);
   };
 
   const t = (key: string): string => {

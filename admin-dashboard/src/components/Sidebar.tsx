@@ -26,8 +26,7 @@ export function Sidebar() {
   // Determine if we are "Inside" a bot's building sections
   const isInsideBot = pathname.includes('/flows') ||
     pathname.includes('/knowledge') ||
-    pathname.includes('/analytics') ||
-    pathname.includes('/handoffs');
+    pathname.includes('/analytics');
 
   const wsId = currentWorkspace?.id;
 
@@ -186,9 +185,6 @@ export function Sidebar() {
             <Link href={`/w/${wsId}/knowledge`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.knowledge") : ""} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Database size={16} /> {!isSidebarCollapsed && t("nav.knowledge")}
             </Link>
-            <Link href={`/w/${wsId}/handoffs`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.handoffs") : ""} className={`nav-item ${pathname.includes('/handoffs') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <Inbox size={16} /> {!isSidebarCollapsed && t("nav.handoffs")}
-            </Link>
             <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.documents") || "Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <FileText size={16} /> {!isSidebarCollapsed && (t("nav.documents") || "Documents")}
             </Link>
@@ -217,4 +213,4 @@ export function Sidebar() {
     </aside>
   );
 }
- 
+
