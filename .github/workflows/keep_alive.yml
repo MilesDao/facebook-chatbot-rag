@@ -2,15 +2,15 @@ name: 🏓 Keep Alive - Ping Server
 
 on:
   schedule:
-    # Runs every 15 minutes
-    - cron: '*/15 * * * *'
+    # Runs every 14 minutes to keep the server awake (Render spins down after 15m)
+    - cron: '*/14 * * * *'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
   ping:
     name: Ping Health Endpoint
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: 🔍 Ping Server with Retry
@@ -18,9 +18,14 @@ jobs:
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: |
+          if [ -z "$API_BASE_URL" ]; then
+            echo "❌ ERROR: API_BASE_URL secret is not set!"
+            exit 1
+          fi
+
           HEALTH_URL="${API_BASE_URL}/health"
-          MAX_RETRIES=3
-          RETRY_DELAY=10
+          MAX_RETRIES=5
+          RETRY_DELAY=15
           SUCCESS=false
 
           echo "🎯 Target: $HEALTH_URL"
@@ -34,14 +39,14 @@ jobs:
               --silent \
               --output /dev/null \
               --write-out "%{http_code}" \
-              --max-time 30 \
-              --connect-timeout 15 \
+              --max-time 45 \
+              --connect-timeout 20 \
               "$HEALTH_URL")
 
             echo "📡 HTTP Status: $HTTP_STATUS"
 
-            if [ "$HTTP_STATUS" -eq 200 ]; then
-              echo "✅ Server is alive! (HTTP 200 OK)"
+            if [ "$HTTP_STATUS" -eq 200 ] || [ "$HTTP_STATUS" -eq 401 ]; then
+              echo "✅ Server is alive! (HTTP $HTTP_STATUS)"
               SUCCESS=true
               break
             else
@@ -58,3 +63,4 @@ jobs:
             echo "❌ All $MAX_RETRIES attempts failed. Last HTTP status: $HTTP_STATUS"
             exit 1
           fi
+
