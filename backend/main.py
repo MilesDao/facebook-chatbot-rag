@@ -815,6 +815,25 @@ async def get_paused_senders(request: Request, current_user: dict = Depends(get_
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/senders/phones")
+async def get_senders_phones(request: Request, current_user: dict = Depends(get_current_user)):
+    """Get detected phone numbers for all senders in workspace."""
+    workspace_id = request.headers.get("x-workspace-id")
+    if not workspace_id:
+        raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
+    try:
+        response = supabase.table("conversation_context").select("sender_id, detected_phone").eq("workspace_id", workspace_id).execute()
+        phones = {}
+        if response.data:
+            for row in response.data:
+                sender_id = row.get("sender_id")
+                phone = row.get("detected_phone")
+                if sender_id and phone:
+                    phones[sender_id] = phone
+        return {"phones": phones}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/senders/{sender_id}/pause")
 async def pause_sender(sender_id: str, request: Request, current_user: dict = Depends(get_current_user)):
     """Pause AI responses for a specific sender."""

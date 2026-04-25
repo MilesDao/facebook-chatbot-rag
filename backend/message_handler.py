@@ -17,6 +17,8 @@ from .google_ai_integration import generate_response
 from .services.history_service import add_message, get_history
 from .services.flow_engine import process_flow_interaction
 from .analytics import log_interaction
+from .phone_detector import extract_phone_from_message
+from .database import get_supabase_client
 
 def handle_message(sender_id: str, user_message: str, workspace_id: str = None, google_key: str = None, llm_model: str = "gemini-3.1-flash-lite-preview", system_prompt: str = None):
     """
@@ -24,6 +26,14 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
     1. Try Visual Flow Engine first (Stateful)
     2. Fallback to RAG + Intent Classification (Stateless/Contextual)
     """
+    # 0. EXTRACT VIETNAMESE PHONE NUMBER (if present)
+    phone_number, phone_context = extract_phone_from_message(user_message)
+    if phone_number and workspace_id and sender_id:
+        try:
+            _store_detected_phone(workspace_id, sender_id, phone_number, phone_context)
+        except Exception as e:
+            print(f"WARNING: Failed to store detected phone for {sender_id}: {e}")
+    
     # 1. TRY FLOW ENGINE
     if workspace_id:
         flow_reply = process_flow_interaction(workspace_id, sender_id, user_message, google_key=google_key)
@@ -97,3 +107,38 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
         print(f"Memory Error: {e}")
     
     return ai_reply
+
+
+def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, phone_context: dict):
+    """Store detected phone number in conversation context."""
+    try:
+        supabase = get_supabase_client()
+        
+        # Get or create conversation context
+        result = supabase.table("conversation_context").select("id, extracted_slots").eq(
+            "workspace_id", workspace_id
+        ).eq("sender_id", sender_id).execute()
+        
+        extracted_slots = {}
+        if result.data and len(result.data) > 0:
+            extracted_slots = result.data[0].get("extracted_slots", {})
+        
+        # Update extracted_slots with phone information
+        extracted_slots["detected_phone"] = phone_number
+        extracted_slots["phone_context"] = phone_context
+        
+        # Upsert the conversation context with both JSONB and dedicated columns
+        supabase.table("conversation_context").upsert({
+            "workspace_id": workspace_id,
+            "sender_id": sender_id,
+            "extracted_slots": extracted_slots,
+            "detected_phone": phone_number,
+            "phone_confidence": phone_context.get("confidence", 0.0),
+            "phone_triggered_by_keyword": phone_context.get("triggered_by_keyword", False),
+            "updated_at": "now()"
+        }, on_conflict="workspace_id,sender_id").execute()
+        
+        print(f"DEBUG: Stored phone {phone_number} for sender {sender_id}")
+    except Exception as e:
+        print(f"ERROR: Failed to store phone in conversation context: {e}")
+        raise
