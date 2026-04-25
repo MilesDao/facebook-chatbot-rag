@@ -14,20 +14,20 @@ from .history_service import get_history
 from .condition_evaluator import evaluate_condition
 
 
-def _evaluate_slot_condition(condition_text: str, extracted_slots: dict) -> bool | None:
+def _evaluate_slot_logic(logic_text: str, extracted_slots: dict) -> bool | None:
     """
-    Evaluate slot-based condition syntax.
+    Evaluate slot-based logic syntax.
     Supported formats:
       - slot:has_phone
       - slot:has_phone=true
       - slot:has_phone=false
       - slot:industry=it
       - slot:industry!=it
-    Returns True/False if the condition is slot-based, otherwise None.
+    Returns True/False if the expression is slot-based, otherwise None.
     """
-    if not condition_text:
+    if not logic_text:
         return None
-    text = condition_text.strip()
+    text = logic_text.strip()
     if not text.lower().startswith("slot:"):
         return None
 
@@ -246,86 +246,95 @@ def update_sender_context(workspace_id: str, sender_id: str, updates: dict):
         print(f"Error updating sender context: {e}")
 
 
-def get_next_nodes(
-    flow_id: str,
-    current_node_id: str,
-    user_input: str = None,
-    google_key: str = None,
-    extracted_slots: dict = None
-) -> list:
+def get_next_nodes(flow_id: str, current_node_id: str, user_input: str, google_key: str = None, extracted_slots: dict = None) -> list[str]:
     """
-    Get the next nodes from the current node based on edges and optional user input matching.
+    Find the next node(s) based on outgoing edges and user input.
+    Optimized for SPEED:
+    1. Fast Match: Simple string containment.
+    2. Slot Match: Logic starting with 'slot:'.
+    3. Batch Match: All natural language intents evaluated in ONE LLM call.
     """
     edges = get_flow_edges(flow_id)
-    
     # Filter edges from current node
     outgoing = [e for e in edges if e["source"] == current_node_id]
     
     if not outgoing:
         return []
-    
+
     # Fetch all nodes in the flow to check target node labels if needed
     nodes = get_flow_nodes(flow_id)
     node_map = {n["id"]: n for n in nodes}
     
-    user_input = user_input or ""
-    user_lower = user_input.lower().strip()
+    user_input = (user_input or "").strip()
+    user_lower = user_input.lower()
+    
+    candidates = [] # List of (target_id, logic_text, type)
     best_fallback = None
+
     for edge in outgoing:
         condition = edge.get("condition") or {}
         label = (edge.get("label") or "").strip()
         
-        print(f"DEBUG FlowEngine: Edge {edge['id']} | Raw Label: '{label}' | Raw Cond: {condition}")
-        
         # Determine the "logic text" to evaluate
-        condition_text = str(condition.get("value", "")).strip()
-        if not condition_text and label:
-            condition_text = label
+        logic_text = str(condition.get("value", "")).strip()
+        if not logic_text and label:
+            logic_text = label
             
-        # NEW: If still no condition text, check the TARGET NODE for condition info.
-        # LogicNodes store their condition in data.keyword (config.keyword in DB).
-        # get_flow_nodes() transforms config -> data, so we access .data here.
-        if not condition_text:
+        if not logic_text:
             target_node = node_map.get(edge["target"], {})
             target_data = target_node.get("data") or target_node.get("config") or {}
-            # Priority: keyword (condition nodes) > node label
-            node_condition = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
-            if node_condition:
-                condition_text = node_condition
-                print(f"DEBUG FlowEngine: Using target node keyword/label as condition: '{condition_text}'")
+            node_logic = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
+            if node_logic:
+                logic_text = node_logic
         
-        # If there is absolutely no logic text, this is a potential fallback/default edge
-        if not condition_text:
+        if not logic_text:
             if not best_fallback:
                 best_fallback = edge["target"]
             continue
 
-        # Evaluate logic (slot-aware)
-        operator = condition.get("operator")
-        matched = False
+        # 1. FAST MATCH (No LLM needed)
+        # If it's a simple word/phrase (no "Nếu", "Khi", or "slot:"), check containment
+        if not logic_text.startswith("slot:") and len(logic_text.split()) <= 4:
+            clean_logic = logic_text.lower()
+            if clean_logic in user_lower or user_lower in clean_logic:
+                print(f"DEBUG FlowEngine: Fast Match found for '{logic_text}'")
+                return [edge["target"]]
 
-        slot_match = _evaluate_slot_condition(condition_text, extracted_slots or {})
-        if slot_match is not None:
-            matched = slot_match
-        elif operator == "equals":
-            matched = (user_lower == condition_text.lower())
-        elif operator == "contains":
-            matched = (condition_text.lower() in user_lower)
+        # 2. SLOT MATCH (Categorized for later)
+        if logic_text.startswith("slot:"):
+            candidates.append({"id": edge["target"], "logic": logic_text, "type": "slot"})
         else:
-            # Default to LLM matching for natural language in values OR labels
-            print(f"DEBUG FlowEngine: Evaluating intent for edge '{label}' with condition logic '{condition_text}'")
-            matched = evaluate_condition(user_input, condition_text, google_key=google_key)
-            
-        if matched:
-            print(f"DEBUG FlowEngine: Successfully matched edge to {edge['target']} ({label})")
-            return [edge["target"]]
+            # 3. LLM CANDIDATE (Categorized for batch processing)
+            candidates.append({"id": edge["target"], "logic": logic_text, "type": "llm"})
+
+    # Evaluate candidates
+    llm_prompts = []
+    llm_targets = []
     
-    # 3. Fallback: Only use the first edge that had NO label and NO condition
+    for cand in candidates:
+        if cand["type"] == "slot":
+            res = _evaluate_slot_logic(cand["logic"], extracted_slots or {})
+            if res is True:
+                print(f"DEBUG FlowEngine: Slot Match found for '{cand['logic']}'")
+                return [cand["id"]]
+        else:
+            llm_prompts.append(cand["logic"])
+            llm_targets.append(cand["id"])
+
+    # 4. BATCH LLM MATCH
+    if llm_prompts:
+        from .condition_evaluator import select_best_logic
+        best_idx = select_best_logic(user_input, llm_prompts, google_key=google_key)
+        if best_idx is not None and 0 <= best_idx < len(llm_targets):
+            target_id = llm_targets[best_idx]
+            print(f"DEBUG FlowEngine: Batch LLM Match found: '{llm_prompts[best_idx]}'")
+            return [target_id]
+
+    # 5. FALLBACK
     if best_fallback:
-        print(f"DEBUG FlowEngine: No matches found, using explicit fallback: {best_fallback}")
+        print(f"DEBUG FlowEngine: Using fallback: {best_fallback}")
         return [best_fallback]
     
-    print(f"DEBUG FlowEngine: No matches found for input '{user_input}' and no fallback exists.")
     return []
 
 
@@ -452,16 +461,18 @@ def save_flow_graph(flow_id: str, nodes: list, edges: list):
         raise Exception(f"Error saving flow graph: {e}")
 
 
-def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str, google_key: str = None) -> str:
+def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str, google_key: str = None) -> tuple[str | None, bool]:
     """
     Core engine logic:
     1. Check context.
-2. If no flow, try to trigger one.
-3. If in flow, handle transitions and hops.
+    2. If no flow, try to trigger one.
+    3. If in flow, handle transitions and hops.
+    Returns (reply_text, handoff_triggered).
     """
+    handoff_triggered = False
     ctx = get_sender_context(workspace_id, sender_id)
     if not ctx:
-        return None
+        return None, False
     
     current_flow_id = ctx.get("current_flow_id")
     current_node_id = ctx.get("current_node_id")
@@ -482,7 +493,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             })
     
     if not current_flow_id or not current_node_id:
-        return None
+        return None, False
 
     # 2. EXECUTION LOOP (with Hops)
     MAX_HOPS = 10
@@ -502,7 +513,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         node_res = supabase.table("flow_nodes").select("*").eq("id", active_node_id).execute()
         if not node_res.data:
             update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-            return None
+            return None, False
         
         node = node_res.data[0]
         node_type = node.get("node_type")
@@ -537,7 +548,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             else:
                 # End of flow branch
                 update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-                return None
+                return None, False
 
         # C. Execute Node
         current_reply = None
@@ -603,14 +614,13 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                             current_reply = target_data.get("content")
                             pause_node_id = active_node_id
                         elif target_type == "handoff":
-                            current_reply = target_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
                             _pause_sender(workspace_id, sender_id)
                             update_sender_context(workspace_id, sender_id, {
                                 "current_flow_id": None,
                                 "current_node_id": None,
                                 "extracted_slots": extracted_slots
                             })
-                            return current_reply
+                            return None, True
 
             if not current_reply:
                 bot_res = generate_response(
@@ -631,16 +641,15 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
 
             update_sender_context(workspace_id, sender_id, {"extracted_slots": extracted_slots})
         elif node_type == "handoff":
-            current_reply = node_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
             _pause_sender(workspace_id, sender_id)
             update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-            return current_reply
+            return None, True
         
         # D. Post-Execution Logic
         if current_reply:
             # We found content! Give it to the user and PAUSE at this node.
             update_sender_context(workspace_id, sender_id, {"current_node_id": pause_node_id or active_node_id})
-            return current_reply
+            return current_reply, False
         else:
             # Transient node (logic, etc.) -> Must move forward immediately using SAME message
             next_node_ids = get_next_nodes(
@@ -658,4 +667,4 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                 update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
                 break
                 
-    return None
+    return None, False
