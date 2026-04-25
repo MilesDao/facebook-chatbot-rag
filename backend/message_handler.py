@@ -127,8 +127,8 @@ def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, 
         extracted_slots["detected_phone"] = phone_number
         extracted_slots["phone_context"] = phone_context
         
-        # Prepare upsert data
-        upsert_data = {
+        # Prepare data payload
+        payload = {
             "workspace_id": workspace_id,
             "sender_id": sender_id,
             "extracted_slots": extracted_slots
@@ -136,18 +136,20 @@ def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, 
         
         # Try to add new phone columns if migration was applied
         try:
-            upsert_data["detected_phone"] = phone_number
-            upsert_data["phone_confidence"] = phone_context.get("confidence", 0.0)
-            upsert_data["phone_triggered_by_keyword"] = phone_context.get("triggered_by_keyword", False)
+            payload["detected_phone"] = phone_number
+            payload["phone_confidence"] = phone_context.get("confidence", 0.0)
+            payload["phone_triggered_by_keyword"] = phone_context.get("triggered_by_keyword", False)
         except Exception:
             # Migration not applied yet, continue with JSONB only
             pass
-        
-        # Upsert the conversation context
-        supabase.table("conversation_context").upsert(
-            upsert_data, 
-            on_conflict="workspace_id,sender_id"
-        ).execute()
+
+        # Update if exists, otherwise insert (avoids ON CONFLICT constraint requirement)
+        if result.data and len(result.data) > 0:
+            supabase.table("conversation_context").update(payload).eq(
+                "workspace_id", workspace_id
+            ).eq("sender_id", sender_id).execute()
+        else:
+            supabase.table("conversation_context").insert(payload).execute()
         
         print(f"DEBUG: Stored phone {phone_number} for sender {sender_id}")
     except Exception as e:
