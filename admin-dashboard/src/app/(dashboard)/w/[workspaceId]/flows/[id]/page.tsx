@@ -219,6 +219,8 @@ function FlowEditorContent() {
                 data: {
                     content: "",
                     keyword: "",
+                    append_text: "",
+                    repeat_count: 1,
                     onDelete: onDeleteNode,
                     onChange: onNodeDataChange
                 },

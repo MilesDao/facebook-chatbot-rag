@@ -32,6 +32,7 @@ export default function WorkspaceOverview() {
     const [logs, setLogs] = useState<any[]>([]);
     const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
     const [senderNames, setSenderNames] = useState<Record<string, { name: string; profile_pic: string }>>({});
+    const [senderPhones, setSenderPhones] = useState<Record<string, string | null>>({});
     const [pausedSenders, setPausedSenders] = useState<Set<string>>(new Set());
     const [stats, setStats] = useState({
         totalMessages: 0,
@@ -154,6 +155,17 @@ export default function WorkspaceOverview() {
                         if (nameRes.ok) {
                             const nameData = await nameRes.json();
                             setSenderNames(nameData.names || {});
+                        }
+                        
+                        // Fetch detected phone numbers for all senders
+                        try {
+                            const phoneRes = await apiFetch("/api/senders/phones");
+                            if (phoneRes.ok) {
+                                const phoneData = await phoneRes.json();
+                                setSenderPhones(phoneData.phones || {});
+                            }
+                        } catch (phoneErr) {
+                            console.error("Error fetching phone numbers:", phoneErr);
                         }
                     }
                 }
@@ -284,9 +296,8 @@ export default function WorkspaceOverview() {
                                     <thead>
                                         <tr style={{ background: 'rgba(0,0,0,0.02)', textAlign: 'left' }}>
                                             <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>Customer</th>
-                                            <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>Engagement</th>
+                                            <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>Phone</th>
                                             <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>Confidence</th>
-                                            <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>Status</th>
                                             <th style={{ padding: '20px 24px', fontWeight: 700, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', borderBottom: '1px solid var(--card-border)' }}>AI Agent</th>
                                         </tr>
                                     </thead>
@@ -323,8 +334,17 @@ export default function WorkspaceOverview() {
                                                     </td>
                                                     <td style={{ padding: '20px 24px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                            <span style={{ fontWeight: 700, color: 'var(--foreground)', fontSize: '15px' }}>{g.items.length} Messages</span>
-                                                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Latest interaction</span>
+                                                            {senderPhones[g.sender_id] ? (
+                                                                <>
+                                                                    <span style={{ fontWeight: 700, color: 'var(--foreground)', fontSize: '15px', fontFamily: 'monospace' }}>{senderPhones[g.sender_id]}</span>
+                                                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Vietnamese number</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span style={{ fontWeight: 700, color: 'var(--text-muted)', fontSize: '15px' }}>—</span>
+                                                                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Not detected</span>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '20px 24px' }}>
@@ -340,41 +360,6 @@ export default function WorkspaceOverview() {
                                                             <span style={{ fontWeight: 800, fontSize: '14px', color: g.avgScore > 0.5 ? 'var(--foreground)' : '#ef4444', minWidth: '35px' }}>
                                                                 {Math.round(g.avgScore * 100)}%
                                                             </span>
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '20px 24px' }}>
-                                                        <div style={{ display: 'flex' }}>
-                                                            {isPaused ? (
-                                                                <div style={{
-                                                                    display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px',
-                                                                    background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', fontSize: '13px', fontWeight: 800,
-                                                                    border: '1px solid rgba(239, 68, 68, 0.2)', boxShadow: '0 2px 10px rgba(239, 68, 68, 0.05)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.02em'
-                                                                }}>
-                                                                    <UserMinus size={15} />
-                                                                    Admin Handling
-                                                                </div>
-                                                            ) : g.avgScore >= 0.5 ? (
-                                                                <div style={{
-                                                                    display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px',
-                                                                    background: 'rgba(99, 102, 241, 0.08)', color: '#6366f1', fontSize: '13px', fontWeight: 800,
-                                                                    border: '1px solid rgba(99, 102, 241, 0.2)', boxShadow: '0 2px 10px rgba(99, 102, 241, 0.05)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.02em'
-                                                                }}>
-                                                                    <Zap size={15} fill="#6366f1" />
-                                                                    AI Autopilot
-                                                                </div>
-                                                            ) : (
-                                                                <div style={{
-                                                                    display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '12px',
-                                                                    background: 'rgba(245, 158, 11, 0.08)', color: '#f59e0b', fontSize: '13px', fontWeight: 800,
-                                                                    border: '1px solid rgba(245, 158, 11, 0.2)', boxShadow: '0 2px 10px rgba(245, 158, 11, 0.05)',
-                                                                    textTransform: 'uppercase', letterSpacing: '0.02em'
-                                                                }}>
-                                                                    <AlertTriangle size={15} />
-                                                                    Low Confidence
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     </td>
                                                     <td style={{ padding: '20px 24px' }}>

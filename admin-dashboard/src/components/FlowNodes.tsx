@@ -70,6 +70,9 @@ const handleStyle = (color: string): React.CSSProperties => ({
     background: color,
     border: '2px solid var(--card-bg)',
     boxShadow: `0 0 12px ${color}aa`,
+    cursor: 'crosshair',
+    pointerEvents: 'all',
+    zIndex: 2
 });
 
 export const MessageNode = ({ id, data, selected }: any) => {
@@ -143,8 +146,8 @@ export const LogicNode = ({ id, data, selected }: any) => {
                     />
                 </div>
             </div>
-            <Handle type="target" position={Position.Left} style={handleStyle(accent)} />
-            <Handle type="source" position={Position.Right} style={handleStyle(accent)} />
+            <Handle id="rag-in" type="target" position={Position.Left} style={handleStyle(accent)} isConnectable />
+            <Handle id="rag-out" type="source" position={Position.Right} style={handleStyle(accent)} isConnectable />
         </div>
     );
 };
@@ -178,8 +181,29 @@ export const RAGNode = ({ id, data, selected }: any) => {
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: '1.5' }}>
                     Uses RAG to find answers in your uploaded documents.
                 </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>REPEAT COUNT (0 = INFINITE)</label>
+                    <input
+                        type="number"
+                        min={0}
+                        defaultValue={data.repeat_count ?? 1}
+                        onBlur={(e) => data.onChange(id, 'repeat_count', Number(e.target.value))}
+                        placeholder="1"
+                        style={inputStyle}
+                    />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>APPEND MESSAGE (OPTIONAL)</label>
+                    <textarea
+                        defaultValue={data.append_text || ""}
+                        onBlur={(e) => data.onChange(id, 'append_text', e.target.value)}
+                        placeholder="Add a follow-up line (e.g. để lại sdt mình tư vấn...)"
+                        style={{ ...inputStyle, minHeight: '60px', resize: 'none' }}
+                    />
+                </div>
             </div>
             <Handle type="target" position={Position.Left} style={handleStyle(accent)} />
+            <Handle type="source" position={Position.Right} style={handleStyle(accent)} />
         </div>
     );
 };
@@ -208,6 +232,15 @@ export const HandoffNode = ({ id, data, selected }: any) => {
             <div style={bodyStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0 }}>
                     Pause AI and transfer the chat to a human agent immediately.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>HANDOFF MESSAGE</label>
+                    <textarea
+                        defaultValue={data.content || ""}
+                        onBlur={(e) => data.onChange(id, 'content', e.target.value)}
+                        placeholder="Final message before pausing AI..."
+                        style={{ ...inputStyle, minHeight: '60px', resize: 'none' }}
+                    />
                 </div>
             </div>
             <Handle type="target" position={Position.Left} style={handleStyle(accent)} />

@@ -41,7 +41,7 @@ jobs:
               --write-out "%{http_code}" \
               --max-time 45 \
               --connect-timeout 20 \
-              "$HEALTH_URL")
+              "$HEALTH_URL" || true)
 
             echo "📡 HTTP Status: $HTTP_STATUS"
 
