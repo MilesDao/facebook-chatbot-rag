@@ -513,7 +513,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         node_res = supabase.table("flow_nodes").select("*").eq("id", active_node_id).execute()
         if not node_res.data:
             update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-            return None
+            return None, False
         
         node = node_res.data[0]
         node_type = node.get("node_type")
@@ -548,7 +548,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             else:
                 # End of flow branch
                 update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-                return None
+                return None, False
 
         # C. Execute Node
         current_reply = None
@@ -614,14 +614,13 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                             current_reply = target_data.get("content")
                             pause_node_id = active_node_id
                         elif target_type == "handoff":
-                            current_reply = target_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
                             _pause_sender(workspace_id, sender_id)
                             update_sender_context(workspace_id, sender_id, {
                                 "current_flow_id": None,
                                 "current_node_id": None,
                                 "extracted_slots": extracted_slots
                             })
-                            return current_reply, True
+                            return None, True
 
             if not current_reply:
                 bot_res = generate_response(
@@ -642,10 +641,9 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
 
             update_sender_context(workspace_id, sender_id, {"extracted_slots": extracted_slots})
         elif node_type == "handoff":
-            current_reply = node_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
             _pause_sender(workspace_id, sender_id)
             update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-            return current_reply, True
+            return None, True
         
         # D. Post-Execution Logic
         if current_reply:

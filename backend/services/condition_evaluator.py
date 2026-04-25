@@ -11,8 +11,8 @@ load_dotenv()
 # Ordered list of models to try: primary → fallbacks
 FALLBACK_MODELS = [
     "gemini-3.1-flash-lite-preview",
-    "gemini-2.5-flash-lite",
-    "gemini-2.0-flash-lite",
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
 ]
 
 class ConditionMatch(BaseModel):
@@ -136,22 +136,40 @@ def select_best_logic(user_message: str, logic_options: list[str], google_key: s
     Which option matches the user's message best?
     """
 
+    max_retries_per_model = 2
+    base_delay = 0.5
+
     for model_name in FALLBACK_MODELS:
-        try:
-            response = client.models.generate_content(
-                model=model_name,
-                contents=f"{system_instruction}\n\n{prompt}",
-                config=genai.types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.0
+        for attempt in range(max_retries_per_model):
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=f"{system_instruction}\n\n{prompt}",
+                    config=genai.types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.0
+                    )
                 )
-            )
-            data = json.loads(response.text)
-            match_id = data.get("best_match_id")
-            print(f"DEBUG LogicSelector: Selected option {match_id} for input '{user_message[:30]}...' (Reason: {data.get('reason')})")
-            return match_id
-        except Exception as e:
-            print(f"Logic Selector Error with model {model_name}: {e}")
-            continue
+                data = json.loads(response.text)
+                match_id = data.get("best_match_id")
+                print(f"DEBUG LogicSelector: Selected option {match_id} for input '{user_message[:30]}...' (Reason: {data.get('reason')})")
+                return match_id
+            except Exception as e:
+                error_str = str(e)
+                is_overloaded = any(code in error_str for code in ["503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED"])
+                
+                print(f"Logic Selector Error with model {model_name} (Attempt {attempt + 1}/{max_retries_per_model}): {e}")
+                
+                if is_overloaded:
+                    if attempt < max_retries_per_model - 1:
+                        time.sleep(base_delay * (2 ** attempt))
+                    else:
+                        print(f"DEBUG LogicSelector: Model '{model_name}' unavailable, trying next fallback...")
+                        break # Try next model
+                else:
+                    if attempt < max_retries_per_model - 1:
+                        time.sleep(base_delay)
+                    else:
+                        break
             
     return None

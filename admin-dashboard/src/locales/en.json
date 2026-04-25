@@ -261,7 +261,6 @@
   "template.bookingDesc": "Ideal for spas, clinics, and service providers.",
   "template.blankName": "Blank Canvas",
   "template.blankDesc": "Start from scratch with a clean, generic bot.",
-  "nav.documents": "Documents",
   "knowledge.filesSelected": "files selected",
   "media.uploadSuccess": "Upload success!",
   "settings.pageIdLabel": "Page ID (Numeric only)",

@@ -37,6 +37,12 @@ def handle_message(sender_id: str, user_message: str, workspace_id: str = None, 
     # 1. TRY FLOW ENGINE
     if workspace_id:
         flow_reply, handoff_triggered = process_flow_interaction(workspace_id, sender_id, user_message, google_key=google_key)
+        
+        # If handoff triggered, we MUST stop processing (AI is now paused for this user)
+        if handoff_triggered:
+            print(f"DEBUG: Handoff triggered for {sender_id}. Stopping AI response.")
+            return flow_reply # May be None
+
         if flow_reply:
             print(f"DEBUG: Flow Engine handled message for {sender_id} (workspace: {workspace_id})")
             # Log and save to memory

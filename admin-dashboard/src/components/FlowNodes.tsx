@@ -231,16 +231,7 @@ export const HandoffNode = ({ id, data, selected }: any) => {
             </div>
             <div style={bodyStyle}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0 }}>
-                    Pause AI and transfer the chat to a human agent immediately.
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>HANDOFF MESSAGE</label>
-                    <textarea
-                        defaultValue={data.content || ""}
-                        onBlur={(e) => data.onChange(id, 'content', e.target.value)}
-                        placeholder="Final message before pausing AI..."
-                        style={{ ...inputStyle, minHeight: '60px', resize: 'none' }}
-                    />
+                    Pause AI and transfer the chat to a human agent immediately. No automated message will be sent.
                 </div>
             </div>
             <Handle type="target" position={Position.Left} style={handleStyle(accent)} />

@@ -185,9 +185,6 @@ export function Sidebar() {
             <Link href={`/w/${wsId}/knowledge`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.knowledge") : ""} className={`nav-item ${pathname.includes('/knowledge') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Database size={16} /> {!isSidebarCollapsed && t("nav.knowledge")}
             </Link>
-            <Link href={`/w/${wsId}/user-documents`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.documents") || "Documents" : ""} className={`nav-item ${pathname.includes('/user-documents') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
-              <FileText size={16} /> {!isSidebarCollapsed && (t("nav.documents") || "Documents")}
-            </Link>
             <Link href={`/w/${wsId}/team`} onClick={handleNavClick} title={isSidebarCollapsed ? t("nav.team") : ""} className={`nav-item ${pathname.includes('/team') ? 'active' : ''}`} style={{ fontSize: '13px', padding: '8px 12px', justifyContent: isSidebarCollapsed ? 'center' : 'flex-start' }}>
               <Users size={16} /> {!isSidebarCollapsed && t("nav.team")}
             </Link>

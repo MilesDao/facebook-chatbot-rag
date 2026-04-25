@@ -43,6 +43,7 @@ export default function WorkspaceOverview() {
     const [selectedSenderId, setSelectedSenderId] = useState<string | null>(null);
     const [chatHistory, setChatHistory] = useState<any[]>([]);
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [botSettings, setBotSettings] = useState<any>(null);
 
 
 
@@ -181,6 +182,11 @@ export default function WorkspaceOverview() {
         apiFetch("/api/senders/paused")
             .then(res => res.ok ? res.json() : [])
             .then(data => setPausedSenders(new Set(data.map((d: any) => d.sender_id))))
+            .catch(err => console.error(err));
+
+        apiFetch("/api/settings")
+            .then(res => res.ok ? res.json() : null)
+            .then(data => setBotSettings(data))
             .catch(err => console.error(err));
     }, [currentWorkspace?.id]);
 
@@ -488,8 +494,28 @@ export default function WorkspaceOverview() {
                                 )}
                             </div>
                             <div style={{ padding: '24px', borderTop: '1px solid var(--card-border)', background: 'var(--card-bg)' }}>
-                                <button className="btn" style={{ width: '100%', borderRadius: '12px', padding: '14px' }}>
-                                    Resume Conversation
+                                <button 
+                                    onClick={() => {
+                                        if (selectedSenderId && botSettings?.page_id) {
+                                            const url = `https://business.facebook.com/latest/inbox/all/?asset_id=${botSettings.page_id}&mailbox_id=${botSettings.page_id}&selected_item_id=${selectedSenderId}&thread_type=FB_MESSAGE`;
+                                            window.open(url, '_blank');
+                                        } else {
+                                            alert("Page ID not found. Please check your bot settings.");
+                                        }
+                                    }}
+                                    className="btn" 
+                                    style={{ 
+                                        width: '100%', 
+                                        borderRadius: '12px', 
+                                        padding: '14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '10px'
+                                    }}
+                                >
+                                    <Shield size={18} />
+                                    Open in Meta
                                 </button>
                             </div>
                         </div>
