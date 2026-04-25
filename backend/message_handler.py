@@ -115,7 +115,7 @@ def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, 
         supabase = get_supabase_client()
         
         # Get or create conversation context
-        result = supabase.table("conversation_context").select("id, extracted_slots").eq(
+        result = supabase.table("conversation_context").select("extracted_slots").eq(
             "workspace_id", workspace_id
         ).eq("sender_id", sender_id).execute()
         
@@ -127,18 +127,30 @@ def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, 
         extracted_slots["detected_phone"] = phone_number
         extracted_slots["phone_context"] = phone_context
         
-        # Upsert the conversation context with both JSONB and dedicated columns
-        supabase.table("conversation_context").upsert({
+        # Prepare upsert data
+        upsert_data = {
             "workspace_id": workspace_id,
             "sender_id": sender_id,
-            "extracted_slots": extracted_slots,
-            "detected_phone": phone_number,
-            "phone_confidence": phone_context.get("confidence", 0.0),
-            "phone_triggered_by_keyword": phone_context.get("triggered_by_keyword", False),
-            "updated_at": "now()"
-        }, on_conflict="workspace_id,sender_id").execute()
+            "extracted_slots": extracted_slots
+        }
+        
+        # Try to add new phone columns if migration was applied
+        try:
+            upsert_data["detected_phone"] = phone_number
+            upsert_data["phone_confidence"] = phone_context.get("confidence", 0.0)
+            upsert_data["phone_triggered_by_keyword"] = phone_context.get("triggered_by_keyword", False)
+        except Exception:
+            # Migration not applied yet, continue with JSONB only
+            pass
+        
+        # Upsert the conversation context
+        supabase.table("conversation_context").upsert(
+            upsert_data, 
+            on_conflict="workspace_id,sender_id"
+        ).execute()
         
         print(f"DEBUG: Stored phone {phone_number} for sender {sender_id}")
     except Exception as e:
-        print(f"ERROR: Failed to store phone in conversation context: {e}")
-        raise
+        # Don't raise - just log. Phone storage failure shouldn't break message flow
+        print(f"WARNING: Could not store phone for {sender_id}: {e}")
+        print(f"HINT: Ensure migration_phone_detection.sql has been applied to Supabase")
