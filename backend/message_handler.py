@@ -125,6 +125,8 @@ def _store_detected_phone(workspace_id: str, sender_id: str, phone_number: str, 
         
         # Update extracted_slots with phone information
         extracted_slots["detected_phone"] = phone_number
+        extracted_slots["phone"] = phone_number
+        extracted_slots["has_phone"] = True
         extracted_slots["phone_context"] = phone_context
         
         # Prepare data payload

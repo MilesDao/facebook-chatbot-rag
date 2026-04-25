@@ -8,7 +8,93 @@ Responsibilities:
 """
 
 from ..database import supabase
+from ..rag_pipeline import retrieve_context
+from ..google_ai_integration import generate_response
+from .history_service import get_history
 from .condition_evaluator import evaluate_condition
+
+
+def _evaluate_slot_condition(condition_text: str, extracted_slots: dict) -> bool | None:
+    """
+    Evaluate slot-based condition syntax.
+    Supported formats:
+      - slot:has_phone
+      - slot:has_phone=true
+      - slot:has_phone=false
+      - slot:industry=it
+      - slot:industry!=it
+    Returns True/False if the condition is slot-based, otherwise None.
+    """
+    if not condition_text:
+        return None
+    text = condition_text.strip()
+    if not text.lower().startswith("slot:"):
+        return None
+
+    slots = extracted_slots or {}
+    expr = text[5:].strip()
+
+    operator = None
+    if ">=" in expr:
+        key, value = expr.split(">=", 1)
+        operator = ">="
+    elif "<=" in expr:
+        key, value = expr.split("<=", 1)
+        operator = "<="
+    elif ">" in expr:
+        key, value = expr.split(">", 1)
+        operator = ">"
+    elif "<" in expr:
+        key, value = expr.split("<", 1)
+        operator = "<"
+    elif "!=" in expr:
+        key, value = expr.split("!=", 1)
+        operator = "!="
+    elif "=" in expr:
+        key, value = expr.split("=", 1)
+        operator = "="
+    else:
+        key, value = expr, None
+
+    slot_key = key.strip()
+    slot_value = slots.get(slot_key)
+
+    if value is None:
+        return bool(slot_value)
+
+    expected = value.strip().lower()
+    actual = str(slot_value).strip().lower() if slot_value is not None else ""
+
+    # Numeric comparison when possible
+    if operator in (">", ">=", "<", "<="):
+        try:
+            actual_num = float(actual)
+            expected_num = float(expected)
+        except ValueError:
+            return False
+        if operator == ">":
+            return actual_num > expected_num
+        if operator == ">=":
+            return actual_num >= expected_num
+        if operator == "<":
+            return actual_num < expected_num
+        if operator == "<=":
+            return actual_num <= expected_num
+
+    if operator == "!=":
+        return actual != expected
+    return actual == expected
+
+
+def _pause_sender(workspace_id: str, sender_id: str):
+    """Pause AI responses for a sender (handoff)."""
+    if not supabase:
+        return
+    try:
+        supabase.table("paused_senders").delete().eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
+        supabase.table("paused_senders").insert({"workspace_id": workspace_id, "sender_id": sender_id}).execute()
+    except Exception as e:
+        print(f"Error pausing sender {sender_id}: {e}")
 
 
 def get_active_flow_for_message(workspace_id: str, sender_id: str, user_message: str) -> dict:
@@ -113,7 +199,15 @@ def get_sender_context(workspace_id: str, sender_id: str) -> dict:
             .execute()
         
         if res.data:
-            return res.data[0]
+            ctx = res.data[0]
+            slots = ctx.get("extracted_slots") or {}
+            detected_phone = ctx.get("detected_phone")
+            if detected_phone:
+                slots.setdefault("detected_phone", detected_phone)
+                slots.setdefault("phone", detected_phone)
+                slots.setdefault("has_phone", True)
+                ctx["extracted_slots"] = slots
+            return ctx
         
         # Create new context
         new_ctx = {
@@ -152,7 +246,13 @@ def update_sender_context(workspace_id: str, sender_id: str, updates: dict):
         print(f"Error updating sender context: {e}")
 
 
-def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, google_key: str = None) -> list:
+def get_next_nodes(
+    flow_id: str,
+    current_node_id: str,
+    user_input: str = None,
+    google_key: str = None,
+    extracted_slots: dict = None
+) -> list:
     """
     Get the next nodes from the current node based on edges and optional user input matching.
     """
@@ -200,11 +300,14 @@ def get_next_nodes(flow_id: str, current_node_id: str, user_input: str = None, g
                 best_fallback = edge["target"]
             continue
 
-        # Evaluate logic
+        # Evaluate logic (slot-aware)
         operator = condition.get("operator")
         matched = False
-        
-        if operator == "equals":
+
+        slot_match = _evaluate_slot_condition(condition_text, extracted_slots or {})
+        if slot_match is not None:
+            matched = slot_match
+        elif operator == "equals":
             matched = (user_lower == condition_text.lower())
         elif operator == "contains":
             matched = (condition_text.lower() in user_lower)
@@ -362,6 +465,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
     
     current_flow_id = ctx.get("current_flow_id")
     current_node_id = ctx.get("current_node_id")
+    extracted_slots = ctx.get("extracted_slots") or {}
     
     # 1. TRIGGER NEW FLOW?
     is_new_flow = False
@@ -406,7 +510,26 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
         
         # B. Handle Transition (Move forward using the user's message)
         if needs_move:
-            next_node_ids = get_next_nodes(current_flow_id, active_node_id, user_message, google_key=google_key)
+            if node_type == "rag":
+                repeat_count_raw = node_data.get("repeat_count", 1)
+                try:
+                    repeat_count = int(repeat_count_raw)
+                except Exception:
+                    repeat_count = 1
+                if repeat_count < 0:
+                    repeat_count = 0
+                rag_counter_key = f"rag_repeat_{active_node_id}"
+                current_count = int(extracted_slots.get(rag_counter_key, 0) or 0)
+                # repeat_count == 0 means infinite repeats
+                if repeat_count == 0 or current_count < repeat_count:
+                    needs_move = False
+            next_node_ids = get_next_nodes(
+                current_flow_id,
+                active_node_id,
+                user_message,
+                google_key=google_key,
+                extracted_slots=extracted_slots
+            )
             if next_node_ids:
                 active_node_id = next_node_ids[0]
                 needs_move = False # We moved, now execute this new node
@@ -418,19 +541,115 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
 
         # C. Execute Node
         current_reply = None
+        pause_node_id = None
         if node_type == "message":
             current_reply = node_data.get("content")
+        elif node_type == "rag":
+            # Use RAG + LLM to answer based on knowledge base
+            context_str, similarity_score = retrieve_context(
+                user_message,
+                workspace_id=workspace_id,
+                api_key=google_key
+            )
+            history = get_history(sender_id, limit=20, workspace_id=workspace_id)
+            rag_threshold = 0.5
+            repeat_count_raw = node_data.get("repeat_count", 1)
+            try:
+                repeat_count = int(repeat_count_raw)
+            except Exception:
+                repeat_count = 1
+            if repeat_count < 0:
+                repeat_count = 0
+
+            rag_counter_key = f"rag_repeat_{active_node_id}"
+            current_count = int(extracted_slots.get(rag_counter_key, 0) or 0)
+            next_count = current_count + 1
+            extracted_slots[rag_counter_key] = next_count
+            extracted_slots["rag_score"] = similarity_score
+            extracted_slots[f"rag_score_{active_node_id}"] = similarity_score
+
+            # If RAG score is below threshold, attempt to route to a fallback message node
+            if similarity_score < rag_threshold:
+                next_node_ids = get_next_nodes(
+                    current_flow_id,
+                    active_node_id,
+                    user_message,
+                    google_key=google_key,
+                    extracted_slots=extracted_slots
+                )
+                if next_node_ids:
+                    target_id = next_node_ids[0]
+                    target_res = supabase.table("flow_nodes").select("*").eq("id", target_id).execute()
+                    if target_res.data:
+                        target_node = target_res.data[0]
+                        target_type = target_node.get("node_type")
+                        target_data = target_node.get("config") or {}
+                        if target_type == "logic":
+                            follow_nodes = get_next_nodes(
+                                current_flow_id,
+                                target_id,
+                                user_message,
+                                google_key=google_key,
+                                extracted_slots=extracted_slots
+                            )
+                            if follow_nodes:
+                                target_id = follow_nodes[0]
+                                target_res = supabase.table("flow_nodes").select("*").eq("id", target_id).execute()
+                                if target_res.data:
+                                    target_node = target_res.data[0]
+                                    target_type = target_node.get("node_type")
+                                    target_data = target_node.get("config") or {}
+                        if target_type == "message":
+                            current_reply = target_data.get("content")
+                            pause_node_id = active_node_id
+                        elif target_type == "handoff":
+                            current_reply = target_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
+                            _pause_sender(workspace_id, sender_id)
+                            update_sender_context(workspace_id, sender_id, {
+                                "current_flow_id": None,
+                                "current_node_id": None,
+                                "extracted_slots": extracted_slots
+                            })
+                            return current_reply
+
+            if not current_reply:
+                bot_res = generate_response(
+                    user_message,
+                    context_str,
+                    history,
+                    google_key=google_key
+                )
+                append_text = (node_data.get("append_text") or node_data.get("cta") or "").strip()
+                if append_text:
+                    current_reply = f"{bot_res.answer}[SPLIT]{append_text}"
+                else:
+                    current_reply = bot_res.answer
+
+            # If repeats remain (or infinite), pause back on this RAG node
+            if repeat_count == 0 or next_count < repeat_count:
+                pause_node_id = active_node_id
+
+            update_sender_context(workspace_id, sender_id, {"extracted_slots": extracted_slots})
         elif node_type == "handoff":
-            current_reply = "Tính năng chuyển tiếp nhân viên hiện đang được bảo trì."
+            current_reply = node_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
+            _pause_sender(workspace_id, sender_id)
+            update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
+            return current_reply
         
         # D. Post-Execution Logic
         if current_reply:
             # We found content! Give it to the user and PAUSE at this node.
-            update_sender_context(workspace_id, sender_id, {"current_node_id": active_node_id})
+            update_sender_context(workspace_id, sender_id, {"current_node_id": pause_node_id or active_node_id})
             return current_reply
         else:
             # Transient node (logic, etc.) -> Must move forward immediately using SAME message
-            next_node_ids = get_next_nodes(current_flow_id, active_node_id, user_message, google_key=google_key)
+            next_node_ids = get_next_nodes(
+                current_flow_id,
+                active_node_id,
+                user_message,
+                google_key=google_key,
+                extracted_slots=extracted_slots
+            )
             if next_node_ids:
                 active_node_id = next_node_ids[0]
                 # Continue loop to execute the target node
@@ -440,4 +659,3 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                 break
                 
     return None
-
