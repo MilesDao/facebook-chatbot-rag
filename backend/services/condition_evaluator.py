@@ -97,3 +97,61 @@ def evaluate_condition(user_message: str, logic_text: str, google_key: str = Non
     
     print(f"CRITICAL LogicEvaluator: All models exhausted for logic='{logic_text}'. Returning False.")
     return False
+
+def select_best_logic(user_message: str, logic_options: list[str], google_key: str = None) -> int | None:
+    """
+    Evaluates multiple logic options in ONE LLM call and returns the index of the best match.
+    Returns None if no option matches.
+    """
+    if not logic_options:
+        return None
+        
+    api_key = google_key or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+        
+    client = genai.Client(api_key=api_key)
+
+    options_text = ""
+    for i, opt in enumerate(logic_options):
+        options_text += f"{i}. {opt}\n"
+
+    system_instruction = """
+    You are a precise classifier for a chatbot flow. 
+    Given a user message and a list of logic conditions, pick the ID (index) of the condition that MOST CLEARLY matches the user's intent.
+    
+    RULES:
+    1. Respond ONLY with a JSON object: {"best_match_id": number | null, "reason": "string"}.
+    2. If multiple match, pick the most specific one.
+    3. If NONE match clearly, return "best_match_id": null.
+    4. Pay attention to negations (không phải, đéo, sai rồi).
+    """
+    
+    prompt = f"""
+    User Message: "{user_message}"
+    
+    Options:
+    {options_text}
+    
+    Which option matches the user's message best?
+    """
+
+    for model_name in FALLBACK_MODELS:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=f"{system_instruction}\n\n{prompt}",
+                config=genai.types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.0
+                )
+            )
+            data = json.loads(response.text)
+            match_id = data.get("best_match_id")
+            print(f"DEBUG LogicSelector: Selected option {match_id} for input '{user_message[:30]}...' (Reason: {data.get('reason')})")
+            return match_id
+        except Exception as e:
+            print(f"Logic Selector Error with model {model_name}: {e}")
+            continue
+            
+    return None

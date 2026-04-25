@@ -246,86 +246,95 @@ def update_sender_context(workspace_id: str, sender_id: str, updates: dict):
         print(f"Error updating sender context: {e}")
 
 
-def get_next_nodes(
-    flow_id: str,
-    current_node_id: str,
-    user_input: str = None,
-    google_key: str = None,
-    extracted_slots: dict = None
-) -> list:
+def get_next_nodes(flow_id: str, current_node_id: str, user_input: str, google_key: str = None, extracted_slots: dict = None) -> list[str]:
     """
-    Get the next nodes from the current node based on edges and optional user input matching.
+    Find the next node(s) based on outgoing edges and user input.
+    Optimized for SPEED:
+    1. Fast Match: Simple string containment.
+    2. Slot Match: Logic starting with 'slot:'.
+    3. Batch Match: All natural language intents evaluated in ONE LLM call.
     """
     edges = get_flow_edges(flow_id)
-    
     # Filter edges from current node
     outgoing = [e for e in edges if e["source"] == current_node_id]
     
     if not outgoing:
         return []
-    
+
     # Fetch all nodes in the flow to check target node labels if needed
     nodes = get_flow_nodes(flow_id)
     node_map = {n["id"]: n for n in nodes}
     
-    user_input = user_input or ""
-    user_lower = user_input.lower().strip()
+    user_input = (user_input or "").strip()
+    user_lower = user_input.lower()
+    
+    candidates = [] # List of (target_id, logic_text, type)
     best_fallback = None
+
     for edge in outgoing:
         condition = edge.get("condition") or {}
         label = (edge.get("label") or "").strip()
-        
-        print(f"DEBUG FlowEngine: Edge {edge['id']} | Raw Label: '{label}' | Raw Cond: {condition}")
         
         # Determine the "logic text" to evaluate
         logic_text = str(condition.get("value", "")).strip()
         if not logic_text and label:
             logic_text = label
             
-        # NEW: If still no logic text, check the TARGET NODE for logic node info.
-        # LogicNodes store their logic in data.keyword (config.keyword in DB).
-        # get_flow_nodes() transforms config -> data, so we access .data here.
         if not logic_text:
             target_node = node_map.get(edge["target"], {})
             target_data = target_node.get("data") or target_node.get("config") or {}
-            # Priority: keyword (logic nodes) > node label
             node_logic = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
             if node_logic:
                 logic_text = node_logic
-                print(f"DEBUG FlowEngine: Using target logic node keyword/label as condition: '{logic_text}'")
         
-        # If there is absolutely no logic text, this is a potential fallback/default edge
         if not logic_text:
             if not best_fallback:
                 best_fallback = edge["target"]
             continue
 
-        # Evaluate logic (slot-aware)
-        operator = condition.get("operator")
-        matched = False
+        # 1. FAST MATCH (No LLM needed)
+        # If it's a simple word/phrase (no "Nếu", "Khi", or "slot:"), check containment
+        if not logic_text.startswith("slot:") and len(logic_text.split()) <= 4:
+            clean_logic = logic_text.lower()
+            if clean_logic in user_lower or user_lower in clean_logic:
+                print(f"DEBUG FlowEngine: Fast Match found for '{logic_text}'")
+                return [edge["target"]]
 
-        slot_match = _evaluate_slot_logic(logic_text, extracted_slots or {})
-        if slot_match is not None:
-            matched = slot_match
-        elif operator == "equals":
-            matched = (user_lower == logic_text.lower())
-        elif operator == "contains":
-            matched = (logic_text.lower() in user_lower)
+        # 2. SLOT MATCH (Categorized for later)
+        if logic_text.startswith("slot:"):
+            candidates.append({"id": edge["target"], "logic": logic_text, "type": "slot"})
         else:
-            # Default to LLM matching for natural language in logic node values OR labels
-            print(f"DEBUG FlowEngine: Evaluating logic node intent for edge '{label}' with logic '{logic_text}'")
-            matched = evaluate_condition(user_input, logic_text, google_key=google_key)
-            
-        if matched:
-            print(f"DEBUG FlowEngine: Successfully matched edge to {edge['target']} ({label})")
-            return [edge["target"]]
+            # 3. LLM CANDIDATE (Categorized for batch processing)
+            candidates.append({"id": edge["target"], "logic": logic_text, "type": "llm"})
+
+    # Evaluate candidates
+    llm_prompts = []
+    llm_targets = []
     
-    # 3. Fallback: Only use the first edge that had NO label and NO condition
+    for cand in candidates:
+        if cand["type"] == "slot":
+            res = _evaluate_slot_logic(cand["logic"], extracted_slots or {})
+            if res is True:
+                print(f"DEBUG FlowEngine: Slot Match found for '{cand['logic']}'")
+                return [cand["id"]]
+        else:
+            llm_prompts.append(cand["logic"])
+            llm_targets.append(cand["id"])
+
+    # 4. BATCH LLM MATCH
+    if llm_prompts:
+        from .condition_evaluator import select_best_logic
+        best_idx = select_best_logic(user_input, llm_prompts, google_key=google_key)
+        if best_idx is not None and 0 <= best_idx < len(llm_targets):
+            target_id = llm_targets[best_idx]
+            print(f"DEBUG FlowEngine: Batch LLM Match found: '{llm_prompts[best_idx]}'")
+            return [target_id]
+
+    # 5. FALLBACK
     if best_fallback:
-        print(f"DEBUG FlowEngine: No matches found, using explicit fallback: {best_fallback}")
+        print(f"DEBUG FlowEngine: Using fallback: {best_fallback}")
         return [best_fallback]
     
-    print(f"DEBUG FlowEngine: No matches found for input '{user_input}' and no fallback exists.")
     return []
 
 
@@ -463,7 +472,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
     handoff_triggered = False
     ctx = get_sender_context(workspace_id, sender_id)
     if not ctx:
-        return None
+        return None, False
     
     current_flow_id = ctx.get("current_flow_id")
     current_node_id = ctx.get("current_node_id")
