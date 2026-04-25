@@ -456,6 +456,53 @@ async def debounced_process(sender_id: str, page_id: str):
     except Exception as e:
         print(f"Error in debounced_process for {sender_id}: {e}")
 
+def send_fb(sender: str, text: str, fb_token: str):
+    url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+    try:
+        res = requests.post(url, json={"recipient": {"id": sender}, "message": {"text": text}})
+        res.raise_for_status()
+        print(f"Successfully sent reply to {sender}")
+    except Exception as e:
+        msg = f"Error sending reply to {sender}: {e}"
+        if hasattr(e, 'response') and e.response is not None:
+            msg += f" | Body: {e.response.text}"
+        print(msg)
+
+def send_fb_attachment(sender: str, file_url: str, fb_token: str):
+    ext = file_url.rsplit('.', 1)[-1].lower() if '.' in file_url else ''
+    if ext in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        att_type = 'image'
+    elif ext in ('mp4', 'mov', 'avi'):
+        att_type = 'video'
+    elif ext in ('mp3', 'wav', 'ogg'):
+        att_type = 'audio'
+    else:
+        att_type = 'file'
+    
+    url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+    payload = {
+        "recipient": {"id": sender},
+        "message": {
+            "attachment": {
+                "type": att_type,
+                "payload": {"url": file_url, "is_reusable": True}
+            }
+        }
+    }
+    try:
+        res = requests.post(url, json=payload)
+        res.raise_for_status()
+    except Exception as e:
+        print(f"Error sending attachment to {sender}: {e}")
+
+def send_fb_action(sender: str, action: str, fb_token: str):
+    url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
+    try:
+        res = requests.post(url, json={"recipient": {"id": sender}, "sender_action": action})
+        res.raise_for_status()
+    except Exception as e:
+        print(f"Error sending action '{action}' to {sender}: {e}")
+
 def process_message(sender_id: str, user_message: str, page_id: str):
     """
     Process message for a specific Page ID (multi-tenant, workspace-scoped)
@@ -497,53 +544,6 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         except Exception as e:
             print(f"Error checking pause status: {e}")
 
-    # Helper functions
-    def send_fb(sender: str, text: str, fb_token: str):
-        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
-        try:
-            res = requests.post(url, json={"recipient": {"id": sender}, "message": {"text": text}})
-            res.raise_for_status()
-            print(f"Successfully sent reply to {sender}")
-        except Exception as e:
-            msg = f"Error sending reply to {sender}: {e}"
-            if hasattr(e, 'response') and e.response is not None:
-                msg += f" | Body: {e.response.text}"
-            print(msg)
-
-    def send_fb_attachment(sender: str, file_url: str, fb_token: str):
-        ext = file_url.rsplit('.', 1)[-1].lower() if '.' in file_url else ''
-        if ext in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
-            att_type = 'image'
-        elif ext in ('mp4', 'mov', 'avi'):
-            att_type = 'video'
-        elif ext in ('mp3', 'wav', 'ogg'):
-            att_type = 'audio'
-        else:
-            att_type = 'file'
-        
-        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
-        payload = {
-            "recipient": {"id": sender},
-            "message": {
-                "attachment": {
-                    "type": att_type,
-                    "payload": {"url": file_url, "is_reusable": True}
-                }
-            }
-        }
-        try:
-            res = requests.post(url, json=payload)
-            res.raise_for_status()
-        except Exception as e:
-            print(f"Error sending attachment to {sender}: {e}")
-
-    def send_fb_action(sender: str, action: str, fb_token: str):
-        url = f"https://graph.facebook.com/v21.0/me/messages?access_token={fb_token}"
-        try:
-            res = requests.post(url, json={"recipient": {"id": sender}, "sender_action": action})
-            res.raise_for_status()
-        except Exception as e:
-            print(f"Error sending action '{action}' to {sender}: {e}")
 
     print("Sending mark_seen and typing_on...")
     send_fb_action(sender_id, "mark_seen", token)
@@ -856,6 +856,32 @@ async def resume_sender(sender_id: str, request: Request, current_user: dict = D
         raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
     try:
         supabase.table("paused_senders").delete().eq("workspace_id", workspace_id).eq("sender_id", sender_id).execute()
+        
+        # PROACTIVE: Turn on the flow again by triggering the default flow
+        from .services.flow_engine import process_flow_interaction
+        
+        # 1. Fetch settings for token
+        settings_res = supabase.table("bot_settings").select("*").eq("workspace_id", workspace_id).limit(1).execute()
+        if settings_res.data:
+            settings = settings_res.data[0]
+            token = settings.get("page_access_token")
+            google_key = settings.get("google_api_key") or os.getenv("GOOGLE_API_KEY")
+            
+            if token:
+                # 2. Trigger flow logic with empty message to find default start
+                reply, handoff = process_flow_interaction(workspace_id, sender_id, "", google_key=google_key)
+                if reply:
+                    print(f"Proactively restarting flow for {sender_id} after unpause.")
+                    # Handle multi-part messages
+                    parts = [p.strip() for p in reply.split("[SPLIT]") if p.strip()]
+                    for part in parts:
+                        file_urls = re.findall(r'\[FILE:(https?://[^\]]+)\]', part)
+                        clean_text = re.sub(r'\s*\[FILE:https?://[^\]]+\]\s*', ' ', part).strip()
+                        if clean_text:
+                            send_fb(sender_id, clean_text, token)
+                        for file_url in file_urls:
+                            send_fb_attachment(sender_id, file_url, token)
+        
         return {"status": "success", "paused": False}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

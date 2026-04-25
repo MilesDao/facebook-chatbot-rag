@@ -14,20 +14,20 @@ from .history_service import get_history
 from .condition_evaluator import evaluate_condition
 
 
-def _evaluate_slot_condition(condition_text: str, extracted_slots: dict) -> bool | None:
+def _evaluate_slot_logic(logic_text: str, extracted_slots: dict) -> bool | None:
     """
-    Evaluate slot-based condition syntax.
+    Evaluate slot-based logic syntax.
     Supported formats:
       - slot:has_phone
       - slot:has_phone=true
       - slot:has_phone=false
       - slot:industry=it
       - slot:industry!=it
-    Returns True/False if the condition is slot-based, otherwise None.
+    Returns True/False if the expression is slot-based, otherwise None.
     """
-    if not condition_text:
+    if not logic_text:
         return None
-    text = condition_text.strip()
+    text = logic_text.strip()
     if not text.lower().startswith("slot:"):
         return None
 
@@ -278,24 +278,24 @@ def get_next_nodes(
         print(f"DEBUG FlowEngine: Edge {edge['id']} | Raw Label: '{label}' | Raw Cond: {condition}")
         
         # Determine the "logic text" to evaluate
-        condition_text = str(condition.get("value", "")).strip()
-        if not condition_text and label:
-            condition_text = label
+        logic_text = str(condition.get("value", "")).strip()
+        if not logic_text and label:
+            logic_text = label
             
-        # NEW: If still no condition text, check the TARGET NODE for condition info.
-        # LogicNodes store their condition in data.keyword (config.keyword in DB).
+        # NEW: If still no logic text, check the TARGET NODE for logic node info.
+        # LogicNodes store their logic in data.keyword (config.keyword in DB).
         # get_flow_nodes() transforms config -> data, so we access .data here.
-        if not condition_text:
+        if not logic_text:
             target_node = node_map.get(edge["target"], {})
             target_data = target_node.get("data") or target_node.get("config") or {}
-            # Priority: keyword (condition nodes) > node label
-            node_condition = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
-            if node_condition:
-                condition_text = node_condition
-                print(f"DEBUG FlowEngine: Using target node keyword/label as condition: '{condition_text}'")
+            # Priority: keyword (logic nodes) > node label
+            node_logic = (target_data.get("keyword", "") or target_node.get("label", "") or "").strip()
+            if node_logic:
+                logic_text = node_logic
+                print(f"DEBUG FlowEngine: Using target logic node keyword/label as condition: '{logic_text}'")
         
         # If there is absolutely no logic text, this is a potential fallback/default edge
-        if not condition_text:
+        if not logic_text:
             if not best_fallback:
                 best_fallback = edge["target"]
             continue
@@ -304,17 +304,17 @@ def get_next_nodes(
         operator = condition.get("operator")
         matched = False
 
-        slot_match = _evaluate_slot_condition(condition_text, extracted_slots or {})
+        slot_match = _evaluate_slot_logic(logic_text, extracted_slots or {})
         if slot_match is not None:
             matched = slot_match
         elif operator == "equals":
-            matched = (user_lower == condition_text.lower())
+            matched = (user_lower == logic_text.lower())
         elif operator == "contains":
-            matched = (condition_text.lower() in user_lower)
+            matched = (logic_text.lower() in user_lower)
         else:
-            # Default to LLM matching for natural language in values OR labels
-            print(f"DEBUG FlowEngine: Evaluating intent for edge '{label}' with condition logic '{condition_text}'")
-            matched = evaluate_condition(user_input, condition_text, google_key=google_key)
+            # Default to LLM matching for natural language in logic node values OR labels
+            print(f"DEBUG FlowEngine: Evaluating logic node intent for edge '{label}' with logic '{logic_text}'")
+            matched = evaluate_condition(user_input, logic_text, google_key=google_key)
             
         if matched:
             print(f"DEBUG FlowEngine: Successfully matched edge to {edge['target']} ({label})")
@@ -452,13 +452,15 @@ def save_flow_graph(flow_id: str, nodes: list, edges: list):
         raise Exception(f"Error saving flow graph: {e}")
 
 
-def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str, google_key: str = None) -> str:
+def process_flow_interaction(workspace_id: str, sender_id: str, user_message: str, google_key: str = None) -> tuple[str | None, bool]:
     """
     Core engine logic:
     1. Check context.
-2. If no flow, try to trigger one.
-3. If in flow, handle transitions and hops.
+    2. If no flow, try to trigger one.
+    3. If in flow, handle transitions and hops.
+    Returns (reply_text, handoff_triggered).
     """
+    handoff_triggered = False
     ctx = get_sender_context(workspace_id, sender_id)
     if not ctx:
         return None
@@ -482,7 +484,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             })
     
     if not current_flow_id or not current_node_id:
-        return None
+        return None, False
 
     # 2. EXECUTION LOOP (with Hops)
     MAX_HOPS = 10
@@ -610,7 +612,7 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                                 "current_node_id": None,
                                 "extracted_slots": extracted_slots
                             })
-                            return current_reply
+                            return current_reply, True
 
             if not current_reply:
                 bot_res = generate_response(
@@ -634,13 +636,13 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
             current_reply = node_data.get("content") or "Mình đã chuyển cho nhân viên hỗ trợ rồi ạ."
             _pause_sender(workspace_id, sender_id)
             update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
-            return current_reply
+            return current_reply, True
         
         # D. Post-Execution Logic
         if current_reply:
             # We found content! Give it to the user and PAUSE at this node.
             update_sender_context(workspace_id, sender_id, {"current_node_id": pause_node_id or active_node_id})
-            return current_reply
+            return current_reply, False
         else:
             # Transient node (logic, etc.) -> Must move forward immediately using SAME message
             next_node_ids = get_next_nodes(
@@ -658,4 +660,4 @@ def process_flow_interaction(workspace_id: str, sender_id: str, user_message: st
                 update_sender_context(workspace_id, sender_id, {"current_flow_id": None, "current_node_id": None})
                 break
                 
-    return None
+    return None, False

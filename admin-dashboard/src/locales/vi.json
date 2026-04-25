@@ -275,7 +275,7 @@
   "flows.toolbox": "Công cụ",
   "flows.dragDesc": "Kéo thả các thành phần để xây dựng kịch bản",
   "flows.nodeMessage": "Tin nhắn",
-  "flows.nodeCondition": "Điều kiện",
+  "flows.nodeCondition": "Logic",
   "flows.nodeAISearch": "Tìm kiếm AI",
   "flows.nodeHandoff": "Chuyển nhân viên",
   "flows.saveBtn": "Lưu kịch bản",

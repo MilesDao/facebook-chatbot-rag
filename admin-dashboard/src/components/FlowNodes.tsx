@@ -125,7 +125,7 @@ export const LogicNode = ({ id, data, selected }: any) => {
             <div style={headerStyle(accent)}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Zap size={14} />
-                    <span>Condition</span>
+                    <span>Logic</span>
                 </div>
                 <button
                     onClick={(e) => { e.stopPropagation(); data.onDelete(id); }}

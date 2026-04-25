@@ -402,7 +402,7 @@ function FlowEditorContent() {
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--nav-hover)'; e.currentTarget.style.borderColor = 'var(--card-border)'; }}
                         >
                             <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '8px' }}><Zap size={18} color="#f59e0b" /></div>
-                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Condition</span>
+                            <span style={{ fontSize: '14px', fontWeight: '500' }}>Logic</span>
                             <GripVertical size={14} style={{ marginLeft: 'auto', opacity: 0.3 }} />
                         </div>
 
