@@ -1,5 +1,6 @@
 import os
 import re
+import hashlib
 import time
 import asyncio
 import json
@@ -48,6 +49,8 @@ class BotSettingsUpdate(BaseModel):
     llm_model: Optional[str] = Field("gemini-3.1-flash-lite-preview")
     app_secret: Optional[str] = Field(None, min_length=32, max_length=32)
     system_prompt: Optional[str] = Field(None)
+    fallback_message: Optional[str] = Field(None)
+
     slot_definitions: Optional[str] = Field(None)  # JSON string
 
 class WorkspaceCreate(BaseModel):
@@ -442,12 +445,13 @@ def process_message(sender_id: str, user_message: str, page_id: str):
         
         if not reply.strip():
             print("WARNING: AI returned empty reply. Using fail-safe.")
-            reply = "Dạ mình chưa tìm thấy thông tin này [SPLIT] Bạn có thể hỏi cụ thể hơn được không ạ?"
+            fallback = settings.get("fallback_message") or "Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?"
+            reply = fallback
             
         print(f"AI Response generated: {reply[:50]}...")
     except Exception as e:
         print(f"ERROR in handle_message flow: {e}")
-        reply = "Dạ mình đang gặp một chút sự cố kỹ thuật [SPLIT] Bạn vui lòng nhắn lại sau ít phút nhé ạ."
+        reply = "Dạ hiện tại mình đang có chút việc bận [SPLIT] Bạn vui lòng nhắn lại sau ít phút nhé ạ."
 
     # Handle [SPLIT] tag and send multiple bubbles
     parts = [p.strip() for p in reply.split("[SPLIT]") if p.strip()]
@@ -498,6 +502,14 @@ async def trigger_indexing(request: Request, background_tasks: BackgroundTasks, 
     if not workspace_id:
         raise HTTPException(status_code=400, detail="Missing X-Workspace-Id header")
     
+    # Helper for hashing inside endpoint
+    def get_file_hash(filepath):
+        sha256_hash = hashlib.sha256()
+        with open(filepath, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+        return sha256_hash.hexdigest()
+
     # Fetch workspace's Google key
     settings_res = supabase.table("bot_settings").select("google_api_key").eq("workspace_id", workspace_id).limit(1).execute()
     google_key = None
@@ -508,8 +520,48 @@ async def trigger_indexing(request: Request, background_tasks: BackgroundTasks, 
         service = IngestionService(api_key=google_key)
         service.ingest_directory(RAW_DATA_DIR, workspace_id=workspace_id)
     
+    # Get list of files to be indexed (only those NOT in DB)
+    files_to_index = []
+    skipped_files = []
+    if os.path.exists(RAW_DATA_DIR):
+        all_raw_files = [f for f in os.listdir(RAW_DATA_DIR) 
+                         if os.path.isfile(os.path.join(RAW_DATA_DIR, f)) and f.lower().endswith(('.txt', '.pdf'))]
+        
+        # Check database for existing hashes
+        existing_hashes = set()
+        try:
+            res = supabase.table("documents").select("metadata").eq("workspace_id", workspace_id).execute()
+            for doc in res.data:
+                h = doc.get("metadata", {}).get("file_hash")
+                if h:
+                    existing_hashes.add(h)
+        except Exception as e:
+            print(f"Error checking existing hashes: {e}")
+            
+        # Filter based on hash
+        for f in all_raw_files:
+            try:
+                h = get_file_hash(os.path.join(RAW_DATA_DIR, f))
+                if h not in existing_hashes:
+                    files_to_index.append(f)
+                else:
+                    skipped_files.append(f)
+            except Exception:
+                continue
+
+    if not files_to_index and not skipped_files:
+        return {"status": "no_files", "files": [], "skipped": [], "message": "No files found to index."}
+        
+    if not files_to_index and skipped_files:
+        return {"status": "already_indexed", "files": [], "skipped": skipped_files, "message": f"All {len(skipped_files)} files already exist in knowledge base."}
+
     background_tasks.add_task(run_indexing)
-    return {"status": "indexing_started"}
+    return {
+        "status": "indexing_started", 
+        "files": files_to_index, 
+        "skipped": skipped_files,
+        "message": f"Started indexing {len(files_to_index)} new files." + (f" ({len(skipped_files)} duplicates skipped)" if skipped_files else "")
+    }
 
 @app.get("/api/sources")
 async def get_sources(request: Request, current_user: dict = Depends(get_current_user)):
@@ -528,15 +580,6 @@ async def get_sources(request: Request, current_user: dict = Depends(get_current
                     sources_dict[src] = {"id": src, "name": src}
     except Exception as e:
         print(f"Error fetching indexed sources: {e}")
-
-    try:
-        if os.path.exists(RAW_DATA_DIR):
-            for filename in os.listdir(RAW_DATA_DIR):
-                if os.path.isfile(os.path.join(RAW_DATA_DIR, filename)):
-                    if filename not in sources_dict:
-                        sources_dict[filename] = {"id": filename, "name": filename}
-    except Exception as e:
-        print(f"Error listing local sources: {e}")
         
     return list(sources_dict.values())
 
@@ -625,6 +668,7 @@ async def get_bot_settings(request: Request, current_user: dict = Depends(get_cu
                 "page_id": "",
                 "llm_model": "gemini-3.1-flash-lite-preview",
                 "system_prompt": "",
+                "fallback_message": "Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?",
                 "slot_definitions": "[]"
             }
             supabase.table("bot_settings").insert(new_settings).execute()
@@ -649,6 +693,7 @@ async def update_bot_settings(settings: BotSettingsUpdate, request: Request, cur
             "llm_model": settings.llm_model or "gemini-3.1-flash-lite-preview",
             "app_secret": settings.app_secret,
             "system_prompt": settings.system_prompt or "",
+            "fallback_message": settings.fallback_message or "Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?",
             "slot_definitions": settings.slot_definitions or "[]",
             "updated_at": "now()"
         }

@@ -21,7 +21,8 @@ import {
   Eye,
   X,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Loader2
 } from "lucide-react";
 import { useWorkspace } from "@/components/WorkspaceContext";
 import { apiFetch } from "@/lib/auth";
@@ -33,14 +34,14 @@ export default function KnowledgeBase() {
   const [uploading, setUploading] = useState(false);
   const [indexing, setIndexing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [indexingFiles, setIndexingFiles] = useState<{ [key: string]: 'loading' | 'done' }>({});
   const [sources, setSources] = useState<{ id: string, name: string }[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<any[]>([]);
   const [mediaUploading, setMediaUploading] = useState(false);
   const [mediaStatus, setMediaStatus] = useState<string | null>(null);
   const [isMediaDragging, setIsMediaDragging] = useState(false);
-  const [expandedSource, setExpandedSource] = useState<string | null>(null);
-  const [sourceContents, setSourceContents] = useState<{ [key: string]: string }>({});
+  const [selectedSources, setSelectedSources] = useState<string[]>([]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -96,10 +97,31 @@ export default function KnowledgeBase() {
         method: "DELETE"
       });
       if (res.ok) {
+        setSelectedSources(prev => prev.filter(s => s !== filename));
         await fetchSources();
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedSources.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedSources.length} selected sources?`)) return;
+
+    setIndexing(true); // Reuse indexing state for loading
+    try {
+      // Execute deletions in parallel
+      const results = await Promise.all(selectedSources.map(filename => 
+        apiFetch(`/api/sources/${filename}`, { method: "DELETE" })
+      ));
+      
+      setSelectedSources([]);
+      await fetchSources();
+    } catch (err) {
+      console.error("Failed to delete selected sources:", err);
+    } finally {
+      setIndexing(false);
     }
   };
 
@@ -141,23 +163,71 @@ export default function KnowledgeBase() {
   };
 
   const handleIndex = async () => {
-    setIndexing(true);
-    setStatus(t("knowledge.indexing"));
-
     try {
       const res = await apiFetch("/api/index", {
         method: "POST"
       });
 
       if (res.ok) {
-        setStatus(t("knowledge.statusIndexSuccess"));
+        const data = await res.json();
+        const files = data.files || [];
+        
+        if (files.length === 0) {
+          setStatus(data.message || t("knowledge.statusIndexSuccess"));
+          setIndexing(false);
+          return;
+        }
+
+        // Initialize indexing status for each file
+        const initialStatus: { [key: string]: 'loading' | 'done' } = {};
+        files.forEach((f: string) => {
+          initialStatus[f] = 'loading';
+        });
+        setIndexingFiles(initialStatus);
+        
+        // Set message about what happened (including duplicates)
+        setStatus(data.message);
+
+        // Start polling
+        const pollInterval = setInterval(async () => {
+          try {
+            const sourcesRes = await apiFetch("/api/sources");
+            if (sourcesRes.ok) {
+              const currentSources = await sourcesRes.json();
+              const currentNames = currentSources.map((s: any) => s.name);
+              setSources(currentSources);
+
+              setIndexingFiles(prev => {
+                const next = { ...prev };
+                let allDone = true;
+                Object.keys(next).forEach(f => {
+                  if (currentNames.includes(f)) {
+                    next[f] = 'done';
+                  } else {
+                    allDone = false;
+                  }
+                });
+                
+                if (allDone) {
+                  clearInterval(pollInterval);
+                  setIndexing(false);
+                  setStatus(t("knowledge.statusIndexSuccess"));
+                }
+                return next;
+              });
+            }
+          } catch (err) {
+            console.error("Polling error:", err);
+          }
+        }, 2000);
+
       } else {
         setStatus(t("knowledge.statusIndexFail"));
+        setIndexing(false);
       }
     } catch (err) {
       console.error(err);
       setStatus(t("knowledge.statusError"));
-    } finally {
       setIndexing(false);
     }
   };
@@ -210,25 +280,18 @@ export default function KnowledgeBase() {
     }
   };
 
-  const handleViewSource = async (filename: string) => {
-    if (expandedSource === filename) {
-      setExpandedSource(null);
-      return;
+  const toggleSelectAll = () => {
+    if (selectedSources.length === sources.length) {
+      setSelectedSources([]);
+    } else {
+      setSelectedSources(sources.map(s => s.id));
     }
+  };
 
-    setExpandedSource(filename);
-
-    if (sourceContents[filename]) return;
-
-    try {
-      const res = await apiFetch(`/api/sources/${filename}/content`);
-      if (res.ok) {
-        const text = await res.text();
-        setSourceContents(prev => ({ ...prev, [filename]: text }));
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const toggleSelectSource = (id: string) => {
+    setSelectedSources(prev => 
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
   };
 
   const copyToClipboard = (text: string) => {
@@ -327,6 +390,41 @@ export default function KnowledgeBase() {
             {indexing ? t("knowledge.indexing") : t("knowledge.indexBtn")}
           </button>
 
+          {Object.keys(indexingFiles).length > 0 && (
+            <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ fontSize: '14px', margin: 0, color: 'var(--foreground)', opacity: 0.8 }}>Indexing Progress:</h3>
+              {Object.entries(indexingFiles).map(([filename, fileStatus]) => (
+                <div key={filename} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--card-border)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                    <FileText size={16} color="var(--text-muted)" />
+                    <span style={{ fontSize: '13px', color: 'var(--foreground)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {filename}
+                    </span>
+                  </div>
+                  {fileStatus === 'loading' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent)' }}>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Indexing...</span>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981' }}>
+                      <CheckCircle2 size={14} />
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase' }}>Done</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {status && (
             <div style={{
               marginTop: '20px',
@@ -339,74 +437,95 @@ export default function KnowledgeBase() {
               alignItems: 'center',
               gap: '8px'
             }}>
-              <CheckCircle2 size={16} /> {status}
+              <CheckCircle2 size={16} /> 
+              <span>{status}</span>
             </div>
           )}
         </div>
       </div>
 
       <div className="card glass" style={{ marginTop: '24px' }}>
-        <h2 style={{ marginBottom: '20px', color: 'var(--foreground)' }}>{t("knowledge.existing")}</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h2 style={{ margin: 0, color: 'var(--foreground)' }}>{t("knowledge.existing")}</h2>
+            <span style={{ fontSize: '13px', background: 'var(--nav-hover)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
+              {sources.length} sources
+            </span>
+          </div>
+          
+          {selectedSources.length > 0 && (
+            <button 
+              onClick={handleDeleteSelected}
+              className="btn" 
+              style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '6px 12px', fontSize: '13px' }}
+            >
+              <Trash2 size={16} /> Delete Selected ({selectedSources.length})
+            </button>
+          )}
+        </div>
+
         {sources.length === 0 ? (
           <p style={{ color: 'var(--text-muted)', textAlign: 'center', marginTop: '40px' }}>{t("knowledge.emptySources")}</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {/* Header / Select All */}
+            <div style={{ 
+              padding: '10px 16px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              borderBottom: '1px solid var(--card-border)',
+              marginBottom: '4px'
+            }}>
+              <input 
+                type="checkbox" 
+                checked={sources.length > 0 && selectedSources.length === sources.length}
+                onChange={toggleSelectAll}
+                style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+              />
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-muted)' }}>Select All</span>
+            </div>
+
             {sources.map(source => (
               <div key={source.id} className="glass" style={{
                 borderRadius: '12px',
                 overflow: 'hidden',
-                border: '1px solid var(--card-border)'
+                border: '1px solid var(--card-border)',
+                transition: 'all 0.2s ease',
+                background: selectedSources.includes(source.id) ? 'rgba(59, 130, 246, 0.05)' : 'transparent'
               }}>
                 <div
-                  onClick={() => handleViewSource(source.id)}
                   style={{
-                    padding: '16px',
+                    padding: '12px 16px',
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
-                    cursor: 'pointer',
-                    background: expandedSource === source.id ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
-                    transition: 'background 0.2s ease'
+                    alignItems: 'center'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <FileText color={expandedSource === source.id ? 'var(--accent)' : 'var(--text-muted)'} size={20} />
+                    <input 
+                      type="checkbox" 
+                      checked={selectedSources.includes(source.id)}
+                      onChange={() => toggleSelectSource(source.id)}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                    />
+                    <FileText color="var(--text-muted)" size={18} />
                     <span style={{
-                      color: expandedSource === source.id ? 'var(--accent)' : 'var(--foreground)',
-                      fontSize: '15px',
-                      fontWeight: expandedSource === source.id ? 'bold' : 'normal'
+                      color: 'var(--foreground)',
+                      fontSize: '14px',
+                      fontWeight: selectedSources.includes(source.id) ? '600' : 'normal'
                     }}>{source.name}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    {expandedSource === source.id ? <ChevronUp size={18} color="var(--accent)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSource(source.id);
-                      }}
-                      style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
-                      title="Delete Source"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleDeleteSource(source.id)}
+                    style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px', opacity: 0.6 }}
+                    title="Delete Source"
+                    onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-
-                {expandedSource === source.id && (
-                  <div style={{
-                    padding: '16px',
-                    borderTop: '1px solid var(--card-border)',
-                    background: 'rgba(0,0,0,0.1)',
-                    maxHeight: '400px',
-                    overflowY: 'auto',
-                    fontSize: '14px',
-                    lineHeight: '1.6',
-                    color: 'var(--foreground)',
-                    whiteSpace: 'pre-wrap'
-                  }}>
-                    {sourceContents[source.id] || t("knowledge.processing")}
-                  </div>
-                )}
               </div>
             ))}
           </div>

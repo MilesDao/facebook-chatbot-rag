@@ -32,6 +32,8 @@ interface BotSettings {
     llm_model: string;
     app_secret: string;
     system_prompt: string;
+    fallback_message: string;
+
 }
 
 interface ValidationErrors {
@@ -54,7 +56,9 @@ export default function SettingsPage() {
         verify_token: "tuyensinh2026",
         llm_model: "google/gemini-3.1-flash-lite-preview",
         app_secret: "",
-        system_prompt: ""
+        system_prompt: "",
+        fallback_message: "Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?"
+
     });
     const [errors, setErrors] = useState<ValidationErrors>({});
     const [loading, setLoading] = useState(true);
@@ -87,7 +91,9 @@ export default function SettingsPage() {
                     verify_token: data.verify_token || "tuyensinh2026",
                     llm_model: data.llm_model || "google/gemini-3.1-flash-lite-preview",
                     app_secret: data.app_secret || "",
-                    system_prompt: data.system_prompt || ""
+                    system_prompt: data.system_prompt || "",
+                    fallback_message: data.fallback_message || "Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?"
+
                 });
             }
         } catch (err) {
@@ -496,6 +502,48 @@ export default function SettingsPage() {
                             />
                             <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
                                 Use this to set the bot's name, role, tone, and specific rules (e.g. "Never mention competitors").
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Fallback Message */}
+                <div className="card glass">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                        <AlertCircle color="#f59e0b" />
+                        <h2 style={{ margin: 0 }}>Fallback Message</h2>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                            This message is sent when the AI cannot find an answer in your knowledge base.
+                        </p>
+
+                        <div className="form-group">
+                            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
+                                Custom Fallback Response
+                            </label>
+                            <textarea
+                                className="glass-input"
+                                value={settings.fallback_message}
+                                onChange={e => setSettings({ ...settings, fallback_message: e.target.value })}
+                                placeholder="Dạ mình chưa rõ câu hỏi của bạn [SPLIT] Bạn có thể hỏi lại được không ạ?"
+                                style={{
+                                    width: '100%',
+                                    minHeight: '100px',
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    background: 'var(--nav-hover)',
+                                    border: '1px solid var(--card-border)',
+                                    color: 'var(--foreground)',
+                                    fontFamily: 'inherit',
+                                    fontSize: '14px',
+                                    lineHeight: '1.5',
+                                    resize: 'vertical'
+                                }}
+                            />
+                            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px' }}>
+                                You can use [SPLIT] to send multiple message bubbles.
                             </p>
                         </div>
                     </div>
