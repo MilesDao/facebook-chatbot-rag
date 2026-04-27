@@ -22,9 +22,8 @@ class BotResponse(BaseModel):
 
 # Ordered list of models to try: primary → fallbacks
 FALLBACK_MODELS = [
-    "gemini-3.1-flash-lite-preview",
-    "gemini-3.1-pro-preview",
-    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash",
 ]
 
 def generate_response(user_message: str, context: str, history: list, google_key: str = None, llm_model: str = None, custom_system_prompt: str = None) -> BotResponse:

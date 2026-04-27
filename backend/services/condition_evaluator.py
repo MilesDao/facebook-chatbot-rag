@@ -10,9 +10,8 @@ load_dotenv()
 
 # Ordered list of models to try: primary → fallbacks
 FALLBACK_MODELS = [
-    "gemini-3.1-flash-lite-preview",
-    "gemini-3.1-pro-preview",
-    "gemini-3-flash-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash",
 ]
 
 class ConditionMatch(BaseModel):

@@ -87,9 +87,8 @@ class IngestionService:
         try:
             print(f"Generating embeddings for {len(chunks)} chunks in a single batch...")
             result = self.client.models.embed_content(
-                model="gemini-embedding-001",
+                model="text-embedding-004",
                 contents=chunks,
-                config=genai.types.EmbedContentConfig(output_dimensionality=1536)
             )
             
             if not result.embeddings:
